@@ -21,6 +21,7 @@ import com.ggym.app.domain.repository.RestTimerStore
 import com.ggym.app.domain.repository.RoutineRepository
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
 import com.ggym.app.domain.repository.WorkoutPreferences
+import com.ggym.app.domain.workout.ActiveWorkoutUseCases
 import com.ggym.app.domain.workout.RestTimerUseCases
 import com.ggym.app.domain.workout.WorkingWeightUseCases
 import com.ggym.app.service.AndroidRestAlertPlayer
@@ -31,6 +32,7 @@ import com.ggym.app.service.ServiceRestTimerCommands
 import com.ggym.app.ui.exercises.ExercisePickerViewModel
 import com.ggym.app.ui.exercises.SlotEditorViewModel
 import com.ggym.app.ui.settings.SettingsViewModel
+import com.ggym.app.ui.workout.ActiveWorkoutViewModel
 import com.ggym.app.ui.workouts.DayDetailViewModel
 import com.ggym.app.ui.workouts.RoutineDetailViewModel
 import com.ggym.app.ui.workouts.WorkoutsViewModel
@@ -100,6 +102,14 @@ class AppContainer(context: Context) {
         history = workoutHistoryRepository,
     )
 
+    /** The workout that is running: starting one, working through it, ending it. */
+    val activeWorkoutUseCases = ActiveWorkoutUseCases(
+        routines = routineRepository,
+        exercises = exerciseRepository,
+        history = workoutHistoryRepository,
+        weights = workingWeightUseCases,
+    )
+
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
         initializer { SettingsViewModel(themePreferences) }
     }
@@ -136,6 +146,21 @@ class AppContainer(context: Context) {
                 routines = routineRepository,
                 exercises = exerciseRepository,
                 weights = workingWeightUseCases,
+            )
+        }
+    }
+
+    /**
+     * The screen for one running workout. The id is the *draft's*: the factory is remembered per id
+     * at the call site, so one screen watches one workout and never adopts the next one.
+     */
+    fun activeWorkoutViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
+        initializer {
+            ActiveWorkoutViewModel(
+                sessionId = sessionId,
+                history = workoutHistoryRepository,
+                workout = activeWorkoutUseCases,
+                restTimer = restTimerUseCases,
             )
         }
     }

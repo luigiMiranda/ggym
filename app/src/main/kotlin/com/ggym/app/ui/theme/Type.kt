@@ -48,3 +48,16 @@ val GgymHeroWeight: TextStyle = GgymTypography.headlineMedium.copy(
     fontFeatureSettings = "tnum",
     letterSpacing = (-0.5).sp,
 )
+
+/**
+ * The hero weight at the size the focused view uses it: the largest interactive element in the app.
+ *
+ * Same reasons as [GgymHeroWeight] for the tabular figures, at `displayMedium`. It is editable in
+ * place, so a value that reflows while it is typed is not a cosmetic problem — it moves the number
+ * out from under the finger that is entering it.
+ */
+val GgymHeroWeightDisplay: TextStyle = GgymTypography.displayMedium.copy(
+    fontWeight = FontWeight.Black,
+    fontFeatureSettings = "tnum",
+    letterSpacing = (-1.5).sp,
+)

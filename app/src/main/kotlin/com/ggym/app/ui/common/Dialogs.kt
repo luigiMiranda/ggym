@@ -31,7 +31,9 @@ import com.ggym.app.R
  * The one confirmation dialog for destructive actions, so "delete" always looks and reads the same.
  *
  * The message says what disappears *with* the thing being deleted: this app stores real training
- * work, and "are you sure?" is not an explanation.
+ * work, and "are you sure?" is not an explanation. [confirmLabel] exists for the one destructive
+ * action that is not a deletion (discarding a workout) and still deserves the same dialog; `null`
+ * means the ordinary "Delete".
  */
 @Composable
 fun ConfirmDeleteDialog(
@@ -39,6 +41,7 @@ fun ConfirmDeleteDialog(
     message: String,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
+    confirmLabel: String? = null,
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -46,7 +49,7 @@ fun ConfirmDeleteDialog(
         text = { Text(message) },
         confirmButton = {
             TextButton(onClick = onConfirm) {
-                Text(stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
+                Text(confirmLabel ?: stringResource(R.string.action_delete), color = MaterialTheme.colorScheme.error)
             }
         },
         dismissButton = {

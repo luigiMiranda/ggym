@@ -198,6 +198,22 @@ running workout's id, so the screen can offer to resume or discard it instead of
 second one. Every write re-reads the draft first, so an action that arrives after the workout ended
 is a no-op rather than a write to the wrong workout.
 
+**The active workout screen.** `ui/workout/ActiveWorkoutScreen` is one destination with two modes:
+the exercise list (each card carries the name, "2 / 4 sets", a progress bar and the weight to load
+next) and the focused view, one page per exercise in a `HorizontalPager` with the weight as the
+largest interactive element on screen. The modes are internal state rather than two routes, because
+swiping between exercises is not navigation and everything that matters — the selected set, the
+running rest, what has been performed — is shared between them. The hero edits the selected set:
+`−2.5` / `+2.5`, typed text, and the reps stepper change what is on screen and nothing else, and a
+set becomes the user's data when it is *completed*. That is deliberate: the completion is the write
+that carries the working-weight rule, and it can only recognise the sets that still hold the plan's
+weight if nobody has rewritten them from the keyboard. The chips below show what the hero shows,
+with a "remove" that names its own set for unperformed ones and `+ Add set` at the end of the strip.
+System back is a path rather than an escape — focused → overview → the finish sheet — and the sheet
+is the summary of what will be saved: sets completed, exercises skipped, duration, with
+"Finish & save" and "Discard workout" behind the shared confirmation dialog. The rest banner is drawn
+in both modes and recomputed from the stored deadline on every tick; the screen owns no countdown.
+
 **The rest timer.** A rest is a *deadline* kept in its own DataStore file: `RestTimerState`
 (`endsAtMillis`, `totalSeconds`, `exerciseLogId`, `exerciseName`) as wall-clock epoch millis,
 written as one tuple and cleared as one. A remaining count would have to be decremented by a ticker,

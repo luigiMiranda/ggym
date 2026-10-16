@@ -132,4 +132,51 @@
     <string name="rest_channel_running_description">The countdown between sets</string>
     <string name="rest_channel_finished_name">Rest finished</string>
     <string name="rest_channel_finished_description">Tells you when a rest is over</string>
+
+    <!--
+      Durations. The clock itself (`mm:ss`, `h:mm:ss`) is built in `DurationFormat`, which needs no
+      copy; these are the summary phrases it composes. `%2$02d` keeps the minutes two digits, so
+      "1 h 05 min" does not read as five minutes.
+    -->
+    <string name="duration_minutes">%1$d min</string>
+    <string name="duration_hours_minutes">%1$d h %2$02d min</string>
+
+    <!--
+      The active workout. The two modes are one destination: the list of exercises, and one
+      exercise at a time with the weight as the largest thing on the screen.
+    -->
+    <string name="workout_title_fallback">Workout</string>
+    <string name="workout_mode_overview">Overview</string>
+    <string name="workout_mode_focused">Exercise</string>
+    <plurals name="workout_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d sets</item>
+    </plurals>
+    <string name="workout_overview_sets">%1$d / %2$s</string>
+    <string name="workout_progress">%1$d of %2$s</string>
+    <plurals name="workout_exercises_skipped">
+        <item quantity="one">%1$d exercise skipped</item>
+        <item quantity="other">%1$d exercises skipped</item>
+    </plurals>
+    <string name="workout_finish">Finish workout</string>
+    <string name="workout_finish_title">Finish workout?</string>
+    <string name="workout_finish_confirm">Finish &amp; save</string>
+    <string name="workout_finish_detail">%1$s · %2$s</string>
+    <string name="workout_discard">Discard workout</string>
+    <string name="workout_discard_title">Discard workout?</string>
+    <string name="workout_discard_message">Nothing from this workout will be saved: the sets you already completed are thrown away with the rest. Finishing instead keeps them.</string>
+    <string name="workout_keep_training">Keep training</string>
+    <string name="workout_missing_title">This workout is over</string>
+    <string name="workout_missing_message">It was finished or discarded, here or somewhere else. Start another one from a training day.</string>
+    <string name="workout_back_to_workouts">Back to workouts</string>
+    <string name="workout_exercise_of">Exercise %1$d of %2$d</string>
+    <string name="workout_complete_set">Complete set</string>
+    <string name="workout_next_exercise">Next exercise</string>
+    <string name="workout_add_set">Add set</string>
+    <string name="workout_remove_set">Remove set %1$d</string>
+    <string name="workout_set_reps">× %1$d</string>
+    <string name="workout_reps_label">reps</string>
+    <string name="workout_reps_decrease">One rep fewer</string>
+    <string name="workout_reps_increase">One rep more</string>
+    <string name="workout_resting">Rest</string>
 </resources>

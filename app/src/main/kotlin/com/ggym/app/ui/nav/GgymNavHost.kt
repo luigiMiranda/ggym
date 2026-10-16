@@ -29,6 +29,7 @@ import com.ggym.app.ui.calendar.CalendarScreen
 import com.ggym.app.ui.exercises.ExercisePickerScreen
 import com.ggym.app.ui.settings.SettingsScreen
 import com.ggym.app.ui.stats.StatsScreen
+import com.ggym.app.ui.workout.ActiveWorkoutScreen
 import com.ggym.app.ui.workouts.DayDetailScreen
 import com.ggym.app.ui.workouts.RoutineDetailScreen
 import com.ggym.app.ui.workouts.WorkoutsScreen
@@ -144,6 +145,19 @@ fun GgymNavHost(
                     routineDayId = dayId,
                     viewModelFactory = remember(dayId) { container.exercisePickerViewModelFactory(dayId) },
                     onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = Routes.WORKOUT,
+                arguments = listOf(navArgument(Routes.SESSION_ID) { type = NavType.LongType }),
+            ) { entry ->
+                val sessionId = entry.longArgument(Routes.SESSION_ID)
+                ActiveWorkoutScreen(
+                    viewModelFactory = remember(sessionId) { container.activeWorkoutViewModelFactory(sessionId) },
+                    // A finished or discarded workout has no parent to pop to when it was opened
+                    // from the notification, so leaving means going back to the Workouts tab.
+                    onWorkoutEnded = { navController.navigateToTab(Destination.Workouts) },
                 )
             }
         }

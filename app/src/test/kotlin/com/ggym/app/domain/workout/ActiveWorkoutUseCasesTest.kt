@@ -219,8 +219,10 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
         val dayId = plannedDay(Slot(exerciseId = bench, sets = 3, reps = "8-10", weightKg = 80.0))
         started(dayId)
         val sets = draft().exercises[0].sets
-        // The screen that persists a set's own number is phase 5; the rule under test is the one
-        // already written: a set carrying something else is not the group default and is left alone.
+        // The screen never writes a prefill (a set's numbers are committed when it is completed,
+        // per decision 5), so a differing prefill is a state only a direct write can reach — and
+        // the rule covers it all the same: a set carrying something else is not the group default
+        // and is left alone.
         historyRepository.updateSet(sets[1].copy(weight = 82.5))
 
         useCases.completeSet(sets[0].id, weightKg = 85.0, reps = 8)
