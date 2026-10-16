@@ -16,6 +16,7 @@ splashscreen = "1.2.0"
 coroutines = "1.11.0"
 junit = "4.13.2"
 turbine = "1.2.1"
+# Standalone since 2.3.0: not KGP-prefixed, wired through the top-level buildscript classpath.
 ksp = "2.3.12"
 room = "2.8.5"
 serialization = "1.11.0"
