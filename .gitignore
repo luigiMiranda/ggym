@@ -6,6 +6,7 @@ project.md
 AGENTS.md
 docs/PROGRESS.md
 docs/specs/
+scripts/mirror-notes.sh
 
 # Gradle / build outputs
 .gradle/
