@@ -8,9 +8,9 @@ import kotlinx.serialization.json.Json
  * The backup format this build writes.
  *
  * The format has its own version, separate from the database schema version, because the two
- * questions are different: a file must stay readable across app updates (1 and 2 both are, since
- * the move to 2 only added a field whose absence already meant the same thing), while the database
- * is migrated in place.
+ * questions are different: a file must stay readable across app updates (1, 2 and 3 each added
+ * only fields whose absence meant what the older build did), while the database is migrated in
+ * place.
  */
 internal const val BACKUP_FORMAT_VERSION = 3
 

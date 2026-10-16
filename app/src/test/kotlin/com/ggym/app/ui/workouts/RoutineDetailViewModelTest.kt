@@ -7,7 +7,6 @@ import com.ggym.app.testing.givenExercise
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -178,8 +177,10 @@ class RoutineDetailViewModelTest : ViewModelTest() {
             vm.startRenameRoutine("Push Day")
             vm.saveRoutineName("Push / Pull")
 
-            val state = awaitState { it.routineName == "Push / Pull" }
-            assertNull(state.nameDialog)
+            // The rename and the dialog closing are two updates, so the state that carries the new
+            // name can still carry the open dialog. Waiting for both is what "the rename landed"
+            // means; asserting on the first state with the new name is a race.
+            val state = awaitState { it.routineName == "Push / Pull" && it.nameDialog == null }
             assertEquals("Push / Pull", routineRepository.observeRoutines().first().single().name)
 
             cancelAndIgnoreRemainingEvents()
