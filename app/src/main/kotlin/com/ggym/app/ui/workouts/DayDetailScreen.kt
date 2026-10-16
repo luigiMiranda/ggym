@@ -141,7 +141,8 @@ fun DayDetailScreen(
 
     editedSlotId?.let { slotId ->
         SlotEditorSheet(
-            viewModel = viewModel(factory = slotEditorViewModelFactory(slotId)),
+            plannedExerciseId = slotId,
+            viewModelFactory = slotEditorViewModelFactory,
             onDismiss = { editedSlotId = null },
         )
     }

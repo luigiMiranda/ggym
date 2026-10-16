@@ -25,9 +25,21 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ggym.app.R
 import com.ggym.app.ui.common.WeightField
+
+/**
+ * The ViewModel key for one slot's editor.
+ *
+ * `viewModel()` caches by *owner and class*, so a sheet opened for a different slot on the same
+ * screen would otherwise be handed the ViewModel of the slot opened first: it would show that
+ * slot's exercise and values, and saving would write *that* slot. One key per slot is what makes
+ * every opening a genuine opening.
+ */
+internal fun slotEditorViewModelKey(plannedExerciseId: Long): String = "slot-editor-$plannedExerciseId"
 
 /**
  * The slot editor: how much of one exercise, on one training day.
@@ -35,12 +47,22 @@ import com.ggym.app.ui.common.WeightField
  * A sheet rather than a destination, because the day stays visible behind it — the user is
  * arranging a list, and the form should not make them lose their place. The weight field is the
  * last one, and it carries the steppers: it is the number this whole feature exists for.
+ *
+ * The sheet creates its own ViewModel from [plannedExerciseId], so the form and the slot it
+ * belongs to are always created together (see [slotEditorViewModelKey]).
  */
 @Composable
 fun SlotEditorSheet(
-    viewModel: SlotEditorViewModel,
+    plannedExerciseId: Long,
+    viewModelFactory: (Long) -> ViewModelProvider.Factory,
     onDismiss: () -> Unit,
 ) {
+    // The sheet owns its ViewModel, so the key and the id it belongs to cannot drift apart at a
+    // call site: creating one without the other is not expressible here.
+    val viewModel: SlotEditorViewModel = viewModel(
+        key = slotEditorViewModelKey(plannedExerciseId),
+        factory = viewModelFactory(plannedExerciseId),
+    )
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
