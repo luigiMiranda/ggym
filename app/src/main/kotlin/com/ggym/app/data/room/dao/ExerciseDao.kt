@@ -30,6 +30,10 @@ internal interface ExerciseDao {
     @Query("SELECT * FROM exercise WHERE name = :name COLLATE NOCASE LIMIT 1")
     suspend fun findByName(name: String): ExerciseEntity?
 
+    /** Single lookup by id, for the places that hold an id rather than a name. */
+    @Query("SELECT * FROM exercise WHERE id = :exerciseId")
+    suspend fun getById(exerciseId: Long): ExerciseEntity?
+
     @Insert
     suspend fun insert(exercise: ExerciseEntity): Long
 

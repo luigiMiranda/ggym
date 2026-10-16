@@ -92,6 +92,20 @@ Rules that keep this honest:
   rather than on storage details.
 - Features do not reach into each other; anything shared moves to `domain/` or `data/`.
 
+The Workouts section is the reference for how a feature is put together:
+
+```
+ui/workouts/  WorkoutsScreen -> RoutineDetailScreen -> DayDetailScreen
+              one Screen + ViewModel + UiState per level, plus a ModalBottomSheet editor
+ui/exercises/ ExercisePickerScreen (a destination) and the slot editor sheet
+ui/common/    EmptyState, dialogs, the row overflow menu, weight formatting and parsing
+```
+
+Two conventions are worth stating because they are easy to get wrong: **routes carry ids, never
+state** (`routine/{routineId}`, `day/{routineId}/{dayId}`), so a back stack restored after process
+death re-reads the current data instead of showing a stale copy; and **the bottom bar belongs to the
+tabs only**, so the routine tree is a drill-down with its own back path rather than a fifth tab.
+
 ## 4. State, threading and dependency injection
 
 - **Unidirectional data flow.** Each screen has one immutable `<X>UiState` exposed as

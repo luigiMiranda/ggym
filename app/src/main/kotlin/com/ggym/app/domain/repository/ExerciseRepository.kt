@@ -21,6 +21,9 @@ interface ExerciseRepository {
     /** Exact lookup, ignoring case — the same rule the unique index enforces. */
     suspend fun findByName(name: String): Exercise?
 
+    /** The dictionary entry with this id, or `null` once it has been deleted. */
+    suspend fun findById(exerciseId: Long): Exercise?
+
     /**
      * The exercise called [name], creating it if the dictionary does not have one yet.
      *

@@ -5,6 +5,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
@@ -12,25 +13,32 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.ggym.app.di.AppContainer
 import com.ggym.app.ui.calendar.CalendarScreen
+import com.ggym.app.ui.exercises.ExercisePickerScreen
 import com.ggym.app.ui.settings.SettingsScreen
 import com.ggym.app.ui.stats.StatsScreen
+import com.ggym.app.ui.workouts.DayDetailScreen
+import com.ggym.app.ui.workouts.RoutineDetailScreen
 import com.ggym.app.ui.workouts.WorkoutsScreen
 
 /**
- * The app shell: one activity, four top-level destinations, expressive bottom navigation.
+ * The app shell: one activity, the four tabs, and the routine tree behind the Workouts tab.
  *
- * Tab switching uses the standard save/restore pattern so each tab keeps its own scroll
- * position and back stack — that matters once the workout screens grow scrollable lists.
+ * The bottom bar belongs to the tabs and disappears in the routine tree — those screens are a
+ * drill-down with their own back path, not a fifth tab. Each tab keeps its own back stack and
+ * scroll position, so returning to Workouts puts the user where they were.
  */
 @Composable
 fun GgymNavHost(
@@ -38,33 +46,35 @@ fun GgymNavHost(
     navController: NavHostController = rememberNavController(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val current = Destination.fromRoute(backStackEntry?.destination?.route) ?: Destination.start
+    val tab = Destination.fromRoute(backStackEntry?.destination?.route)
 
     Scaffold(
         bottomBar = {
-            NavigationBar {
-                Destination.entries.forEach { destination ->
-                    val selected = destination == current
-                    NavigationBarItem(
-                        selected = selected,
-                        onClick = { navController.navigateToTab(destination) },
-                        icon = {
-                            Icon(
-                                imageVector = if (selected) {
-                                    destination.selectedIcon
-                                } else {
-                                    destination.unselectedIcon
-                                },
-                                contentDescription = null,
-                            )
-                        },
-                        label = { Text(stringResource(destination.labelRes)) },
-                        colors = NavigationBarItemDefaults.colors(
-                            indicatorColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                            selectedIconColor = androidx.compose.material3.MaterialTheme.colorScheme.onPrimary,
-                            selectedTextColor = androidx.compose.material3.MaterialTheme.colorScheme.primary,
-                        ),
-                    )
+            if (tab != null) {
+                NavigationBar {
+                    Destination.entries.forEach { destination ->
+                        val selected = destination == tab
+                        NavigationBarItem(
+                            selected = selected,
+                            onClick = { navController.navigateToTab(destination) },
+                            icon = {
+                                Icon(
+                                    imageVector = if (selected) {
+                                        destination.selectedIcon
+                                    } else {
+                                        destination.unselectedIcon
+                                    },
+                                    contentDescription = null,
+                                )
+                            },
+                            label = { Text(stringResource(destination.labelRes)) },
+                            colors = NavigationBarItemDefaults.colors(
+                                indicatorColor = MaterialTheme.colorScheme.primary,
+                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                                selectedTextColor = MaterialTheme.colorScheme.primary,
+                            ),
+                        )
+                    }
                 }
             }
         },
@@ -73,16 +83,68 @@ fun GgymNavHost(
             navController = navController,
             startDestination = Destination.start.route,
             modifier = Modifier.padding(innerPadding),
-            // Cross-fade between tabs: spatial motion is reserved for within-workout
+            // Cross-fade between destinations: spatial motion is reserved for within-workout
             // navigation (pager swipes, set morphs) where it carries meaning.
             enterTransition = { fadeIn(tween(durationMillis = 180)) },
             exitTransition = { fadeOut(tween(durationMillis = 120)) },
         ) {
-            composable(Destination.Workouts.route) { WorkoutsScreen() }
+            composable(Destination.Workouts.route) {
+                WorkoutsScreen(
+                    viewModelFactory = container.workoutsViewModelFactory,
+                    onOpenRoutine = { routineId -> navController.navigate(Routes.routine(routineId)) },
+                )
+            }
             composable(Destination.Calendar.route) { CalendarScreen() }
             composable(Destination.Stats.route) { StatsScreen() }
             composable(Destination.Settings.route) {
                 SettingsScreen(viewModelFactory = container.settingsViewModelFactory)
+            }
+
+            composable(
+                route = Routes.ROUTINE,
+                arguments = listOf(navArgument(Routes.ROUTINE_ID) { type = NavType.LongType }),
+            ) { entry ->
+                val routineId = entry.longArgument(Routes.ROUTINE_ID)
+                RoutineDetailScreen(
+                    viewModelFactory = remember(routineId) { container.routineDetailViewModelFactory(routineId) },
+                    onBack = { navController.popBackStack() },
+                    onOpenDay = { dayId -> navController.navigate(Routes.day(routineId, dayId)) },
+                )
+            }
+
+            composable(
+                route = Routes.DAY,
+                arguments = listOf(
+                    navArgument(Routes.ROUTINE_ID) { type = NavType.LongType },
+                    navArgument(Routes.DAY_ID) { type = NavType.LongType },
+                ),
+            ) { entry ->
+                val routineId = entry.longArgument(Routes.ROUTINE_ID)
+                val dayId = entry.longArgument(Routes.DAY_ID)
+                DayDetailScreen(
+                    viewModelFactory = remember(routineId, dayId) {
+                        container.dayDetailViewModelFactory(routineId, dayId)
+                    },
+                    slotEditorViewModelFactory = remember(routineId) {
+                        { plannedExerciseId: Long ->
+                            container.slotEditorViewModelFactory(routineId, plannedExerciseId)
+                        }
+                    },
+                    onBack = { navController.popBackStack() },
+                    onAddExercise = { navController.navigate(Routes.exercisePicker(dayId)) },
+                )
+            }
+
+            composable(
+                route = Routes.EXERCISE_PICKER,
+                arguments = listOf(navArgument(Routes.DAY_ID) { type = NavType.LongType }),
+            ) { entry ->
+                val dayId = entry.longArgument(Routes.DAY_ID)
+                ExercisePickerScreen(
+                    routineDayId = dayId,
+                    viewModelFactory = remember(dayId) { container.exercisePickerViewModelFactory(dayId) },
+                    onBack = { navController.popBackStack() },
+                )
             }
         }
     }

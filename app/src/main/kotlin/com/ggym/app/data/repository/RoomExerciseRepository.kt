@@ -42,6 +42,9 @@ internal class RoomExerciseRepository(
     override suspend fun findByName(name: String): Exercise? =
         dao.findByName(name.trim())?.let(ExerciseMapper::toDomain)
 
+    override suspend fun findById(exerciseId: Long): Exercise? =
+        dao.getById(exerciseId)?.let(ExerciseMapper::toDomain)
+
     override suspend fun findOrCreate(name: String, defaultRestSeconds: Int): Exercise {
         val trimmed = name.trim()
         require(trimmed.isNotEmpty()) { "an exercise needs a name" }

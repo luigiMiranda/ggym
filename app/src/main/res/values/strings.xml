@@ -27,4 +27,92 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_wallpaper_colors_title">Wallpaper colours</string>
     <string name="settings_wallpaper_colors_supporting">Uses colours from your wallpaper instead of GGym\'s. Off by default.</string>
+
+    <!-- Shared actions -->
+    <string name="action_more">More actions</string>
+    <string name="action_back">Back</string>
+    <string name="action_save">Save</string>
+    <string name="action_cancel">Cancel</string>
+    <string name="action_delete">Delete</string>
+    <string name="action_ok">OK</string>
+    <string name="action_rename">Rename</string>
+    <string name="action_edit">Edit</string>
+    <string name="action_move_up">Move up</string>
+    <string name="action_move_down">Move down</string>
+
+    <!-- Units and numbers -->
+    <string name="unit_kg">kg</string>
+    <string name="unit_seconds">s</string>
+    <string name="weight_kg">%1$s kg</string>
+    <string name="weight_unknown">—</string>
+    <string name="weight_decrease">Decrease the weight by 2.5 kg</string>
+    <string name="weight_increase">Increase the weight by 2.5 kg</string>
+
+    <!-- Routines -->
+    <string name="workouts_new_routine">New routine</string>
+    <string name="routine_new_title">New routine</string>
+    <string name="routine_rename_title">Rename routine</string>
+    <string name="routine_name_label">Routine name</string>
+    <string name="routine_delete_title">Delete routine?</string>
+    <string name="routine_delete_message">“%1$s” and everything in it will be deleted. Your logged workouts are kept.</string>
+    <string name="routine_summary">%1$s · %2$s</string>
+    <string name="routine_title_fallback">Routine</string>
+    <string name="routine_missing_title">This routine is gone</string>
+    <string name="routine_missing_message">It was deleted while you were away. Go back to Workouts and pick another one.</string>
+    <plurals name="routine_day_count">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <plurals name="routine_exercise_count">
+        <item quantity="one">%1$d exercise</item>
+        <item quantity="other">%1$d exercises</item>
+    </plurals>
+
+    <!-- Training days -->
+    <string name="routine_add_day">Add day</string>
+    <string name="day_new_title">New training day</string>
+    <string name="day_rename_title">Rename day</string>
+    <string name="day_name_label">Day name</string>
+    <string name="day_delete_title">Delete day?</string>
+    <string name="day_delete_message">“%1$s” and the exercises planned in it will be deleted. Your logged workouts are kept.</string>
+    <string name="days_empty_title">No training days yet</string>
+    <string name="days_empty_message">A routine is made of days — “Push A”, “Leg day”, “Monday”. Add the first one.</string>
+    <string name="day_title_fallback">Training day</string>
+    <string name="day_missing_title">This day is gone</string>
+    <string name="day_missing_message">It was deleted while you were away. Go back to the routine and pick another one.</string>
+    <string name="day_add_exercise">Add exercise</string>
+    <string name="day_empty_title">Nothing planned yet</string>
+    <string name="day_empty_message">Add the exercises for this day: how many sets, which reps, and the weight to load.</string>
+
+    <!-- Exercise slots -->
+    <string name="slot_target">%1$d × %2$s</string>
+    <string name="slot_rest">%1$d s rest</string>
+    <string name="slot_remove">Remove from day</string>
+    <string name="slot_delete_title">Remove exercise?</string>
+    <string name="slot_delete_message">“%1$s” will be removed from this day. Everything you have already logged stays in your history.</string>
+    <string name="slot_weight_inherited">inherited</string>
+    <string name="slot_weight_hint">Leave blank to follow the exercise\'s current weight.</string>
+    <string name="slot_field_sets">Sets</string>
+    <string name="slot_field_reps">Reps</string>
+    <string name="slot_field_rest">Rest</string>
+    <string name="slot_field_weight">Working weight</string>
+    <string name="slot_error_sets">Enter at least one set.</string>
+    <!--
+      "8 to 10" rather than "8-10": the hyphen lint would want replaced by an en dash is data
+      here, because the field stores exactly what the user types ("8-10"). Wording around the
+      problem beats suppressing the check.
+    -->
+    <string name="slot_error_reps">Enter the target reps, for example 8 to 10.</string>
+    <string name="slot_error_rest">Rest cannot be negative.</string>
+    <string name="slot_error_weight">Enter a weight like 82.5, or leave it blank.</string>
+
+    <!-- Exercise picker -->
+    <string name="picker_title">Add exercise</string>
+    <string name="picker_search_label">Search or type a new name</string>
+    <string name="picker_create">Create “%1$s”</string>
+    <string name="picker_empty">No exercise matches. Type a name to create it.</string>
+    <string name="exercise_delete_title">Delete exercise?</string>
+    <string name="exercise_delete_message">“%1$s” will be removed from the dictionary. If a routine still plans it, GGym will tell you which one.</string>
+    <string name="exercise_delete_blocked_title">Still planned</string>
+    <string name="exercise_delete_blocked_message">This exercise is still planned in %1$s. Remove it there first.</string>
 </resources>
