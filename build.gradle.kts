@@ -5,12 +5,12 @@
 // the mechanism documented in the AGP 9.0 release notes ("Runtime dependency on Kotlin
 // Gradle plugin"). The Compose compiler plugin version must equal the KGP version.
 //
-// KSP (for Room) goes in the same block once Room lands:
-//   classpath("com.google.devtools.ksp:symbol-processing-gradle-plugin:KSP_VERSION")
-// KSP versions are KGP-prefixed, e.g. 2.4.21-2.0.2.
+// KSP (for Room) goes in the same block. KSP 2.3+ is no longer tied to the Kotlin version
+// (the old "2.4.21-2.0.x" naming does not exist on Maven Central), so it is pinned on its own.
 buildscript {
     dependencies {
         classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.21")
+        classpath("com.google.devtools.ksp:symbol-processing-gradle-plugin:2.3.12")
     }
 }
 

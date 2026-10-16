@@ -25,6 +25,8 @@ implementation-facing: for what the app does, see the [README](README.md).
 | Compose BOM | 2026.09.00 | manages `compose.ui`, `foundation`, `animation` |
 | material3 | **1.5.0-beta01** (overrides the BOM) | see below |
 | Room | 2.8.5 | KSP, no kapt |
+| KSP | 2.3.12 | no longer versioned with Kotlin (see below) |
+| kotlinx-serialization | 1.11.0 | the backup file format; the compiler plugin matches the Kotlin version |
 | JDK | 21 | what `scripts/bootstrap-toolchain.sh` installs |
 | minSdk / targetSdk / compileSdk | 26 / 37 / 37 | |
 
@@ -54,6 +56,12 @@ pin can be dropped and the BOM can own the version again.
 
 Similarly, the Kotlin Gradle Plugin is pinned to 2.4.21 because the Compose compiler plugin must
 match it exactly, while AGP 9's bundled KGP is 2.2.10.
+
+KSP is pinned on its own version rather than a Kotlin-matching one. From KSP 2.3.0 it is a
+standalone tool built on stable compiler APIs instead of a compiler plugin, so its version no
+longer tracks Kotlin's — there is no `2.4.21-2.0.x` release — and it is wired through the same
+top-level `buildscript` classpath as the Kotlin plugin, which is the documented mechanism for AGP
+9's built-in Kotlin.
 
 ## 3. Module and package layout
 
@@ -141,10 +149,20 @@ migrations are written explicitly and verified against the schema that shipped. 
 fallbacks are not used: they would silently delete a user's training history.
 
 **Backup format** is human-readable JSON carrying `schemaVersion`, `exportedAt` and `appVersion`,
-with one array per table. Import is *validate, then replace inside a single transaction*: the
-file is parsed, its version and referential integrity are checked, and only then are the tables
-replaced. A failure rolls back, leaving the existing data untouched — restoring a bad file can
-never leave a half-empty database.
+with one array per table. Every row carries its primary key, so a restore reproduces the database
+exactly — including the identity of rows — and children are nested inside their parent instead of
+referencing it, so a file cannot contradict itself. A field the current version does not know, or
+a version it does not support, is refused rather than ignored.
+
+Import is *validate, then replace inside a single transaction*: the file is parsed, its version,
+values and referential integrity are checked, and only then are the tables replaced. A failure
+rolls back, leaving the existing data untouched — restoring a bad file can never leave a
+half-empty database. Restoring an empty file is how a user starts over, and it is the same code
+path as any other restore.
+
+The file describes the *database*: routines, dictionary, history and body weight. Preferences
+(theme, language, the timer toggle) are not part of it yet, so a restore does not carry them to a
+new device.
 
 ## 7. Brand system
 
@@ -182,7 +200,14 @@ The expressive checklist the UI is held to:
   (`DataStore<Preferences>`, DAO interfaces) rather than a `Context`, so tests can inject a
   temp-file DataStore or an in-memory database. `ThemePreferencesTest` demonstrates the pattern.
 - Room DAO tests use Robolectric plus `Room.inMemoryDatabaseBuilder`, which keeps them on the JVM
-  and out of an emulator.
+  and out of an emulator. Robolectric needs `--add-opens` flags on JDK 17+ (`java.lang`, `java.io`,
+  `jdk.internal.access`, …); they are declared once, next to `isIncludeAndroidResources` in
+  `app/build.gradle.kts`, and without them every Robolectric test dies in application start-up.
+- Tests that do not need a SQLite runtime do not pay for one: date conversions, mappers, the
+  backup validator and the file format itself are plain JVM tests.
+- `GgymDatabaseTest` re-opens the committed schema snapshot under `app/schemas/` and compares its
+  identity hash with the one Room writes into the installed database, so the snapshot cannot drift
+  from the schema a build actually creates.
 - Coroutine tests use `kotlinx-coroutines-test`; Flow assertions use Turbine.
 - No test depends on wall-clock time or on the host machine's locale.
 - Lint must stay at zero findings. The two intentional suppressions live in `app/lint.xml`, each
