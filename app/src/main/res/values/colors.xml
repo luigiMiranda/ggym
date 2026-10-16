@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Brand colors live in ui/theme/Color.kt for Compose; these are the values the
+     platform needs (window background before Compose attaches, launcher icon). -->
+<resources>
+    <color name="brand_canvas">#0D0E10</color>
+    <color name="window_background">#FBFDF6</color>
+</resources>

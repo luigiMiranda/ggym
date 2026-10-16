@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Monochrome layer for Android 13+ themed icons: single color, system tints it. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M14,34 L18,34 A2,2 0 0 1 20,36 L20,72 A2,2 0 0 1 18,74 L14,74 A2,2 0 0 1 12,72 L12,36 A2,2 0 0 1 14,34 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M25,43 L29,43 A2,2 0 0 1 31,45 L31,63 A2,2 0 0 1 29,65 L25,65 A2,2 0 0 1 23,63 L23,45 A2,2 0 0 1 25,43 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M90,34 L94,34 A2,2 0 0 1 96,36 L96,72 A2,2 0 0 1 94,74 L90,74 A2,2 0 0 1 88,72 L88,36 A2,2 0 0 1 90,34 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M79,43 L83,43 A2,2 0 0 1 85,45 L85,63 A2,2 0 0 1 83,65 L79,65 A2,2 0 0 1 77,63 L77,45 A2,2 0 0 1 79,43 Z" />
+
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="11"
+        android:pathData="M40,34 A20,20 0 1 0 40,74 A20,20 0 0 0 60,56" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M50,48 L65,48 A2,2 0 0 1 67,50 L67,60 L50,60 Z" />
+    <path
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="11"
+        android:pathData="M68,34 A20,20 0 1 1 68,74 A20,20 0 0 1 48,56" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,48 L43,48 A2,2 0 0 0 41,50 L41,60 L58,60 Z" />
+</vector>

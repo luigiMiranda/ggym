@@ -1,0 +1,23 @@
+# Gradle / build outputs
+.gradle/
+build/
+app/build/
+captures/
+.kotlin/
+
+# Local machine config (SDK path)
+local.properties
+
+# IDE
+.idea/
+*.iml
+*.hprof
+
+# Keystores — never commit
+*.jks
+*.keystore
+keystore.properties
+
+# OS noise
+.DS_Store
+Thumbs.db

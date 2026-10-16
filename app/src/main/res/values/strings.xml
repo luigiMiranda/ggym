@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">GGym</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_workouts">Workouts</string>
+    <string name="nav_calendar">Calendar</string>
+    <string name="nav_stats">Stats</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Empty states: describe what the section does, never "coming soon". -->
+    <string name="workouts_empty_title">Your routines live here</string>
+    <string name="workouts_empty_message">Build a routine with training days and exercises, then start a workout and GGym remembers the weight you actually lifted.</string>
+
+    <string name="calendar_empty_title">Your training history</string>
+    <string name="calendar_empty_message">Finished workouts are logged here by date, so you can look back at what you lifted and fix anything you logged by mistake.</string>
+
+    <string name="stats_empty_title">Progress, measured</string>
+    <string name="stats_empty_message">Workout frequency, body weight over time, and how each exercise is progressing — plus a log for your body weight.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_section_appearance">Appearance</string>
+    <string name="settings_theme_label">Theme</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_system">System</string>
+    <string name="settings_theme_dark">Dark</string>
+    <string name="settings_wallpaper_colors_title">Wallpaper colours</string>
+    <string name="settings_wallpaper_colors_supporting">Uses colours from your wallpaper instead of GGym\'s. Off by default.</string>
+</resources>

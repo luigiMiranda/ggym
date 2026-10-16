@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Two intentional patterns that lint cannot model, suppressed here (with reasons) rather than
+  left as permanent noise in every build log.
+-->
+<lint>
+    <!--
+      aapt2 only compiles <adaptive-icon> XML when it carries a version qualifier, so the
+      conventional `mipmap-anydpi-v26` layout is required even though minSdk is already 26.
+    -->
+    <issue id="ObsoleteSdkInt">
+        <ignore path="src/main/res/mipmap-anydpi-v26" />
+    </issue>
+
+    <!--
+      allowBackup=false disables backup/D2D transfer on API 26-30 and dataExtractionRules does
+      the same on API 31+. Lint wants fullBackupContent as well, which would be a second,
+      redundant mechanism for the same "data never leaves the device" guarantee.
+    -->
+    <issue id="DataExtractionRules" severity="ignore" />
+</lint>
