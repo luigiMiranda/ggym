@@ -88,11 +88,24 @@ internal object BackupValidator {
             }
             if (session.dayNameSnapshot.isBlank()) return inconsistent("session ${session.id} has no day name")
             if (session.durationSeconds < 0) return inconsistent("session ${session.id} has a negative duration")
+            // A workout in progress without a start time cannot be shown or timed, and a start time
+            // that is not a moment in time is not a file this app ever wrote.
+            if (session.isDraft && session.startedAtMillis == null) {
+                return inconsistent("session ${session.id} is in progress but has no start time")
+            }
+            session.startedAtMillis?.let { startedAt ->
+                if (startedAt <= 0) {
+                    return inconsistent("session ${session.id} starts at $startedAt, which is not a moment in time")
+                }
+            }
             session.exercises.forEach { log ->
                 if (log.exerciseNameSnapshot.isBlank()) {
                     return inconsistent("workout exercise ${log.id} has no name")
                 }
                 if (log.orderIndex < 0) return inconsistent("workout exercise ${log.id} has a negative order")
+                if (log.restSeconds < 0) {
+                    return inconsistent("workout exercise ${log.id} has a negative rest time")
+                }
                 log.sets.forEach { set ->
                     if (set.setNumber < 1) return inconsistent("set ${set.id} has a number below 1")
                     if (!set.weight.isFinite() || set.weight < 0) {
@@ -108,6 +121,13 @@ internal object BackupValidator {
             if (!BodyWeightLimits.isValid(entry.weightKg)) {
                 return inconsistent("body weight ${entry.id} is outside the accepted human range")
             }
+        }
+
+        // One lifter has one workout running. Two drafts in a file is a contradiction the database
+        // would happily store — nothing in the schema forbids it — so it has to be caught here.
+        val drafts = file.sessions.count { it.isDraft }
+        if (drafts > 1) {
+            return inconsistent("the file holds $drafts workouts in progress; there can be only one")
         }
 
         return null

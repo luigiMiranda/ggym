@@ -19,7 +19,9 @@ import java.time.ZoneId
  *
  * Saving a session writes its three tables in one transaction: a session with missing sets would
  * be worse than no session at all, because the user would see a workout in the calendar whose
- * numbers do not add up.
+ * numbers do not add up. A draft is written the same way, and finishing one writes the finished
+ * session and deletes the draft in a single transaction, so a workout can be lost at no point in
+ * between.
  *
  * The [ZoneId] is a constructor parameter so the mapping between a session's day and its stored
  * midnight timestamp never depends on the machine running the test.
@@ -43,10 +45,52 @@ internal class RoomHistoryRepository(
     override fun observeSession(sessionId: Long): Flow<WorkoutSession?> =
         dao.observeSession(sessionId).map { row -> row?.let { WorkoutMapper.toDomain(it, zoneId) } }
 
+    override fun observeDraft(): Flow<WorkoutSession?> =
+        dao.observeDraft().map { row -> row?.let { WorkoutMapper.toDomain(it, zoneId) } }
+
+    override fun observeDraft(sessionId: Long): Flow<WorkoutSession?> =
+        dao.observeDraftById(sessionId).map { row -> row?.let { WorkoutMapper.toDomain(it, zoneId) } }
+
+    override suspend fun startDraft(draft: WorkoutSession): Long = database.withTransaction {
+        insertSessionTree(draft, isDraft = true)
+    }
+
+    override suspend fun finishDraft(draftId: Long, session: WorkoutSession): Long = database.withTransaction {
+        // Order matters only for readability — the transaction is what makes it safe. The finished
+        // session is a new row with its own id; the draft, and everything the cascade hangs off it,
+        // is what disappears.
+        val sessionId = insertSessionTree(session, isDraft = false)
+        dao.deleteDraftById(draftId)
+        sessionId
+    }
+
+    override suspend fun discardDraft(draftId: Long) {
+        dao.deleteDraftById(draftId)
+    }
+
+    override suspend fun appendSet(workoutExerciseLogId: Long, set: WorkoutSetLog): Long =
+        // The log id comes from the caller and the set's id is ignored: a set is always *added to*
+        // an exercise, and a stale id in the model must not silently move it somewhere else.
+        dao.insertSet(
+            WorkoutMapper.toEntity(set).copy(id = 0, workoutExerciseLogId = workoutExerciseLogId),
+        )
+
     override suspend fun saveSession(session: WorkoutSession): Long = database.withTransaction {
-        // A session is written once, when the workout ends: the id it may carry is ignored and a
-        // fresh row is created, so a retried save cannot silently overwrite an earlier workout.
-        val sessionId = dao.insertSession(WorkoutMapper.toEntity(session, zoneId).copy(id = 0))
+        insertSessionTree(session, isDraft = false)
+    }
+
+    /**
+     * Writes a session's three tables in one transaction.
+     *
+     * The session ids handed in on the models are ignored and fresh ones are created, so a write
+     * can only ever add a workout, never overwrite one. [isDraft] is the method's decision rather
+     * than the model's: `saveSession` writes history, `startDraft` writes a workout in progress,
+     * and neither can be mistaken for the other at the call site.
+     */
+    private suspend fun insertSessionTree(session: WorkoutSession, isDraft: Boolean): Long {
+        val sessionId = dao.insertSession(
+            WorkoutMapper.toEntity(session, zoneId).copy(id = 0, isDraft = isDraft),
+        )
 
         val logIds = dao.insertExerciseLogs(
             session.exercises.map { log ->
@@ -61,7 +105,7 @@ internal class RoomHistoryRepository(
         }
         dao.insertSets(sets)
 
-        sessionId
+        return sessionId
     }
 
     override suspend fun deleteSession(sessionId: Long) {

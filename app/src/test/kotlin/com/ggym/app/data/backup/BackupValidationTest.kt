@@ -235,6 +235,52 @@ class BackupValidationTest {
 
         assertNull(BackupValidator.validate(file))
     }
+
+    @Test
+    fun `one workout in progress with a start time passes`() {
+        val file = validBackup().copy(
+            sessions = listOf(validSession().copy(isDraft = true, startedAtMillis = 1_759_000_000_000)),
+        )
+
+        assertNull(BackupValidator.validate(file))
+    }
+
+    @Test
+    fun `a workout in progress without a start time is refused - it could not be shown or timed`() {
+        val file = validBackup().copy(sessions = listOf(validSession().copy(isDraft = true)))
+
+        assertTrue(BackupValidator.validate(file) is ImportError.Inconsistent)
+    }
+
+    @Test
+    fun `a start time that is not a moment in time is refused`() {
+        listOf(0L, -1L).forEach { startedAt ->
+            val file = validBackup().copy(sessions = listOf(validSession().copy(startedAtMillis = startedAt)))
+
+            assertTrue("$startedAt should be refused", BackupValidator.validate(file) is ImportError.Inconsistent)
+        }
+    }
+
+    @Test
+    fun `two workouts in progress in one file are refused - a lifter has one workout running`() {
+        val file = validBackup().copy(
+            sessions = listOf(
+                validSession().copy(id = 1, isDraft = true, startedAtMillis = 1_759_000_000_000),
+                validSession().copy(id = 2, isDraft = true, startedAtMillis = 1_759_100_000_000),
+            ),
+        )
+
+        assertTrue(BackupValidator.validate(file) is ImportError.Inconsistent)
+    }
+
+    @Test
+    fun `a rest time cannot be negative`() {
+        val file = validBackup().copy(
+            sessions = listOf(validSession().copy(exercises = listOf(validLog().copy(restSeconds = -1)))),
+        )
+
+        assertTrue(BackupValidator.validate(file) is ImportError.Inconsistent)
+    }
 }
 
 private fun validBackup() = BackupFile(

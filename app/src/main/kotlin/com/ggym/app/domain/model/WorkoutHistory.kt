@@ -3,11 +3,20 @@ package com.ggym.app.domain.model
 import java.time.LocalDate
 
 /**
- * One completed workout.
+ * One workout: either a finished one that history shows, or one that is still running.
  *
  * The routine and day names are *snapshots*: renaming or deleting a routine must not rewrite
  * history, let alone delete it. Only the date and the duration are inherent to the session
  * itself.
+ *
+ * [isDraft] is what separates the two states. A draft is the workout the user is in the middle of:
+ * it is written the moment the workout starts and updated set by set, and it is invisible to every
+ * history read — the calendar, the charts and "what did I lift last" all mean *finished* workouts.
+ * It becomes history only when the workout is finished, and then as a new session row; discarding
+ * it leaves none. See `WorkoutHistoryRepository`.
+ *
+ * [startedAtMillis] is when the workout began, epoch millis, and is `null` on history written
+ * before drafts existed. Only a draft is required to carry one.
  */
 data class WorkoutSession(
     val id: Long = 0,
@@ -16,6 +25,8 @@ data class WorkoutSession(
     val routineNameSnapshot: String,
     val dayNameSnapshot: String,
     val durationSeconds: Long,
+    val isDraft: Boolean = false,
+    val startedAtMillis: Long? = null,
     val exercises: List<WorkoutExerciseLog> = emptyList(),
 )
 
@@ -33,6 +44,11 @@ data class WorkoutExerciseLog(
     val exerciseNameSnapshot: String,
     val wasCompleted: Boolean,
     val orderIndex: Int,
+    /**
+     * The rest time to use between this exercise's sets, snapshotted when the workout started, so
+     * editing or deleting the routine mid-workout cannot change it.
+     */
+    val restSeconds: Int = Exercise.DEFAULT_REST_SECONDS,
     val sets: List<WorkoutSetLog> = emptyList(),
 )
 

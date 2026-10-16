@@ -141,8 +141,10 @@ exercise                 the global dictionary: name, currentWorkingWeight, defa
 routine                  a named collection of training days
 routine_day              a day inside a routine, ordered
 planned_exercise         an exercise slot in a day: target sets/reps, rest, order, its own weight
-workout_session          one completed workout: date, routine/day name snapshots, duration
-workout_exercise_log     one exercise inside a session: name snapshot, completed flag, order
+workout_session          one workout — finished, or in progress while `isDraft` is set — with date,
+                         routine/day name snapshots, duration and (for a draft) its start time
+workout_exercise_log     one exercise inside a session: name snapshot, completed flag, order, the
+                         rest time snapshotted for its sets
 workout_set_log          one performed set: set number, weight, reps, completed flag
 body_weight_log          a body-weight measurement with its date
 ```
@@ -161,18 +163,31 @@ loss need two different answers:
 
 **Migrations.** `exportSchema` is on and the schema JSON is committed under `app/schemas/`, so
 migrations are written explicitly and verified against the schema that shipped. Destructive
-fallbacks are not used: they would silently delete a user's training history. The one migration so
-far (`v1 → v2`) adds `planned_exercise.weightKg` with `ALTER TABLE`, leaves every existing row as
-it was, and is exercised by a test that builds a v1 database from the committed v1 snapshot,
-seeds it, and opens it with the current build.
+fallbacks are not used: they would silently delete a user's training history. Both migrations so
+far are `ALTER TABLE` additions that leave every existing row as it was and are exercised by
+tests that build the older database from its committed snapshot, seed it, and open it with the
+current build: `v1 → v2` adds `planned_exercise.weightKg`, and `v2 → v3` adds
+`workout_session.isDraft` / `workout_session.startedAtMillis` and
+`workout_exercise_log.restSeconds` — the columns that let a workout exist while it is still being
+performed. `v1` and `v2` rows read back as finished workouts with no start time and the default
+rest time, which is exactly what they were.
+
+**Workouts in progress.** A workout under way is a *draft* session: written the moment it starts,
+updated set by set, and invisible to every history read (`observeSessionsInRange`,
+`observeSession`, `latestCompletedSet`), so the calendar and "what did I lift last" keep meaning
+*finished* workouts. Finishing writes the finished session as a fresh row and deletes the draft in
+one transaction; discarding just deletes the draft. A backup file carries the draft too, so
+restoring on a new phone can resume the workout instead of losing it. `workout_session.isDraft` is
+the only place that state lives: it is a property of the stored session, not of a screen.
 
 **Backup format** is human-readable JSON carrying `schemaVersion`, `exportedAt` and `appVersion`,
 with one array per table. Every row carries its primary key, so a restore reproduces the database
 exactly — including the identity of rows — and children are nested inside their parent instead of
 referencing it, so a file cannot contradict itself. A field the current version does not know, or
 a version it does not support, is refused rather than ignored. The format version is its own
-number, not the database's: the reader accepts every format the app has ever written (1 through 2
-today), so a backup file outlives the build that produced it.
+number, not the database's: the reader accepts every format the app has ever written (1 through 3
+today), so a backup file outlives the build that produced it. A file may hold at most one workout
+in progress; two of them is a contradiction, and the validator says so before anything is written.
 
 Import is *validate, then replace inside a single transaction*: the file is parsed, its version,
 values and referential integrity are checked, and only then are the tables replaced. A failure

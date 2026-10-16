@@ -96,6 +96,8 @@ internal object TestData {
         routineNameSnapshot: String = "Push Day",
         dayNameSnapshot: String = "Push",
         durationSeconds: Long = 3120,
+        isDraft: Boolean = false,
+        startedAtMillis: Long? = null,
         exercises: List<WorkoutExerciseLog> = emptyList(),
     ): WorkoutSession = WorkoutSession(
         id = id,
@@ -103,6 +105,8 @@ internal object TestData {
         routineNameSnapshot = routineNameSnapshot,
         dayNameSnapshot = dayNameSnapshot,
         durationSeconds = durationSeconds,
+        isDraft = isDraft,
+        startedAtMillis = startedAtMillis,
         exercises = exercises,
     )
 
@@ -113,6 +117,7 @@ internal object TestData {
         exerciseNameSnapshot: String = "Bench Press",
         wasCompleted: Boolean = true,
         orderIndex: Int = 0,
+        restSeconds: Int = 90,
         sets: List<WorkoutSetLog> = emptyList(),
     ): WorkoutExerciseLog = WorkoutExerciseLog(
         id = id,
@@ -121,6 +126,7 @@ internal object TestData {
         exerciseNameSnapshot = exerciseNameSnapshot,
         wasCompleted = wasCompleted,
         orderIndex = orderIndex,
+        restSeconds = restSeconds,
         sets = sets,
     )
 
@@ -203,12 +209,16 @@ internal suspend fun GgymDatabase.givenSession(
     routineNameSnapshot: String = "Push Day",
     dayNameSnapshot: String = "Push",
     durationSeconds: Long = 3120,
+    isDraft: Boolean = false,
+    startedAtMillis: Long? = null,
 ): Long = workoutHistoryDao().insertSession(
     WorkoutSessionEntity(
         dateTimestamp = TestData.timestamp(date),
         routineNameSnapshot = routineNameSnapshot,
         dayNameSnapshot = dayNameSnapshot,
         durationSeconds = durationSeconds,
+        isDraft = isDraft,
+        startedAtMillis = startedAtMillis,
     ),
 )
 
@@ -218,6 +228,7 @@ internal suspend fun GgymDatabase.givenExerciseLog(
     exerciseNameSnapshot: String = "Bench Press",
     wasCompleted: Boolean = true,
     orderIndex: Int = 0,
+    restSeconds: Int = 90,
 ): Long = workoutHistoryDao().insertExerciseLog(
     WorkoutExerciseLogEntity(
         sessionId = sessionId,
@@ -225,6 +236,7 @@ internal suspend fun GgymDatabase.givenExerciseLog(
         exerciseNameSnapshot = exerciseNameSnapshot,
         wasCompleted = wasCompleted,
         orderIndex = orderIndex,
+        restSeconds = restSeconds,
     ),
 )
 

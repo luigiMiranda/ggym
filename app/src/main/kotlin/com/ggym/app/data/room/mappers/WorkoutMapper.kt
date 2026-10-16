@@ -24,6 +24,8 @@ internal object WorkoutMapper {
         routineNameSnapshot = row.session.routineNameSnapshot,
         dayNameSnapshot = row.session.dayNameSnapshot,
         durationSeconds = row.session.durationSeconds,
+        isDraft = row.session.isDraft,
+        startedAtMillis = row.session.startedAtMillis,
         exercises = row.exercises
             .sortedWith(compareBy({ it.log.orderIndex }, { it.log.id }))
             .map { toDomain(it) },
@@ -36,6 +38,7 @@ internal object WorkoutMapper {
         exerciseNameSnapshot = row.log.exerciseNameSnapshot,
         wasCompleted = row.log.wasCompleted,
         orderIndex = row.log.orderIndex,
+        restSeconds = row.log.restSeconds,
         sets = row.sets
             .sortedWith(compareBy({ it.setNumber }, { it.id }))
             .map { toDomain(it) },
@@ -56,6 +59,8 @@ internal object WorkoutMapper {
         routineNameSnapshot = session.routineNameSnapshot,
         dayNameSnapshot = session.dayNameSnapshot,
         durationSeconds = session.durationSeconds,
+        isDraft = session.isDraft,
+        startedAtMillis = session.startedAtMillis,
     )
 
     fun toEntity(log: WorkoutExerciseLog): WorkoutExerciseLogEntity = WorkoutExerciseLogEntity(
@@ -65,6 +70,7 @@ internal object WorkoutMapper {
         exerciseNameSnapshot = log.exerciseNameSnapshot,
         wasCompleted = log.wasCompleted,
         orderIndex = log.orderIndex,
+        restSeconds = log.restSeconds,
     )
 
     fun toEntity(set: WorkoutSetLog): WorkoutSetLogEntity = WorkoutSetLogEntity(

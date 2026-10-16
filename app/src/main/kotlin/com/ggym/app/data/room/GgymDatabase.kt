@@ -30,7 +30,7 @@ import com.ggym.app.data.room.entity.WorkoutSetLogEntity
  * Bumping this means writing a [GgymMigrations] entry and committing the newly exported
  * `app/schemas/…/<version>.json`.
  */
-internal const val SCHEMA_VERSION = 2
+internal const val SCHEMA_VERSION = 3
 
 /**
  * The app's single database: the dictionary, routines and all training history.

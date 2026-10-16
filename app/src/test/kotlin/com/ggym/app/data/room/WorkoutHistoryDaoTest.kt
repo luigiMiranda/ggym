@@ -11,6 +11,7 @@ import com.ggym.app.testing.givenSet
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Test
 import java.time.LocalDate
@@ -201,5 +202,64 @@ class WorkoutHistoryDaoTest : RoomTest() {
 
         assertEquals(LocalDate.of(2026, 1, 5), java.time.Instant.ofEpochMilli(session!!.session.dateTimestamp).atZone(TestData.zone).toLocalDate())
         assertNull(database.workoutHistoryDao().observeSession(4242).first())
+    }
+
+    @Test
+    fun `a workout in progress is reachable only through the draft queries`() = runTest {
+        val draftId = database.givenSession(
+            date = TestData.date(day = 5),
+            isDraft = true,
+            startedAtMillis = 1_759_000_000_000,
+        )
+        val draftLogId = database.givenExerciseLog(sessionId = draftId, restSeconds = 150)
+        database.givenSet(workoutExerciseLogId = draftLogId, isCompleted = false)
+        val finishedId = database.givenSession(date = TestData.date(day = 6))
+
+        val draft = database.workoutHistoryDao().observeDraft().first()!!
+
+        assertEquals(draftId, draft.session.id)
+        assertEquals("the workout in progress recorded when it began", 1_759_000_000_000, draft.session.startedAtMillis)
+        assertEquals("the rest time was snapshotted with the workout", 150, draft.exercises.single().log.restSeconds)
+        assertEquals("the workout is read back by the id the screen was opened on", draftId, database.workoutHistoryDao().observeDraftById(draftId).first()!!.session.id)
+
+        assertNull("a draft is not a session to inspect", database.workoutHistoryDao().observeSession(draftId).first())
+        assertNull("and a finished workout is not a draft", database.workoutHistoryDao().observeDraftById(finishedId).first())
+        assertEquals(
+            "the calendar sees only the finished workout",
+            listOf(finishedId),
+            database.workoutHistoryDao().observeSessionsInRange(0, Long.MAX_VALUE).first().map { it.session.id },
+        )
+    }
+
+    @Test
+    fun `there is no draft when no workout is running`() = runTest {
+        database.givenSession(date = TestData.date(day = 5))
+
+        assertNull(database.workoutHistoryDao().observeDraft().first())
+        assertNull(database.workoutHistoryDao().observeDraftById(1).first())
+    }
+
+    @Test
+    fun `discarding a draft cannot delete a finished workout`() = runTest {
+        val finishedId = database.givenSession(date = TestData.date(day = 5))
+
+        // The guard is in the query, so a stale id cannot cost the user a saved workout.
+        database.workoutHistoryDao().deleteDraftById(finishedId)
+
+        assertEquals(1, database.countRows("workout_session"))
+        assertNotNull(database.workoutHistoryDao().observeSession(finishedId).first())
+    }
+
+    @Test
+    fun `a completed set inside a workout in progress is not a weight the user has lifted`() = runTest {
+        val exerciseId = database.givenExercise(name = "Bench Press")
+        val draftId = database.givenSession(isDraft = true, startedAtMillis = 1_759_000_000_000)
+        val logId = database.givenExerciseLog(sessionId = draftId, exerciseId = exerciseId)
+        database.givenSet(workoutExerciseLogId = logId, weight = 90.0, reps = 5, isCompleted = true)
+
+        assertNull(
+            "the workout being performed answers a different question than the last one performed",
+            database.exerciseProgressDao().latestCompletedSet(exerciseId),
+        )
     }
 }

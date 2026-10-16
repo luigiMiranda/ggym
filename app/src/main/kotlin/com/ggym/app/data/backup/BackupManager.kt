@@ -203,6 +203,8 @@ internal class BackupManager(
                     routineNameSnapshot = session.routineNameSnapshot,
                     dayNameSnapshot = session.dayNameSnapshot,
                     durationSeconds = session.durationSeconds,
+                    isDraft = session.isDraft,
+                    startedAtMillis = session.startedAtMillis,
                 ),
             )
             session.exercises.forEach { log ->
@@ -214,6 +216,7 @@ internal class BackupManager(
                         exerciseNameSnapshot = log.exerciseNameSnapshot,
                         wasCompleted = log.wasCompleted,
                         orderIndex = log.orderIndex,
+                        restSeconds = log.restSeconds,
                     ),
                 )
                 log.sets.forEach { set ->
@@ -280,6 +283,8 @@ private fun SessionWithExercises.toBackup(): BackupSession = BackupSession(
     routineNameSnapshot = session.routineNameSnapshot,
     dayNameSnapshot = session.dayNameSnapshot,
     durationSeconds = session.durationSeconds,
+    isDraft = session.isDraft,
+    startedAtMillis = session.startedAtMillis,
     exercises = exercises.sortedWith(compareBy({ it.log.orderIndex }, { it.log.id })).map { it.toBackup() },
 )
 
@@ -289,6 +294,7 @@ private fun WorkoutExerciseLogWithSets.toBackup(): BackupWorkoutExerciseLog = Ba
     exerciseNameSnapshot = log.exerciseNameSnapshot,
     wasCompleted = log.wasCompleted,
     orderIndex = log.orderIndex,
+    restSeconds = log.restSeconds,
     sets = sets.sortedWith(compareBy({ it.setNumber }, { it.id })).map { it.toBackup() },
 )
 

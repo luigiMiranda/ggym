@@ -290,4 +290,168 @@ class RoomHistoryRepositoryTest : RepositoryTest() {
         assertEquals(3600L, stored.durationSeconds)
         assertEquals(1, database.countRows("workout_session"))
     }
+
+    @Test
+    fun `a workout in progress is written when it starts and is not history`() = runTest {
+        val exerciseId = database.givenExercise(name = "Bench Press")
+
+        val draftId = historyRepository.startDraft(
+            TestData.session(
+                date = TestData.date(day = 5),
+                startedAtMillis = 1_759_000_000_000,
+                exercises = listOf(
+                    TestData.exerciseLog(
+                        exerciseId = exerciseId,
+                        restSeconds = 150,
+                        sets = listOf(
+                            TestData.setLog(setNumber = 1, weight = 80.0, reps = 8, isCompleted = false),
+                            TestData.setLog(setNumber = 2, weight = 80.0, reps = 8, isCompleted = false),
+                        ),
+                    ),
+                ),
+            ),
+        )
+
+        val draft = historyRepository.observeDraft().first()!!
+
+        assertTrue("starting a workout returns its id", draftId > 0)
+        assertEquals(draftId, draft.id)
+        assertTrue(draft.isDraft)
+        assertEquals("the workout knows when it began", 1_759_000_000_000, draft.startedAtMillis)
+        assertEquals("the rest time rode along, so a resume needs no lookup", 150, draft.exercises.single().restSeconds)
+        assertEquals(listOf(1, 2), draft.exercises.single().sets.map { it.setNumber })
+        assertTrue("the sets are prefills, not lifts", draft.exercises.single().sets.none { it.isCompleted })
+        assertEquals("the log knows which workout it belongs to", draftId, draft.exercises.single().sessionId)
+        assertEquals(
+            "each prefill points at its own exercise log",
+            draft.exercises.single().id,
+            draft.exercises.single().sets.first().workoutExerciseLogId,
+        )
+
+        assertEquals("the screen watches the workout it was opened on", draftId, historyRepository.observeDraft(draftId).first()!!.id)
+        assertNull("a draft is not a session to inspect", historyRepository.observeSession(draftId).first())
+        assertTrue(
+            "and it is not on the calendar",
+            historyRepository.observeSessionsInRange(TestData.date(month = 1, day = 1), TestData.date(month = 12, day = 31)).first().isEmpty(),
+        )
+    }
+
+    @Test
+    fun `finishing a workout writes it as history and removes the draft, in one step`() = runTest {
+        val exerciseId = database.givenExercise(name = "Bench Press")
+        val draftId = historyRepository.startDraft(
+            TestData.session(
+                date = TestData.date(day = 5),
+                startedAtMillis = 1_759_000_000_000,
+                exercises = listOf(
+                    TestData.exerciseLog(
+                        exerciseId = exerciseId,
+                        sets = listOf(TestData.setLog(setNumber = 1, weight = 80.0, reps = 8, isCompleted = false)),
+                    ),
+                ),
+            ),
+        )
+
+        val finishedId = historyRepository.finishDraft(
+            draftId,
+            TestData.session(
+                date = TestData.date(day = 5),
+                durationSeconds = 3600,
+                exercises = listOf(
+                    TestData.exerciseLog(
+                        exerciseId = exerciseId,
+                        sets = listOf(TestData.setLog(setNumber = 1, weight = 82.5, reps = 8, isCompleted = true)),
+                    ),
+                ),
+            ),
+        )
+
+        assertTrue("the finished workout is a new row, not the draft renamed", finishedId != draftId)
+        assertNull("the draft is gone", historyRepository.observeDraft().first())
+        assertEquals("exactly one workout exists", 1, database.countRows("workout_session"))
+        assertEquals(1, database.countRows("workout_exercise_log"))
+        assertEquals(1, database.countRows("workout_set_log"))
+
+        val saved = historyRepository.observeSession(finishedId).first()!!
+        assertEquals(false, saved.isDraft)
+        assertEquals(3600L, saved.durationSeconds)
+        assertEquals(82.5, saved.exercises.single().sets.single().weight, 0.0)
+        assertEquals("what was actually lifted is now what I lifted last", 82.5, historyRepository.latestCompletedSet(exerciseId)!!.weightKg, 0.0)
+    }
+
+    @Test
+    fun `an id on the session handed to finish is ignored`() = runTest {
+        val draftId = historyRepository.startDraft(TestData.session(startedAtMillis = 1_759_000_000_000))
+
+        val finishedId = historyRepository.finishDraft(draftId, TestData.session(id = 99, durationSeconds = 60))
+
+        assertTrue(finishedId != 99L)
+        assertNull(historyRepository.observeSession(99).first())
+        assertNotNull(historyRepository.observeSession(finishedId).first())
+    }
+
+    @Test
+    fun `discarding a workout in progress leaves no trace of it`() = runTest {
+        val draftId = historyRepository.startDraft(
+            TestData.session(
+                startedAtMillis = 1_759_000_000_000,
+                exercises = listOf(
+                    TestData.exerciseLog(exerciseId = null, sets = listOf(TestData.setLog(isCompleted = false))),
+                ),
+            ),
+        )
+        val keptId = historyRepository.saveSession(TestData.session(date = TestData.date(day = 6)))
+
+        historyRepository.discardDraft(draftId)
+
+        assertNull(historyRepository.observeDraft().first())
+        assertNull(historyRepository.observeDraft(draftId).first())
+        assertEquals(1, database.countRows("workout_session"))
+        assertEquals(0, database.countRows("workout_exercise_log"))
+        assertEquals(0, database.countRows("workout_set_log"))
+        assertNotNull("the saved workout is untouched", historyRepository.observeSession(keptId).first())
+    }
+
+    @Test
+    fun `sets can be added to a workout in progress and corrected while it runs`() = runTest {
+        val draftId = historyRepository.startDraft(
+            TestData.session(
+                startedAtMillis = 1_759_000_000_000,
+                exercises = listOf(TestData.exerciseLog(exerciseId = null, sets = listOf(TestData.setLog(setNumber = 1, isCompleted = false)))),
+            ),
+        )
+        val logId = historyRepository.observeDraft().first()!!.exercises.single().id
+
+        val newSetId = historyRepository.appendSet(
+            workoutExerciseLogId = logId,
+            set = TestData.setLog(setNumber = 2, weight = 82.5, reps = 8, isCompleted = false),
+        )
+        assertTrue("the new set has an id of its own", newSetId > 0)
+
+        var sets = historyRepository.observeDraft(draftId).first()!!.exercises.single().sets
+        assertEquals("the added set is there, after the one that was", listOf(1, 2), sets.map { it.setNumber })
+        assertTrue(sets.all { it.workoutExerciseLogId == logId })
+
+        val added = sets.single { it.id == newSetId }
+        historyRepository.updateSet(added.copy(weight = 85.0, reps = 6, isCompleted = true))
+        historyRepository.deleteSet(sets.first { it.id != newSetId }.id)
+
+        sets = historyRepository.observeDraft(draftId).first()!!.exercises.single().sets
+        assertEquals("one set left, the one that was corrected", listOf(newSetId), sets.map { it.id })
+        assertEquals(85.0, sets.single().weight, 0.0)
+        assertEquals(true, sets.single().isCompleted)
+    }
+
+    @Test
+    fun `the write path decides whether a session is a draft`() = runTest {
+        // The models' flag is what a read reports; the method is what a write means. A finished
+        // session cannot end up on the workout screen and a draft cannot end up on the calendar.
+        val savedId = historyRepository.saveSession(TestData.session(isDraft = true))
+        assertNull("saveSession writes history, whatever the model said", historyRepository.observeDraft().first())
+        assertNotNull(historyRepository.observeSession(savedId).first())
+
+        val draftId = historyRepository.startDraft(TestData.session(isDraft = false))
+        assertNotNull("startDraft writes a workout in progress", historyRepository.observeDraft().first())
+        assertNull(historyRepository.observeSession(draftId).first())
+    }
 }

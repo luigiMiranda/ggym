@@ -17,10 +17,12 @@ import com.ggym.app.testing.TestData
 import com.ggym.app.testing.countRows
 import com.ggym.app.testing.createTestDatabase
 import com.ggym.app.testing.version1BackupJson
+import com.ggym.app.testing.version2BackupJson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -91,7 +93,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(document)
 
-        assertEquals(ImportResult.Restored(BackupCounts(exercises = 3, routines = 2, sessions = 2, bodyWeights = 2)), result)
+        assertEquals(ImportResult.Restored(BackupCounts(exercises = 3, routines = 2, sessions = 3, bodyWeights = 2)), result)
         assertEquals(before, snapshot())
     }
 
@@ -122,7 +124,7 @@ class BackupRoundTripTest {
         assertEquals(exportTime, document.exportedAt)
         assertEquals(3, document.exercises.size)
         assertEquals(2, document.routines.size)
-        assertEquals(2, document.sessions.size)
+        assertEquals(3, document.sessions.size)
         assertEquals(2, document.bodyWeights.size)
     }
 
@@ -239,6 +241,47 @@ class BackupRoundTripTest {
         assertNull("format 1 had no per-slot weight", slot.weightKg)
         assertEquals("the dictionary weight is the global one the file carried", 87.5, restored.exercises.single().currentWorkingWeight!!, 0.0)
         assertEquals("the history came back with its set", 82.5, restored.lastSets.getValue(restored.exercises.single().id)!!.weightKg, 0.0)
+    }
+
+    @Test
+    fun `a workout in progress is exported, restored, and still not history`() = runTest {
+        populate()
+        val before = snapshot()
+        assertNotNull("the fixture must contain a workout in progress", before.draft)
+        assertTrue(before.draft!!.isDraft)
+
+        val document = readDocument(backupManager.exportJson())
+        assertEquals("a draft is in the file — restoring on a new phone resumes the workout", 1, document.sessions.count { it.isDraft })
+
+        emptyEverything()
+        assertNull(snapshot().draft)
+
+        backupManager.importJson(jsonOf(document))
+
+        val after = snapshot()
+        assertEquals("the workout comes back set by set, ids included", before.draft, after.draft)
+        assertEquals("and it is still not on the calendar", before.sessions, after.sessions)
+        assertEquals("nor is a set inside it what I lifted last", before.lastSets, after.lastSets)
+    }
+
+    @Test
+    fun `a format 2 document is restored with its slot weight and its history arriving finished`() = runTest {
+        populate()
+
+        val result = backupManager.importJson(version2BackupJson())
+
+        assertEquals(ImportResult.Restored(BackupCounts(exercises = 1, routines = 1, sessions = 1, bodyWeights = 1)), result)
+        val restored = snapshot()
+        assertEquals(
+            "the per-slot weight is what format 2 was for",
+            80.0,
+            restored.routines.single().days.single().plannedExercises.single().weightKg!!,
+            0.0,
+        )
+        assertEquals("nothing was in progress in format 2", false, restored.sessions.single().isDraft)
+        assertNull("and nothing recorded a start time that could be invented", restored.sessions.single().startedAtMillis)
+        assertEquals("the rest time arrives as the default those rows meant", 90, restored.sessions.single().exercises.single().restSeconds)
+        assertNull("and no workout is resumed by a file that never had one", restored.draft)
     }
 
     @Test
@@ -426,6 +469,24 @@ class BackupRoundTripTest {
 
         bodyWeightRepository.add(TestData.date(month = 1, day = 5), 82.4)
         bodyWeightRepository.add(TestData.date(month = 2, day = 17), 81.9)
+
+        historyRepository.startDraft(
+            TestData.session(
+                date = TestData.date(month = 3, day = 2),
+                startedAtMillis = 1_759_500_000_000,
+                exercises = listOf(
+                    TestData.exerciseLog(
+                        exerciseId = bench.id,
+                        exerciseNameSnapshot = "Bench Press",
+                        restSeconds = 120,
+                        sets = listOf(
+                            TestData.setLog(setNumber = 1, weight = 80.0, reps = 8),
+                            TestData.setLog(setNumber = 2, weight = 80.0, reps = 8, isCompleted = false),
+                        ),
+                    ),
+                ),
+            ),
+        )
     }
 
     /** Reads everything the app can show, through the repositories, as one comparable value. */
@@ -436,6 +497,7 @@ class BackupRoundTripTest {
             routines = routineRepository.observeRoutines().first(),
             sessions = historyRepository.observeSessionsInRange(FIRST_DAY, LAST_DAY).first(),
             bodyWeights = bodyWeightRepository.observeRange(FIRST_DAY, LAST_DAY).first(),
+            draft = historyRepository.observeDraft().first(),
             lastSets = exercises.associate { exercise -> exercise.id to historyRepository.latestCompletedSet(exercise.id) },
         )
     }
@@ -480,5 +542,6 @@ private data class GymSnapshot(
     val routines: List<Routine> = emptyList(),
     val sessions: List<WorkoutSession> = emptyList(),
     val bodyWeights: List<BodyWeightLog> = emptyList(),
+    val draft: WorkoutSession? = null,
     val lastSets: Map<Long, LastCompletedSet?> = emptyMap(),
 )

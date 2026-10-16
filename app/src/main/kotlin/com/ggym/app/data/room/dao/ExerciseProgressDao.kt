@@ -28,6 +28,8 @@ internal interface ExerciseProgressDao {
      * Ordered by session date (then session id, then set number) rather than by insertion order,
      * so correcting an old workout or backdating a session cannot promote a stale set to
      * "current". Incomplete sets are ignored: a pre-filled set is an intention, not a lift.
+     * Drafts are ignored too: the workout in progress answers "what am I lifting now", and that
+     * number reaches the dictionary the moment the set is completed.
      */
     @Query(
         """
@@ -41,6 +43,7 @@ internal interface ExerciseProgressDao {
         JOIN workout_exercise_log ON workout_exercise_log.id = workout_set_log.workoutExerciseLogId
         JOIN workout_session ON workout_session.id = workout_exercise_log.sessionId
         WHERE workout_exercise_log.exerciseId = :exerciseId AND workout_set_log.isCompleted = 1
+              AND workout_session.isDraft = 0
         ORDER BY workout_session.dateTimestamp DESC, workout_session.id DESC, workout_set_log.setNumber DESC
         LIMIT 1
         """,

@@ -1,6 +1,7 @@
 package com.ggym.app.data.backup
 
 import com.ggym.app.testing.version1BackupJson
+import com.ggym.app.testing.version2BackupJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -33,7 +34,7 @@ class BackupJsonTest {
         assertTrue("pretty printed", json.contains("\n"))
         listOf("schemaVersion", "exportedAt", "appVersion", "exercises", "routines", "sessions", "bodyWeights")
             .forEach { key -> assertTrue("missing $key in\n$json", json.contains("\"$key\"")) }
-        listOf("\"dayName\"", "\"exerciseId\"", "\"targetReps\"", "\"setNumber\"", "\"weightKg\"")
+        listOf("\"dayName\"", "\"exerciseId\"", "\"targetReps\"", "\"setNumber\"", "\"weightKg\"", "\"isDraft\"", "\"restSeconds\"")
             .forEach { key -> assertTrue("missing $key in\n$json", json.contains(key)) }
     }
 
@@ -98,6 +99,47 @@ class BackupJsonTest {
         assertEquals(1, file.schemaVersion)
         assertNull("v1 slots inherit, they do not carry a weight", file.routines.single().days.single().exercises.single().weightKg)
         assertEquals("the dictionary is untouched by the format change", 87.5, file.exercises.single().currentWorkingWeight!!, 0.0)
+        assertOldSessionsAreReadAsFinished(file)
+    }
+
+    @Test
+    fun `a format 2 document is read with its slot weight - workouts in progress did not exist yet`() {
+        val file = BackupJsonFormat.decodeFromString(BackupFile.serializer(), version2BackupJson())
+
+        assertEquals(2, file.schemaVersion)
+        assertEquals("the slot weight is what format 2 was for", 80.0, file.routines.single().days.single().exercises.single().weightKg!!, 0.0)
+        assertOldSessionsAreReadAsFinished(file)
+    }
+
+    @Test
+    fun `a workout in progress is written with its flag and its start time`() {
+        val draft = sampleFile().sessions.single().copy(
+            id = 2,
+            isDraft = true,
+            startedAtMillis = 1_759_500_000_000,
+        )
+
+        val json = BackupJsonFormat.encodeToString(BackupFile.serializer(), sampleFile().copy(sessions = listOf(draft)))
+        val decoded = BackupJsonFormat.decodeFromString(BackupFile.serializer(), json).sessions.single()
+
+        assertTrue("the draft flag is written, not implied\n$json", json.contains("\"isDraft\": true"))
+        assertEquals(true, decoded.isDraft)
+        assertEquals(1_759_500_000_000, decoded.startedAtMillis)
+    }
+
+    /**
+     * A file written before format 3 describes finished workouts that never recorded a start time,
+     * and exercises whose rest time was not snapshotted yet.
+     */
+    private fun assertOldSessionsAreReadAsFinished(file: BackupFile) {
+        val session = file.sessions.single()
+        assertEquals("nothing was in progress before format 3", false, session.isDraft)
+        assertNull("and nothing recorded a start time", session.startedAtMillis)
+        assertEquals(
+            "the rest time those rows meant is the dictionary's default",
+            90,
+            session.exercises.single().restSeconds,
+        )
     }
 
     @Test
