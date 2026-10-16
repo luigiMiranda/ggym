@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  GGym launcher icon — background layer.
+  The OLED radial gradient from artwork/ggym.svg (#1C1D22 centre -> #09090B edge), full-bleed.
+  No squircle is drawn here on purpose: the launcher's mask owns the outer shape, so baking a
+  shape in would double up.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path android:pathData="M 0,0 H 108 V 108 H 0 Z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="radial"
+                android:centerX="54"
+                android:centerY="54"
+                android:gradientRadius="76">
+                <item android:offset="0.0" android:color="#FF1C1D22" />
+                <item android:offset="1.0" android:color="#FF09090B" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>

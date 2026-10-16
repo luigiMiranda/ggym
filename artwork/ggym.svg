@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="100%" height="100%">
+  <defs>
+    <!-- Sfondo Nero OLED con leggera sfumatura radiale centrale -->
+    <radialGradient id="oledBg" cx="50%" cy="50%" r="70%">
+      <stop offset="0%" stop-color="#1C1D22" />
+      <stop offset="100%" stop-color="#09090B" />
+    </radialGradient>
+
+    <!-- Gradiente Neon Giallo-Lime (Corpo delle G e del trattino) -->
+    <linearGradient id="neonFill" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#EEFF44" />
+      <stop offset="50%" stop-color="#D4FF00" />
+      <stop offset="100%" stop-color="#B0E600" />
+    </linearGradient>
+
+    <!-- Bordo interno luminoso 3D (Effetto tubo neon dell'immagine) -->
+    <linearGradient id="neonHighlight" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#FFFFAA" />
+      <stop offset="100%" stop-color="#99CC00" />
+    </linearGradient>
+
+    <!-- Gradiente Metallico per i 2 dischi esterni del manubrio -->
+    <linearGradient id="plateGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4A4B53" />
+      <stop offset="50%" stop-color="#2A2B30" />
+      <stop offset="100%" stop-color="#18181C" />
+    </linearGradient>
+
+    <!-- Bagliore (Glow) verde/giallo attorno alle G -->
+    <filter id="neonGlow" x="-25%" y="-25%" width="150%" height="150%">
+      <feDropShadow dx="0" dy="6" stdDeviation="30" flood-color="#CCFF00" flood-opacity="0.45" />
+    </filter>
+  </defs>
+
+  <!-- 1. ICONA SQUIRCLE BASE -->
+  <rect width="1024" height="1024" rx="225" fill="url(#oledBg)" />
+  <rect width="1020" height="1020" x="2" y="2" rx="224" fill="none" stroke="#FFFFFF" stroke-opacity="0.08" stroke-width="4" />
+
+  <!-- 2. DISCHI LATERALI DEL MANUBRIO (Centrati verticalmente a Y=512) -->
+  <!-- Lato Sinistro -->
+  <rect x="62" y="398" width="38" height="228" rx="16" fill="url(#plateGrad)" stroke="#5A5B64" stroke-opacity="0.4" stroke-width="2" />
+  <rect x="114" y="328" width="48" height="368" rx="22" fill="url(#plateGrad)" stroke="#5A5B64" stroke-opacity="0.5" stroke-width="2" />
+
+  <!-- Lato Destro -->
+  <rect x="862" y="328" width="48" height="368" rx="22" fill="url(#plateGrad)" stroke="#5A5B64" stroke-opacity="0.5" stroke-width="2" />
+  <rect x="924" y="398" width="38" height="228" rx="16" fill="url(#plateGrad)" stroke="#5A5B64" stroke-opacity="0.4" stroke-width="2" />
+
+  <!-- 3. MANUBRIO GRANDE "G - G" (Perfettamente centrato in verticale, senza scritta sotto) -->
+  <g filter="url(#neonGlow)">
+    
+    <!-- PRIMA "G" GRANDE (Sinistra - Guarda a destra) -->
+    <path d="M 382 377
+             V 327
+             C 382 290 352 262 302 262
+             C 252 262 222 290 222 327
+             V 697
+             C 222 734 252 762 302 762
+             C 352 762 382 734 382 697
+             V 517
+             H 312"
+          fill="none"
+          stroke="url(#neonFill)"
+          stroke-width="76"
+          stroke-linecap="square"
+          stroke-linejoin="round" />
+
+    <!-- TRATTINO CENTRALE DEL MANUBRIO (Staccato tra le due G) -->
+    <rect x="444" y="479" width="136" height="76" rx="8"
+          fill="url(#neonFill)"
+          stroke="url(#neonHighlight)"
+          stroke-width="4" />
+
+    <!-- SECONDA "G" GRANDE SPECCHIATA (Destra - Guarda a sinistra) -->
+    <path d="M 642 377
+             V 327
+             C 642 290 672 262 722 262
+             C 772 262 802 290 802 327
+             V 697
+             C 802 734 772 762 722 762
+             C 672 762 642 734 642 697
+             V 517
+             H 712"
+          fill="none"
+          stroke="url(#neonFill)"
+          stroke-width="76"
+          stroke-linecap="square"
+          stroke-linejoin="round" />
+  </g>
+</svg>

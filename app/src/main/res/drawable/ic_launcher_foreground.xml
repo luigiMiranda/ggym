@@ -1,56 +1,131 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  GGym launcher icon foreground — vector rebuild of ggym.png.
-  Viewport 108x108 with an adaptive-icon safe zone of 72x72 (content inside 18..90).
-  Two mirrored "G" rings (chartreuse) around a shared crossbar, flanked by barbell
-  plates (neutral gray).
+  GGym launcher icon — foreground layer.
+  Geometry transcribed 1:1 from artwork/ggym.svg (the brand source of truth), mapped into the
+  adaptive-icon safe zone: the SVG's 1024-unit canvas is scaled by 0.078 and centred, which
+  puts the artwork's bounding box (900x500 units) at 70x39dp inside the 72x72 safe zone.
 
-  Regenerating from the raster source is a manual step: keep the geometry parametric
-  (RING_R / STROKE) if this ever needs tuning.
+  Deliberately NOT ported from the SVG:
+   - the `feDropShadow` neon glow (VectorDrawable has no blur; a faked halo would smear under
+     circular masks). The glow survives in artwork/ggym.svg and in preview/index.html.
+   - the 2-4 unit highlight strokes on the plates and centre bar (0.16-0.31dp after scaling,
+     i.e. sub-pixel).
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- barbell plates, left -->
-    <path
-        android:fillColor="#3A3A40"
-        android:pathData="M14,34 L18,34 A2,2 0 0 1 20,36 L20,72 A2,2 0 0 1 18,74 L14,74 A2,2 0 0 1 12,72 L12,36 A2,2 0 0 1 14,34 Z" />
-    <path
-        android:fillColor="#4A4A52"
-        android:pathData="M25,43 L29,43 A2,2 0 0 1 31,45 L31,63 A2,2 0 0 1 29,65 L25,65 A2,2 0 0 1 23,63 L23,45 A2,2 0 0 1 25,43 Z" />
+    <group
+        android:scaleX="0.0867"
+        android:scaleY="0.0867"
+        android:translateX="9.627"
+        android:translateY="9.627">
 
-    <!-- barbell plates, right -->
-    <path
-        android:fillColor="#3A3A40"
-        android:pathData="M90,34 L94,34 A2,2 0 0 1 96,36 L96,72 A2,2 0 0 1 94,74 L90,74 A2,2 0 0 1 88,72 L88,36 A2,2 0 0 1 90,34 Z" />
-    <path
-        android:fillColor="#4A4A52"
-        android:pathData="M79,43 L83,43 A2,2 0 0 1 85,45 L85,63 A2,2 0 0 1 83,65 L79,65 A2,2 0 0 1 77,63 L77,45 A2,2 0 0 1 79,43 Z" />
+        <!-- barbell plates, left (outer + inner) -->
+        <path android:pathData="M 940,398 H 946 A 16 16 0 0 1 962,414 V 610 A 16 16 0 0 1 946,626 H 940 A 16 16 0 0 1 924,610 V 414 A 16 16 0 0 1 940,398 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0" android:startY="398"
+                    android:endX="0" android:endY="626">
+                    <item android:offset="0.0" android:color="#FF4A4B53" />
+                    <item android:offset="0.5" android:color="#FF2A2B30" />
+                    <item android:offset="1.0" android:color="#FF18181C" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M 136,328 H 140 A 22 22 0 0 1 162,350 V 674 A 22 22 0 0 1 140,696 H 136 A 22 22 0 0 1 114,674 V 350 A 22 22 0 0 1 136,328 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0" android:startY="328"
+                    android:endX="0" android:endY="696">
+                    <item android:offset="0.0" android:color="#FF4A4B53" />
+                    <item android:offset="0.5" android:color="#FF2A2B30" />
+                    <item android:offset="1.0" android:color="#FF18181C" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-    <!-- left "G": ring, opened on its right side, with the crossbar entering the middle -->
-    <path
-        android:strokeColor="#D5FF00"
-        android:strokeWidth="11"
-        android:pathData="M40,34 A20,20 0 1 0 40,74 A20,20 0 0 0 60,56" />
-    <path
-        android:fillColor="#0D0E10"
-        android:pathData="M52,30 L64,30 L64,46 L52,46 Z" />
-    <path
-        android:fillColor="#D5FF00"
-        android:pathData="M50,48 L64,48 A2,2 0 0 1 66,50 L66,60 L50,60 Z" />
+        <!-- barbell plates, right (outer + inner) -->
+        <path android:pathData="M 78,398 H 84 A 16 16 0 0 1 100,414 V 610 A 16 16 0 0 1 84,626 H 78 A 16 16 0 0 1 62,610 V 414 A 16 16 0 0 1 78,398 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0" android:startY="398"
+                    android:endX="0" android:endY="626">
+                    <item android:offset="0.0" android:color="#FF4A4B53" />
+                    <item android:offset="0.5" android:color="#FF2A2B30" />
+                    <item android:offset="1.0" android:color="#FF18181C" />
+                </gradient>
+            </aapt:attr>
+        </path>
+        <path android:pathData="M 884,328 H 888 A 22 22 0 0 1 910,350 V 674 A 22 22 0 0 1 888,696 H 884 A 22 22 0 0 1 862,674 V 350 A 22 22 0 0 1 884,328 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0" android:startY="328"
+                    android:endX="0" android:endY="696">
+                    <item android:offset="0.0" android:color="#FF4A4B53" />
+                    <item android:offset="0.5" android:color="#FF2A2B30" />
+                    <item android:offset="1.0" android:color="#FF18181C" />
+                </gradient>
+            </aapt:attr>
+        </path>
 
-    <!-- right "G": mirrored -->
-    <path
-        android:strokeColor="#D5FF00"
-        android:strokeWidth="11"
-        android:pathData="M68,34 A20,20 0 1 1 68,74 A20,20 0 0 1 48,56" />
-    <path
-        android:fillColor="#0D0E10"
-        android:pathData="M44,30 L56,30 L56,46 L44,46 Z" />
-    <path
-        android:fillColor="#D5FF00"
-        android:pathData="M58,48 L44,48 A2,2 0 0 0 42,50 L42,60 L58,60 Z" />
+        <!-- left "G" -->
+        <path
+            android:pathData="M 382 377 V 327 C 382 290 352 262 302 262 C 252 262 222 290 222 327 V 697 C 222 734 252 762 302 762 C 352 762 382 734 382 697 V 517 H 312"
+            android:strokeWidth="76"
+            android:strokeLineCap="square"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0" android:startY="262"
+                    android:endX="0" android:endY="762">
+                    <item android:offset="0.0" android:color="#FFEEFF44" />
+                    <item android:offset="0.5" android:color="#FFD4FF00" />
+                    <item android:offset="1.0" android:color="#FFB0E600" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- right "G", mirrored -->
+        <path
+            android:pathData="M 642 377 V 327 C 642 290 672 262 722 262 C 772 262 802 290 802 327 V 697 C 802 734 772 762 722 762 C 672 762 642 734 642 697 V 517 H 712"
+            android:strokeWidth="76"
+            android:strokeLineCap="square"
+            android:strokeLineJoin="round"
+            android:fillColor="#00000000">
+            <aapt:attr name="android:strokeColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0" android:startY="262"
+                    android:endX="0" android:endY="762">
+                    <item android:offset="0.0" android:color="#FFEEFF44" />
+                    <item android:offset="0.5" android:color="#FFD4FF00" />
+                    <item android:offset="1.0" android:color="#FFB0E600" />
+                </gradient>
+            </aapt:attr>
+        </path>
+
+        <!-- detached centre bar of the barbell -->
+        <path android:pathData="M 452,479 H 572 A 8 8 0 0 1 580,487 V 547 A 8 8 0 0 1 572,555 H 452 A 8 8 0 0 1 444,547 V 487 A 8 8 0 0 1 452,479 Z">
+            <aapt:attr name="android:fillColor">
+                <gradient
+                    android:type="linear"
+                    android:startX="0" android:startY="479"
+                    android:endX="0" android:endY="555">
+                    <item android:offset="0.0" android:color="#FFEEFF44" />
+                    <item android:offset="0.5" android:color="#FFD4FF00" />
+                    <item android:offset="1.0" android:color="#FFB0E600" />
+                </gradient>
+            </aapt:attr>
+        </path>
+    </group>
 </vector>
