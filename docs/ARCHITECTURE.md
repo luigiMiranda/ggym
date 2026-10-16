@@ -198,6 +198,24 @@ running workout's id, so the screen can offer to resume or discard it instead of
 second one. Every write re-reads the draft first, so an action that arrives after the workout ended
 is a no-op rather than a write to the wrong workout.
 
+**The rest timer.** A rest is a *deadline* kept in its own DataStore file: `RestTimerState`
+(`endsAtMillis`, `totalSeconds`, `exerciseLogId`, `exerciseName`) as wall-clock epoch millis,
+written as one tuple and cleared as one. A remaining count would have to be decremented by a ticker,
+and a ticker stops when the process does; a deadline is still right after the app is killed, the
+screen is locked or the phone reboots, and every countdown — in the app and in the notification — is
+computed from it. There is exactly one writer, the foreground service that shows the notification,
+so the banner, the shade and a restarted process cannot disagree about what is running.
+`domain/workout/RestTimerUseCases` holds the rules, in two halves. The app's half asks
+`RestTimerCommands` to do something and never writes the store itself: `startForSet` applies the
+master switch (`WorkoutPreferences.restTimerEnabled`; off means a completed set is logged and no
+countdown is started) and the set's own `restSeconds`, where zero means the same; `extend`, `skip` and
+`stop` send nothing at all when no countdown is running, so a stale tap cannot start one. The
+service's half is what a command means: `stateForSet` builds the deadline, `moveDeadline` applies
+`±15 s` and returns `null` once the moved deadline is at or past now — that is a rest *finishing*,
+which the service turns into the completion alert, whereas `skip` ends a rest silently — and
+`remainingMillis` / `hasElapsed` are the arithmetic both the banner and the service use.
+`totalSeconds` is the length the set asked for; the deadline is the truth.
+
 **Backup format** is human-readable JSON carrying `schemaVersion`, `exportedAt` and `appVersion`,
 with one array per table. Every row carries its primary key, so a restore reproduces the database
 exactly — including the identity of rows — and children are nested inside their parent instead of

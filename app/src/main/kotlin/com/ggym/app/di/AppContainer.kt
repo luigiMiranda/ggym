@@ -4,9 +4,12 @@ import android.content.Context
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ggym.app.data.prefs.DataStoreRestTimerStore
 import com.ggym.app.data.prefs.DataStoreThemePreferences
+import com.ggym.app.data.prefs.DataStoreWorkoutPreferences
 import com.ggym.app.data.prefs.ThemePreferences
 import com.ggym.app.data.prefs.createPreferencesDataStore
+import com.ggym.app.data.prefs.createRestTimerDataStore
 import com.ggym.app.data.repository.RoomBodyWeightRepository
 import com.ggym.app.data.repository.RoomExerciseRepository
 import com.ggym.app.data.repository.RoomHistoryRepository
@@ -14,8 +17,10 @@ import com.ggym.app.data.repository.RoomRoutineRepository
 import com.ggym.app.data.room.createGgymDatabase
 import com.ggym.app.domain.repository.BodyWeightRepository
 import com.ggym.app.domain.repository.ExerciseRepository
+import com.ggym.app.domain.repository.RestTimerStore
 import com.ggym.app.domain.repository.RoutineRepository
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
+import com.ggym.app.domain.repository.WorkoutPreferences
 import com.ggym.app.domain.workout.WorkingWeightUseCases
 import com.ggym.app.ui.exercises.ExercisePickerViewModel
 import com.ggym.app.ui.exercises.SlotEditorViewModel
@@ -44,6 +49,16 @@ class AppContainer(context: Context) {
     private val database = createGgymDatabase(appContext)
 
     val themePreferences: ThemePreferences = DataStoreThemePreferences(preferencesDataStore)
+
+    val workoutPreferences: WorkoutPreferences = DataStoreWorkoutPreferences(preferencesDataStore)
+
+    private val restTimerDataStore = createRestTimerDataStore(appContext)
+
+    /**
+     * The running rest countdown, in its own DataStore file. The service is its only writer; the
+     * active-workout screen reads it to draw the banner.
+     */
+    val restTimerStore: RestTimerStore = DataStoreRestTimerStore(restTimerDataStore)
 
     val exerciseRepository: ExerciseRepository = RoomExerciseRepository(database)
 
