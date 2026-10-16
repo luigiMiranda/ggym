@@ -23,8 +23,9 @@ import kotlinx.coroutines.flow.first
  * - **History is a fallback for display, never a write.** When nothing is set, the last performed
  *   set is shown; it is not copied into the dictionary or the slot behind the user's back.
  *
- * M3 adds the other half — a completed set updating the dictionary — next to this class, so the
- * rule has exactly one implementation for both screens.
+ * M3's other half of the rule lives here too: [recordCompletedSet] is what turns a set the user
+ * finished into the exercise's new working weight, so both directions of "what do I load?" have
+ * exactly one implementation and every screen reads the same answer.
  */
 class WorkingWeightUseCases(
     private val routines: RoutineRepository,
@@ -57,6 +58,24 @@ class WorkingWeightUseCases(
                     ?: history.latestCompletedSet(slot.exerciseId)?.weightKg
                 )
         }
+    }
+
+    /**
+     * The other half of the rule: the weight a set was just completed at becomes the exercise's
+     * working weight, so the next workout starts from what the user actually lifted. This
+     * is the write that makes the number follow the user across routines and days; the planned
+     * slot stays where it is.
+     *
+     * Two deliberate no-ops:
+     *
+     * - a set completed at `0.0` is bodyweight work, not a number to load next time, so it must not
+     *   erase a real one;
+     * - a log whose dictionary entry was deleted mid-workout arrives with a `null` [exerciseId] and
+     *   has nothing to write to (the name snapshot is all that is left of it).
+     */
+    suspend fun recordCompletedSet(exerciseId: Long?, weightKg: Double) {
+        if (exerciseId == null || weightKg <= 0.0) return
+        exercises.updateCurrentWorkingWeight(exerciseId, weightKg)
     }
 
     /**

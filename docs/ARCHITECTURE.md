@@ -180,6 +180,24 @@ one transaction; discarding just deletes the draft. A backup file carries the dr
 restoring on a new phone can resume the workout instead of losing it. `workout_session.isDraft` is
 the only place that state lives: it is a property of the stored session, not of a screen.
 
+**Running a workout.** `domain/workout/ActiveWorkoutUseCases` owns what happens between start and
+finish. Starting *materializes* the training day into the draft: the routine and day names, each
+exercise's name and rest time, and one pre-filled set per planned set, with the weight
+`WorkingWeightUseCases` resolves for that slot and the first number its written target carries
+(`"8-10"` starts at eight). From then on the routine is never consulted again, so editing or
+deleting it cannot move a workout in progress. Completing a set writes the set, hands its weight to
+`WorkingWeightUseCases.recordCompletedSet` — which makes it the exercise's working weight when it is
+greater than zero, because a bodyweight set must not erase a real number — and replaces the group
+default in the exercise's uncompleted sets, the ones still carrying the weight the completed set had
+before, so one edit moves the sets the user is about to do and a set they typed into keeps its own
+number. Only uncompleted sets can be removed. Finishing writes the completed sets as a fresh session
+(duration = finish − start, sets renumbered from position), drops the prefills nobody performed,
+marks an exercise with no completed set as skipped and deletes the draft in one transaction;
+discarding only deletes the draft. One workout runs at a time: a second start is refused with the
+running workout's id, so the screen can offer to resume or discard it instead of quietly starting a
+second one. Every write re-reads the draft first, so an action that arrives after the workout ended
+is a no-op rather than a write to the wrong workout.
+
 **Backup format** is human-readable JSON carrying `schemaVersion`, `exportedAt` and `appVersion`,
 with one array per table. Every row carries its primary key, so a restore reproduces the database
 exactly — including the identity of rows — and children are nested inside their parent instead of

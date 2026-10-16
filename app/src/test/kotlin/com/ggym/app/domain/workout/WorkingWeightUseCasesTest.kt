@@ -130,6 +130,61 @@ class WorkingWeightUseCasesTest : RepositoryTest() {
     }
 
     @Test
+    fun `a completed set becomes the exercise's working weight`() = runTest {
+        val bench = benchWith(workingWeight = 87.5, performed = 85.0)
+
+        useCases.recordCompletedSet(bench, weightKg = 90.0)
+
+        assertEquals(
+            "the next workout starts from what was actually lifted",
+            90.0,
+            exerciseRepository.findById(bench)!!.currentWorkingWeight!!,
+            0.0,
+        )
+        assertEquals(
+            "it is not a history write: the last performed set is still the set it was",
+            85.0,
+            historyRepository.latestCompletedSet(bench)!!.weightKg,
+            0.0,
+        )
+    }
+
+    @Test
+    fun `a completed set writes the dictionary, not the routine slot`() = runTest {
+        val bench = benchWith(workingWeight = 87.5)
+        val routineId = routineRepository.createRoutine("Push Day")
+        val slot = slotById(addSlot(bench, routineId, weightKg = 80.0))
+
+        useCases.recordCompletedSet(bench, weightKg = 90.0)
+
+        assertEquals("the plan stays the plan", 80.0, slotById(slot.id).weightKg!!, 0.0)
+        assertEquals(90.0, exerciseRepository.findById(bench)!!.currentWorkingWeight!!, 0.0)
+    }
+
+    @Test
+    fun `a bodyweight set leaves the working weight alone`() = runTest {
+        val bench = benchWith(workingWeight = 87.5)
+
+        useCases.recordCompletedSet(bench, weightKg = 0.0)
+
+        assertEquals(
+            "a bodyweight set is not a number to load next time",
+            87.5,
+            exerciseRepository.findById(bench)!!.currentWorkingWeight!!,
+            0.0,
+        )
+    }
+
+    @Test
+    fun `a completed set of an exercise the dictionary no longer has writes nothing`() = runTest {
+        val bench = benchWith(workingWeight = 87.5)
+
+        useCases.recordCompletedSet(exerciseId = null, weightKg = 90.0)
+
+        assertEquals("there is nothing to update, and no crash", 87.5, exerciseRepository.findById(bench)!!.currentWorkingWeight!!, 0.0)
+    }
+
+    @Test
     fun `a recorded weight survives a process restart - a fresh repository over the same database`() = runTest {
         val bench = benchWith(workingWeight = 87.5)
         val routineId = routineRepository.createRoutine("Push Day")

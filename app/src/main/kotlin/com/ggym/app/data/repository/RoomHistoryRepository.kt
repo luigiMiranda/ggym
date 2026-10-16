@@ -116,6 +116,11 @@ internal class RoomHistoryRepository(
         dao.updateSet(WorkoutMapper.toEntity(set))
     }
 
+    override suspend fun updateSets(sets: List<WorkoutSetLog>) {
+        // Room performs a collection update in a transaction of its own.
+        dao.updateSets(sets.map(WorkoutMapper::toEntity))
+    }
+
     override suspend fun deleteSet(setId: Long) {
         dao.deleteSetById(setId)
     }

@@ -105,6 +105,10 @@ internal interface WorkoutHistoryDao {
     @Update
     suspend fun updateSet(set: WorkoutSetLogEntity)
 
+    /** Writes several sets as one transaction: a set completion lands with the prefills it moves. */
+    @Update
+    suspend fun updateSets(sets: List<WorkoutSetLogEntity>)
+
     @Query("DELETE FROM workout_set_log WHERE id = :setId")
     suspend fun deleteSetById(setId: Long)
 

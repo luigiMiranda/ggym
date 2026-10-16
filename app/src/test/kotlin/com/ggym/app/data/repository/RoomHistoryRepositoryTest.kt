@@ -443,6 +443,37 @@ class RoomHistoryRepositoryTest : RepositoryTest() {
     }
 
     @Test
+    fun `several sets are written as one`() = runTest {
+        val draftId = historyRepository.startDraft(
+            TestData.session(
+                startedAtMillis = 1_759_000_000_000,
+                exercises = listOf(
+                    TestData.exerciseLog(
+                        exerciseId = null,
+                        sets = listOf(
+                            TestData.setLog(setNumber = 1, weight = 80.0, reps = 8, isCompleted = false),
+                            TestData.setLog(setNumber = 2, weight = 80.0, reps = 8, isCompleted = false),
+                        ),
+                    ),
+                ),
+            ),
+        )
+        val sets = historyRepository.observeDraft(draftId).first()!!.exercises.single().sets
+
+        historyRepository.updateSets(
+            listOf(
+                sets[0].copy(weight = 85.0, reps = 9, isCompleted = true),
+                sets[1].copy(weight = 85.0),
+            ),
+        )
+
+        val stored = historyRepository.observeDraft(draftId).first()!!.exercises.single().sets
+        assertEquals(listOf(85.0, 85.0), stored.map { it.weight })
+        assertEquals(listOf(9, 8), stored.map { it.reps })
+        assertEquals(listOf(true, false), stored.map { it.isCompleted })
+    }
+
+    @Test
     fun `the write path decides whether a session is a draft`() = runTest {
         // The models' flag is what a read reports; the method is what a write means. A finished
         // session cannot end up on the workout screen and a draft cannot end up on the calendar.

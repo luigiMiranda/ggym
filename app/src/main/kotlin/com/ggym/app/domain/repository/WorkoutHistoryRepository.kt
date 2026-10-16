@@ -80,6 +80,12 @@ interface WorkoutHistoryRepository {
     /** Corrects one logged set — a typo in a past workout, not a new training event. */
     suspend fun updateSet(set: WorkoutSetLog)
 
+    /**
+     * Writes several sets in one transaction. Completing a set in a running workout also pre-fills
+     * the sets behind it, and half of that write would be a workout that disagrees with itself.
+     */
+    suspend fun updateSets(sets: List<WorkoutSetLog>)
+
     suspend fun deleteSet(setId: Long)
 
     /**
