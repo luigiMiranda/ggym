@@ -227,7 +227,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(jsonOf(orphaned))
 
-        assertTrue("expected an inconsistency, got $result", result is ImportResult.Failed && (result as ImportResult.Failed).error is ImportError.Inconsistent)
+        assertTrue("expected an inconsistency, got $result", result is ImportResult.Failed && result.error is ImportError.Inconsistent)
         assertEquals(before, snapshot())
     }
 
@@ -248,7 +248,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(jsonOf(forked))
 
-        assertTrue("expected an inconsistency, got $result", result is ImportResult.Failed && (result as ImportResult.Failed).error is ImportError.Inconsistent)
+        assertTrue("expected an inconsistency, got $result", result is ImportResult.Failed && result.error is ImportError.Inconsistent)
         assertEquals(before, snapshot())
     }
 
@@ -299,7 +299,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importFrom(Uri.fromFile(File(tempFolder.root, "not-there.json")))
 
-        assertTrue("expected an unreadable file, got $result", result is ImportResult.Failed && (result as ImportResult.Failed).error is ImportError.Unreadable)
+        assertTrue("expected an unreadable file, got $result", result is ImportResult.Failed && result.error is ImportError.Unreadable)
         assertEquals(before, snapshot())
     }
 
