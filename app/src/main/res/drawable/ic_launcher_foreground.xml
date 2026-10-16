@@ -19,10 +19,10 @@
     android:viewportHeight="108">
 
     <group
-        android:scaleX="0.0867"
-        android:scaleY="0.0867"
-        android:translateX="9.627"
-        android:translateY="9.627">
+        android:scaleX="0.078"
+        android:scaleY="0.078"
+        android:translateX="14.06"
+        android:translateY="14.06">
 
         <!-- barbell plates, left (outer + inner) -->
         <path android:pathData="M 940,398 H 946 A 16 16 0 0 1 962,414 V 610 A 16 16 0 0 1 946,626 H 940 A 16 16 0 0 1 924,610 V 414 A 16 16 0 0 1 940,398 Z">
