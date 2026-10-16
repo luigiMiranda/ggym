@@ -20,8 +20,17 @@ import com.ggym.app.data.room.entity.WorkoutExerciseLogEntity
 import com.ggym.app.data.room.entity.WorkoutSessionEntity
 import com.ggym.app.data.room.entity.WorkoutSetLogEntity
 
-/** The schema version of the database, and the version the backup format is derived from. */
-internal const val SCHEMA_VERSION = 1
+/**
+ * The schema version of the database.
+ *
+ * This is Room's/SQLite's version, **not** the backup format version: the two move together only
+ * by coincidence. `BACKUP_FORMAT_VERSION` in `data/backup` is the file format's own number, and a
+ * file written by an older app version stays readable after the schema has moved on.
+ *
+ * Bumping this means writing a [GgymMigrations] entry and committing the newly exported
+ * `app/schemas/…/<version>.json`.
+ */
+internal const val SCHEMA_VERSION = 2
 
 /**
  * The app's single database: the dictionary, routines and all training history.

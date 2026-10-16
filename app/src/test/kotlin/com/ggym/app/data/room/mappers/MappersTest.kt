@@ -99,9 +99,12 @@ class MappersTest {
     }
 
     @Test
-    fun `a planned exercise round trips through its entity`() {
-        val planned = RoutineMapper.toDomain(plannedRow(id = 5, exerciseId = 2, orderIndex = 1))
+    fun `a planned exercise round trips through its entity, weight included`() {
+        val planned = RoutineMapper.toDomain(
+            plannedRow(id = 5, exerciseId = 2, orderIndex = 1, weightKg = 70.0),
+        )
 
+        assertEquals(70.0, planned.weightKg!!, 0.0)
         assertEquals(planned, RoutineMapper.toDomain(RoutineMapper.toEntity(planned)))
     }
 
@@ -233,7 +236,12 @@ class MappersTest {
         plannedExercises = emptyList(),
     )
 
-    private fun plannedRow(id: Long, exerciseId: Long, orderIndex: Int) = PlannedExerciseEntity(
+    private fun plannedRow(
+        id: Long,
+        exerciseId: Long,
+        orderIndex: Int,
+        weightKg: Double? = null,
+    ) = PlannedExerciseEntity(
         id = id,
         routineDayId = 1,
         exerciseId = exerciseId,
@@ -241,6 +249,7 @@ class MappersTest {
         targetReps = "8-10",
         restSeconds = 90,
         orderIndex = orderIndex,
+        weightKg = weightKg,
     )
 
     private fun logRow(

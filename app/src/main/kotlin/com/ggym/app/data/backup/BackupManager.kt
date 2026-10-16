@@ -6,7 +6,6 @@ import android.database.sqlite.SQLiteException
 import android.net.Uri
 import androidx.room.withTransaction
 import com.ggym.app.data.room.GgymDatabase
-import com.ggym.app.data.room.SCHEMA_VERSION
 import com.ggym.app.data.room.dao.RoutineDayWithPlannedExercises
 import com.ggym.app.data.room.dao.RoutineWithDays
 import com.ggym.app.data.room.dao.SessionWithExercises
@@ -36,7 +35,8 @@ import java.io.IOException
  *   replace" is what makes restoring deterministic: the device ends up exactly in the state the
  *   file describes, never a merge of two divergent histories. If anything fails — including a
  *   value the validator could not see coming — the transaction rolls back and the existing data is
- *   untouched.
+ *   untouched. A file written by an older format version is upgraded on the way in: format 1
+ *   simply has no per-slot weights, so its slots arrive with none.
  *
  * Failure is always a value here, never an exception: a screen shows the case, and
  * [ImportError.detail] is for the log.
@@ -121,7 +121,7 @@ internal class BackupManager(
     }
 
     private suspend fun snapshot(): BackupFile = BackupFile(
-        schemaVersion = SCHEMA_VERSION,
+        schemaVersion = BACKUP_FORMAT_VERSION,
         exportedAt = now(),
         appVersion = appVersion,
         exercises = database.exerciseDao().getAll().map { it.toBackup() },
@@ -188,6 +188,7 @@ internal class BackupManager(
                             targetReps = planned.targetReps,
                             restSeconds = planned.restSeconds,
                             orderIndex = planned.orderIndex,
+                            weightKg = planned.weightKg,
                         ),
                     )
                 }
@@ -270,6 +271,7 @@ private fun PlannedExerciseEntity.toBackup(): BackupPlannedExercise = BackupPlan
     targetReps = targetReps,
     restSeconds = restSeconds,
     orderIndex = orderIndex,
+    weightKg = weightKg,
 )
 
 private fun SessionWithExercises.toBackup(): BackupSession = BackupSession(

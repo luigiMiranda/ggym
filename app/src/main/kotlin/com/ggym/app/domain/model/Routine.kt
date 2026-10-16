@@ -30,6 +30,10 @@ data class RoutineDay(
  * [exerciseId] points into the dictionary, while [targetReps] stays a `String` because a target
  * is written the way a coach writes it ("8-10", "10", "AMRAP") and parsing it belongs to the one
  * place that needs a number, not to the storage layer.
+ *
+ * The slot owns its [weightKg]: the same exercise can be planned at 80 kg on Push A and 70 kg on
+ * Push B, because a training day is a recipe, not a lookup. The dictionary and the logged history
+ * stay the global record of the exercise — a slot never writes to either.
  */
 data class PlannedExercise(
     val id: Long = 0,
@@ -39,4 +43,9 @@ data class PlannedExercise(
     val targetReps: String,
     val restSeconds: Int,
     val orderIndex: Int,
+    /**
+     * The weight planned for this slot in kg, or `null` to inherit the exercise's resolved
+     * default (`Exercise.currentWorkingWeight`, then the last completed set).
+     */
+    val weightKg: Double? = null,
 )

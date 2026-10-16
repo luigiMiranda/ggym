@@ -78,6 +78,7 @@ internal object TestData {
         targetReps: String = "8-10",
         restSeconds: Int = 90,
         orderIndex: Int = 0,
+        weightKg: Double? = null,
     ): PlannedExercise = PlannedExercise(
         id = id,
         routineDayId = routineDayId,
@@ -86,6 +87,7 @@ internal object TestData {
         targetReps = targetReps,
         restSeconds = restSeconds,
         orderIndex = orderIndex,
+        weightKg = weightKg,
     )
 
     fun session(
@@ -183,6 +185,7 @@ internal suspend fun GgymDatabase.givenPlannedExercise(
     targetReps: String = "8-10",
     restSeconds: Int = 90,
     orderIndex: Int = 0,
+    weightKg: Double? = null,
 ): Long = plannedExerciseDao().insert(
     PlannedExerciseEntity(
         routineDayId = routineDayId,
@@ -191,6 +194,7 @@ internal suspend fun GgymDatabase.givenPlannedExercise(
         targetReps = targetReps,
         restSeconds = restSeconds,
         orderIndex = orderIndex,
+        weightKg = weightKg,
     ),
 )
 

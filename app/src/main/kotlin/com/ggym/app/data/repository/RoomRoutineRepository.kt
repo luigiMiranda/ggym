@@ -78,6 +78,7 @@ internal class RoomRoutineRepository(
         targetSets: Int,
         targetReps: String,
         restSeconds: Int,
+        weightKg: Double?,
     ): Long = database.withTransaction {
         plannedExerciseDao.insert(
             PlannedExerciseEntity(
@@ -87,6 +88,7 @@ internal class RoomRoutineRepository(
                 targetReps = targetReps.trim(),
                 restSeconds = restSeconds,
                 orderIndex = plannedExerciseDao.nextOrderIndex(routineDayId),
+                weightKg = weightKg,
             ),
         )
     }

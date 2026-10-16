@@ -12,7 +12,10 @@ internal sealed interface ImportError {
     /** The file is not a GGym backup: not JSON, or JSON that does not match the format. */
     data class Malformed(val detail: String) : ImportError
 
-    /** Written by a different (usually newer) version of the app than the one reading it. */
+    /**
+     * Written by an app version whose format this build cannot read — either newer than
+     * `supported`, or older than the oldest format still supported.
+     */
     data class UnsupportedVersion(val found: Int, val supported: Int) : ImportError
 
     /** Structurally valid, but the rows inside contradict each other. */

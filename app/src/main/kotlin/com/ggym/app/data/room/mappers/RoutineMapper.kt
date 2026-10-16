@@ -43,6 +43,7 @@ internal object RoutineMapper {
         targetReps = entity.targetReps,
         restSeconds = entity.restSeconds,
         orderIndex = entity.orderIndex,
+        weightKg = entity.weightKg,
     )
 
     fun toEntity(plannedExercise: PlannedExercise): PlannedExerciseEntity = PlannedExerciseEntity(
@@ -53,5 +54,6 @@ internal object RoutineMapper {
         targetReps = plannedExercise.targetReps,
         restSeconds = plannedExercise.restSeconds,
         orderIndex = plannedExercise.orderIndex,
+        weightKg = plannedExercise.weightKg,
     )
 }

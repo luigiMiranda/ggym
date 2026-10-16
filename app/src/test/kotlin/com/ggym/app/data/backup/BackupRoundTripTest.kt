@@ -8,7 +8,6 @@ import com.ggym.app.data.repository.RoomExerciseRepository
 import com.ggym.app.data.repository.RoomHistoryRepository
 import com.ggym.app.data.repository.RoomRoutineRepository
 import com.ggym.app.data.room.GgymDatabase
-import com.ggym.app.data.room.SCHEMA_VERSION
 import com.ggym.app.domain.model.BodyWeightLog
 import com.ggym.app.domain.model.Exercise
 import com.ggym.app.domain.model.LastCompletedSet
@@ -17,6 +16,7 @@ import com.ggym.app.domain.model.WorkoutSession
 import com.ggym.app.testing.TestData
 import com.ggym.app.testing.countRows
 import com.ggym.app.testing.createTestDatabase
+import com.ggym.app.testing.version1BackupJson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -117,7 +117,7 @@ class BackupRoundTripTest {
 
         val document = readDocument(backupManager.exportJson())
 
-        assertEquals(SCHEMA_VERSION, document.schemaVersion)
+        assertEquals(BACKUP_FORMAT_VERSION, document.schemaVersion)
         assertEquals("0.1.0", document.appVersion)
         assertEquals(exportTime, document.exportedAt)
         assertEquals(3, document.exercises.size)
@@ -196,14 +196,64 @@ class BackupRoundTripTest {
     }
 
     @Test
+    fun `two slots of one exercise keep their own weight, and the dictionary and history stay global`() = runTest {
+        populate()
+
+        val before = snapshot()
+        val bench = before.exercises.single { it.name == "Bench Press" }
+        assertEquals(
+            "the fixture is only meaningful if the three weights differ",
+            listOf(80.0, 70.0),
+            plannedWeights(before, bench.id),
+        )
+        assertEquals(87.5, bench.currentWorkingWeight!!, 0.0)
+        assertEquals(85.0, before.lastSets.getValue(bench.id)!!.weightKg, 0.0)
+
+        backupManager.importJson(backupManager.exportJson())
+
+        val after = snapshot()
+        assertEquals("each slot is restored at its own weight", listOf(80.0, 70.0), plannedWeights(after, bench.id))
+        assertEquals(
+            "a restore does not collapse them into one number",
+            87.5,
+            after.exercises.single { it.name == "Bench Press" }.currentWorkingWeight!!,
+            0.0,
+        )
+        assertEquals(
+            "the trained set is still the last thing performed",
+            85.0,
+            after.lastSets.getValue(bench.id)!!.weightKg,
+            0.0,
+        )
+    }
+
+    @Test
+    fun `a format 1 document is restored, with its slots inheriting instead of carrying a weight`() = runTest {
+        populate()
+
+        val result = backupManager.importJson(version1BackupJson())
+
+        assertEquals(ImportResult.Restored(BackupCounts(exercises = 1, routines = 1, sessions = 1, bodyWeights = 1)), result)
+        val restored = snapshot()
+        val slot = restored.routines.single().days.single().plannedExercises.single()
+        assertNull("format 1 had no per-slot weight", slot.weightKg)
+        assertEquals("the dictionary weight is the global one the file carried", 87.5, restored.exercises.single().currentWorkingWeight!!, 0.0)
+        assertEquals("the history came back with its set", 82.5, restored.lastSets.getValue(restored.exercises.single().id)!!.weightKg, 0.0)
+    }
+
+    @Test
     fun `a document from a newer version of the app is refused and changes nothing`() = runTest {
         populate()
         val before = snapshot()
 
-        val result = backupManager.importJson(jsonOf(readDocument(backupManager.exportJson()).copy(schemaVersion = SCHEMA_VERSION + 1)))
+        val result = backupManager.importJson(
+            jsonOf(readDocument(backupManager.exportJson()).copy(schemaVersion = BACKUP_FORMAT_VERSION + 1)),
+        )
 
         assertEquals(
-            ImportResult.Failed(ImportError.UnsupportedVersion(found = SCHEMA_VERSION + 1, supported = SCHEMA_VERSION)),
+            ImportResult.Failed(
+                ImportError.UnsupportedVersion(found = BACKUP_FORMAT_VERSION + 1, supported = BACKUP_FORMAT_VERSION),
+            ),
             result,
         )
         assertEquals(before, snapshot())
@@ -326,9 +376,9 @@ class BackupRoundTripTest {
         val pushId = routineRepository.createRoutine("Push Day")
         val pushA = routineRepository.addDay(pushId, "Push A")
         val pushB = routineRepository.addDay(pushId, "Push B")
-        routineRepository.addPlannedExercise(pushA, bench.id, targetSets = 4, targetReps = "8-10", restSeconds = 120)
-        routineRepository.addPlannedExercise(pushA, fly.id, targetSets = 3, targetReps = "12", restSeconds = 60)
-        routineRepository.addPlannedExercise(pushB, bench.id, targetSets = 5, targetReps = "5", restSeconds = 180)
+        routineRepository.addPlannedExercise(pushA, bench.id, targetSets = 4, targetReps = "8-10", restSeconds = 120, weightKg = 80.0)
+        routineRepository.addPlannedExercise(pushA, fly.id, targetSets = 3, targetReps = "12", restSeconds = 60, weightKg = 20.0)
+        routineRepository.addPlannedExercise(pushB, bench.id, targetSets = 5, targetReps = "5", restSeconds = 180, weightKg = 70.0)
         routineRepository.createRoutine("Pull Day")
 
         historyRepository.saveSession(
@@ -397,7 +447,7 @@ class BackupRoundTripTest {
 
     private fun emptyBackupJson(): String = jsonOf(
         BackupFile(
-            schemaVersion = SCHEMA_VERSION,
+            schemaVersion = BACKUP_FORMAT_VERSION,
             exportedAt = exportTime,
             appVersion = "0.1.0",
             exercises = emptyList(),
@@ -406,6 +456,13 @@ class BackupRoundTripTest {
             bodyWeights = emptyList(),
         ),
     )
+
+    /** Each planned weight of one exercise's slots, in day order. */
+    private fun plannedWeights(state: GymSnapshot, exerciseId: Long): List<Double?> = state.routines
+        .flatMap { it.days }
+        .flatMap { it.plannedExercises }
+        .filter { it.exerciseId == exerciseId }
+        .map { it.weightKg }
 
     private fun jsonOf(document: BackupFile): String = BackupJsonFormat.encodeToString(BackupFile.serializer(), document)
 

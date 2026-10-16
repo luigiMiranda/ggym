@@ -1,6 +1,5 @@
 package com.ggym.app.data.backup
 
-import com.ggym.app.data.room.SCHEMA_VERSION
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -28,13 +27,28 @@ class BackupValidationTest {
 
     @Test
     fun `a file from a newer version is refused before anything else is checked`() {
-        val file = validBackup().copy(schemaVersion = SCHEMA_VERSION + 1, exercises = listOf(blankNamedExercise()))
+        val file = validBackup().copy(schemaVersion = BACKUP_FORMAT_VERSION + 1, exercises = listOf(blankNamedExercise()))
 
         val error = BackupValidator.validate(file)
 
         assertTrue("expected an unsupported version, got $error", error is ImportError.UnsupportedVersion)
-        assertEquals(SCHEMA_VERSION + 1, (error as ImportError.UnsupportedVersion).found)
-        assertEquals(SCHEMA_VERSION, error.supported)
+        assertEquals(BACKUP_FORMAT_VERSION + 1, (error as ImportError.UnsupportedVersion).found)
+        assertEquals(BACKUP_FORMAT_VERSION, error.supported)
+    }
+
+    @Test
+    fun `the oldest readable format is still accepted - a backup file outlives the build that made it`() {
+        assertNull(BackupValidator.validate(validBackup().copy(schemaVersion = OLDEST_READABLE_BACKUP_FORMAT_VERSION)))
+    }
+
+    @Test
+    fun `a version below the oldest readable one is refused`() {
+        listOf(0, -1).forEach { version ->
+            val error = BackupValidator.validate(validBackup().copy(schemaVersion = version))
+
+            assertTrue("$version should be refused, got $error", error is ImportError.UnsupportedVersion)
+            assertEquals(version, (error as ImportError.UnsupportedVersion).found)
+        }
     }
 
     @Test
@@ -133,6 +147,17 @@ class BackupValidationTest {
     }
 
     @Test
+    fun `a planned weight may be unset or zero - bodyweight work - but not negative or impossible`() {
+        listOf(null, 0.0, 2.5, 300.0).forEach { weight ->
+            assertNull("$weight kg should be accepted", BackupValidator.validate(withPlannedWeight(weight)))
+        }
+
+        listOf(-0.5, Double.POSITIVE_INFINITY, Double.NaN).forEach { weight ->
+            assertTrue("$weight should be refused", BackupValidator.validate(withPlannedWeight(weight)) is ImportError.Inconsistent)
+        }
+    }
+
+    @Test
     fun `a set may weigh nothing - bodyweight work - but not something negative or impossible`() {
         val bodyweight = validBackup().copy(
             sessions = listOf(validSession().copy(exercises = listOf(validLog().copy(sets = listOf(validSet().copy(weight = 0.0))))))
@@ -213,7 +238,7 @@ class BackupValidationTest {
 }
 
 private fun validBackup() = BackupFile(
-    schemaVersion = SCHEMA_VERSION,
+    schemaVersion = BACKUP_FORMAT_VERSION,
     exportedAt = 1_760_000_000_000,
     appVersion = "0.1.0",
     exercises = listOf(validExercise()),
@@ -252,6 +277,18 @@ private fun validPlannedExercise() = BackupPlannedExercise(
     targetReps = "8-10",
     restSeconds = 90,
     orderIndex = 0,
+    weightKg = 80.0,
+)
+
+/** The valid file with its single slot planned at [weight]. */
+private fun withPlannedWeight(weight: Double?) = validBackup().copy(
+    routines = listOf(
+        validRoutine().copy(
+            days = listOf(
+                validDay().copy(exercises = listOf(validPlannedExercise().copy(weightKg = weight))),
+            ),
+        ),
+    ),
 )
 
 private fun validSession() = BackupSession(

@@ -1,6 +1,6 @@
 package com.ggym.app.data.backup
 
-import com.ggym.app.data.room.SCHEMA_VERSION
+import com.ggym.app.testing.version1BackupJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -13,7 +13,7 @@ import org.junit.Test
  *
  * The format is a promise to the user — "you can open this in a text editor" — and a contract
  * with future versions of the app, which is what these checks are about: field names, explicit
- * nulls, and refusing anything that does not match.
+ * nulls, refusing anything that does not match, and still reading a format 1 file.
  */
 class BackupJsonTest {
 
@@ -66,6 +66,41 @@ class BackupJsonTest {
     }
 
     @Test
+    fun `a slot weight of null is written explicitly`() {
+        val file = sampleFile().withFirstSlotWeight(null)
+
+        val json = BackupJsonFormat.encodeToString(BackupFile.serializer(), file)
+
+        assertTrue("expected an explicit null, got\n$json", json.contains("\"weightKg\": null"))
+        assertNull(
+            BackupJsonFormat.decodeFromString(BackupFile.serializer(), json)
+                .routines.single().days.single().exercises.single().weightKg,
+        )
+    }
+
+    @Test
+    fun `each slot keeps its own weight`() {
+        val file = sampleFile().withTwoDaysAt(80.0, 70.0)
+
+        val json = BackupJsonFormat.encodeToString(BackupFile.serializer(), file)
+        val decoded = BackupJsonFormat.decodeFromString(BackupFile.serializer(), json)
+
+        assertEquals(
+            listOf(80.0, 70.0),
+            decoded.routines.single().days.map { it.exercises.single().weightKg },
+        )
+    }
+
+    @Test
+    fun `a format 1 document is read with no slot weights - that field did not exist`() {
+        val file = BackupJsonFormat.decodeFromString(BackupFile.serializer(), version1BackupJson())
+
+        assertEquals(1, file.schemaVersion)
+        assertNull("v1 slots inherit, they do not carry a weight", file.routines.single().days.single().exercises.single().weightKg)
+        assertEquals("the dictionary is untouched by the format change", 87.5, file.exercises.single().currentWorkingWeight!!, 0.0)
+    }
+
+    @Test
     fun `a body weight logged twice on the same day survives the round trip`() {
         val file = sampleFile().copy(
             bodyWeights = listOf(
@@ -90,8 +125,41 @@ class BackupJsonTest {
         assertNotNull("expected the document to be refused, but it was read as $result", result)
     }
 
+    /** The sample's one slot, replanned at [weight] — the shape a format 2 file adds. */
+    private fun BackupFile.withFirstSlotWeight(weight: Double?): BackupFile {
+        val routine = routines.single()
+        val day = routine.days.single()
+        return copy(
+            routines = listOf(
+                routine.copy(days = listOf(day.copy(exercises = listOf(day.exercises.single().copy(weightKg = weight))))),
+            ),
+        )
+    }
+
+    /** The sample's routine with the same slot planned twice, at two different weights. */
+    private fun BackupFile.withTwoDaysAt(firstWeight: Double?, secondWeight: Double?): BackupFile {
+        val routine = routines.single()
+        val day = routine.days.single()
+        val slot = day.exercises.single()
+        return copy(
+            routines = listOf(
+                routine.copy(
+                    days = listOf(
+                        day.copy(exercises = listOf(slot.copy(weightKg = firstWeight))),
+                        day.copy(
+                            id = 2,
+                            dayName = "Push B",
+                            orderIndex = 1,
+                            exercises = listOf(slot.copy(id = 2, weightKg = secondWeight)),
+                        ),
+                    ),
+                ),
+            ),
+        )
+    }
+
     private fun sampleFile() = BackupFile(
-        schemaVersion = SCHEMA_VERSION,
+        schemaVersion = BACKUP_FORMAT_VERSION,
         exportedAt = 1_760_000_000_000,
         appVersion = "0.1.0",
         exercises = listOf(
@@ -115,6 +183,7 @@ class BackupJsonTest {
                                 targetReps = "8-10",
                                 restSeconds = 90,
                                 orderIndex = 0,
+                                weightKg = 80.0,
                             ),
                         ),
                     ),

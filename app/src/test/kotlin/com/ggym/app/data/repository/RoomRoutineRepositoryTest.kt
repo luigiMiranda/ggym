@@ -2,6 +2,7 @@ package com.ggym.app.data.repository
 
 import com.ggym.app.domain.model.PlannedExercise
 import com.ggym.app.testing.RepositoryTest
+import com.ggym.app.testing.TestData
 import com.ggym.app.testing.countRows
 import com.ggym.app.testing.givenExercise
 import kotlinx.coroutines.flow.first
@@ -159,6 +160,65 @@ class RoomRoutineRepositoryTest : RepositoryTest() {
     }
 
     @Test
+    fun `a new slot holds no weight of its own until one is given`() = runTest {
+        val benchId = database.givenExercise(name = "Bench Press", currentWorkingWeight = 87.5)
+        val flyId = database.givenExercise(name = "Cable Fly", currentWorkingWeight = 20.0)
+        val routineId = routineRepository.createRoutine("Push Day")
+        val dayId = routineRepository.addDay(routineId, "Push")
+
+        routineRepository.addPlannedExercise(dayId, benchId, targetSets = 4, targetReps = "8-10", restSeconds = 120)
+        routineRepository.addPlannedExercise(dayId, flyId, targetSets = 3, targetReps = "12", restSeconds = 60, weightKg = 22.5)
+
+        val slots = routineRepository.observeRoutine(routineId).first()!!.days.single().plannedExercises
+        assertEquals(
+            "omitting the weight leaves the slot inheriting, not at zero",
+            listOf(null, 22.5),
+            slots.map { it.weightKg },
+        )
+    }
+
+    @Test
+    fun `two slots of the same exercise keep their own weight, and the dictionary and history stay global`() = runTest {
+        val benchId = database.givenExercise(name = "Bench Press", currentWorkingWeight = 87.5)
+        val routineId = routineRepository.createRoutine("Push Day")
+        val pushA = routineRepository.addDay(routineId, "Push A")
+        val pushB = routineRepository.addDay(routineId, "Push B")
+        historyRepository.saveSession(
+            TestData.session(
+                date = TestData.date(month = 1, day = 5),
+                exercises = listOf(
+                    TestData.exerciseLog(
+                        exerciseId = benchId,
+                        sets = listOf(TestData.setLog(setNumber = 1, weight = 85.0, reps = 6)),
+                    ),
+                ),
+            ),
+        )
+
+        routineRepository.addPlannedExercise(pushA, benchId, targetSets = 4, targetReps = "8-10", restSeconds = 120, weightKg = 80.0)
+        routineRepository.addPlannedExercise(pushB, benchId, targetSets = 5, targetReps = "5", restSeconds = 180, weightKg = 70.0)
+
+        val days = routineRepository.observeRoutine(routineId).first()!!.days
+        assertEquals(
+            "the same exercise is planned at two different weights",
+            listOf(80.0, 70.0),
+            days.map { it.plannedExercises.single().weightKg },
+        )
+        assertEquals(
+            "the dictionary is the global record and was not rewritten by a slot",
+            87.5,
+            database.exerciseDao().findByName("Bench Press")!!.currentWorkingWeight!!,
+            0.0,
+        )
+        assertEquals(
+            "the trained set is still the last thing performed",
+            85.0,
+            historyRepository.latestCompletedSet(benchId)!!.weightKg,
+            0.0,
+        )
+    }
+
+    @Test
     fun `a planned exercise is updated in place`() = runTest {
         val exerciseId = database.givenExercise(name = "Bench Press")
         val routineId = routineRepository.createRoutine("Push Day")
@@ -174,6 +234,7 @@ class RoomRoutineRepositoryTest : RepositoryTest() {
                 targetReps = "5",
                 restSeconds = 180,
                 orderIndex = 3,
+                weightKg = 85.0,
             ),
         )
 
@@ -182,6 +243,7 @@ class RoomRoutineRepositoryTest : RepositoryTest() {
         assertEquals("5", updated.targetReps)
         assertEquals(180, updated.restSeconds)
         assertEquals(3, updated.orderIndex)
+        assertEquals(85.0, updated.weightKg!!, 0.0)
         assertEquals("no other slot was touched", 1, database.countRows("planned_exercise"))
     }
 

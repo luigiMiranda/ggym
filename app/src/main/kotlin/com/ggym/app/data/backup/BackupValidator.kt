@@ -1,6 +1,5 @@
 package com.ggym.app.data.backup
 
-import com.ggym.app.data.room.SCHEMA_VERSION
 import com.ggym.app.domain.model.BodyWeightLimits
 
 /**
@@ -15,23 +14,33 @@ import com.ggym.app.domain.model.BodyWeightLimits
  * inconsistency in a corrupt file helps nobody.
  *
  * The checks are deliberately about *contradictions*, not about product rules. A weight of 0 kg on
- * a set is legitimate (bodyweight work); a body weight outside the accepted human range is not
- * (see [BodyWeightLimits]); a missing target rep string is a routine-editor question, not a
- * corrupt file.
+ * a set or on a planned slot is legitimate (bodyweight work); a body weight outside the accepted
+ * human range is not (see [BodyWeightLimits]); a missing target rep string is a routine-editor
+ * question, not a corrupt file.
+ *
+ * The `schemaVersion` window is [BACKUP_FORMAT_VERSION] down to
+ * [OLDEST_READABLE_BACKUP_FORMAT_VERSION]: the app reads the formats it has ever written, not just
+ * its own, because a backup file outlives the build that made it.
  */
 internal object BackupValidator {
 
-    fun validate(file: BackupFile, supportedVersion: Int = SCHEMA_VERSION): ImportError? =
-        versionProblem(file, supportedVersion)
+    fun validate(
+        file: BackupFile,
+        newestReadableVersion: Int = BACKUP_FORMAT_VERSION,
+        oldestReadableVersion: Int = OLDEST_READABLE_BACKUP_FORMAT_VERSION,
+    ): ImportError? =
+        versionProblem(file, oldestReadableVersion, newestReadableVersion)
             ?: valueProblem(file)
             ?: duplicateIdProblem(file)
             ?: referenceProblem(file)
 
-    private fun versionProblem(file: BackupFile, supportedVersion: Int): ImportError? =
-        if (file.schemaVersion == supportedVersion) {
+    private fun versionProblem(file: BackupFile, oldestReadable: Int, newestReadable: Int): ImportError? =
+        if (file.schemaVersion in oldestReadable..newestReadable) {
             null
         } else {
-            ImportError.UnsupportedVersion(found = file.schemaVersion, supported = supportedVersion)
+            // `supported` is the newest version that can be read; a file outside the window is
+            // either from the future or too old to be trusted.
+            ImportError.UnsupportedVersion(found = file.schemaVersion, supported = newestReadable)
         }
 
     private fun valueProblem(file: BackupFile): ImportError? {
@@ -62,6 +71,11 @@ internal object BackupValidator {
                     }
                     if (planned.orderIndex < 0) {
                         return inconsistent("planned exercise ${planned.id} has a negative order")
+                    }
+                    planned.weightKg?.let { weight ->
+                        if (!weight.isFinite() || weight < 0) {
+                            return inconsistent("planned exercise ${planned.id} has a weight of $weight")
+                        }
                     }
                 }
             }

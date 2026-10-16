@@ -113,6 +113,7 @@ Rules that keep this honest:
 | Timestamps | epoch milliseconds (`Long`) |
 | Date-only values | normalized to local midnight at the data boundary, so calendar bucketing is exact |
 | Weights | `Double`, canonical unit **kg** |
+| Planned weight | `planned_exercise.weightKg`, `Double?`: null means "inherit the exercise's resolved default", so a slot carries its own weight only once the user chose one |
 | Target reps | `String` (`"8-10"`, `"10"`, later `"AMRAP"`), parsed where it is needed |
 | Exercise identity | unique name, **case-insensitive**, so `"bench press"` cannot become a second exercise with its own history |
 | Formatting | always through the active locale (`NumberFormat`, `DateTimeFormatter`) |
@@ -125,7 +126,7 @@ Eight tables cover the domain:
 exercise                 the global dictionary: name, currentWorkingWeight, defaultRestSeconds
 routine                  a named collection of training days
 routine_day              a day inside a routine, ordered
-planned_exercise         an exercise slot in a day: target sets/reps, rest, order
+planned_exercise         an exercise slot in a day: target sets/reps, rest, order, its own weight
 workout_session          one completed workout: date, routine/day name snapshots, duration
 workout_exercise_log     one exercise inside a session: name snapshot, completed flag, order
 workout_set_log          one performed set: set number, weight, reps, completed flag
@@ -146,13 +147,18 @@ loss need two different answers:
 
 **Migrations.** `exportSchema` is on and the schema JSON is committed under `app/schemas/`, so
 migrations are written explicitly and verified against the schema that shipped. Destructive
-fallbacks are not used: they would silently delete a user's training history.
+fallbacks are not used: they would silently delete a user's training history. The one migration so
+far (`v1 → v2`) adds `planned_exercise.weightKg` with `ALTER TABLE`, leaves every existing row as
+it was, and is exercised by a test that builds a v1 database from the committed v1 snapshot,
+seeds it, and opens it with the current build.
 
 **Backup format** is human-readable JSON carrying `schemaVersion`, `exportedAt` and `appVersion`,
 with one array per table. Every row carries its primary key, so a restore reproduces the database
 exactly — including the identity of rows — and children are nested inside their parent instead of
 referencing it, so a file cannot contradict itself. A field the current version does not know, or
-a version it does not support, is refused rather than ignored.
+a version it does not support, is refused rather than ignored. The format version is its own
+number, not the database's: the reader accepts every format the app has ever written (1 through 2
+today), so a backup file outlives the build that produced it.
 
 Import is *validate, then replace inside a single transaction*: the file is parsed, its version,
 values and referential integrity are checked, and only then are the tables replaced. A failure

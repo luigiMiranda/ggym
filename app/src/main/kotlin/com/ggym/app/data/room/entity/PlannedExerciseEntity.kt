@@ -40,4 +40,16 @@ internal data class PlannedExerciseEntity(
     val targetReps: String,
     val restSeconds: Int,
     val orderIndex: Int,
+    /**
+     * The weight this slot is planned at, in kg — independent of the dictionary's
+     * `currentWorkingWeight`, so the same exercise can be heavy on one day and light on another
+     * (80 kg on Push A, 70 kg on Push B).
+     *
+     * `null` means "no weight chosen for this slot": the UI falls back to the exercise's
+     * resolved default rather than pretending the slot holds a weight of its own.
+     *
+     * Declared last because the v1 → v2 migration appends it with `ALTER TABLE`, so a migrated
+     * database and a freshly created one have the column in the same place.
+     */
+    val weightKg: Double? = null,
 )
