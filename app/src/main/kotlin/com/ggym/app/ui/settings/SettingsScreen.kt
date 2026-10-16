@@ -30,8 +30,8 @@ import com.ggym.app.R
 import com.ggym.app.data.prefs.ThemeMode
 
 /**
- * Settings tab. M0 ships the Appearance section only — the controls that exist are fully
- * functional; sections belonging to later milestones (rest timer, backup) are added with them.
+ * Settings tab. The Appearance section is implemented and fully functional; the sections for
+ * the rest timer and for data backup are added together with those features.
  */
 @Composable
 fun SettingsScreen(

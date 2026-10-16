@@ -1,5 +1,11 @@
-# Spec scratch file — kept out of the repo by the original author's choice
+# Development notes: kept in the working tree, never published.
+# AGENTS.md            — instructions for AI coding agents working on this repo
+# docs/PROGRESS.md     — running status/decision/verification log
+# docs/specs/          — internal design specs and milestones
 project.md
+AGENTS.md
+docs/PROGRESS.md
+docs/specs/
 
 # Gradle / build outputs
 .gradle/

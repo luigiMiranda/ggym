@@ -8,8 +8,8 @@ import androidx.compose.ui.unit.sp
  * Material 3 Expressive typography: hierarchy is carried by **weight and size**, not colour.
  *
  * The expressive signature is heavy, tight display type. Hero numeric styles (working weight,
- * rest countdown) are added in M2/M3 alongside the screens that use them — they need tabular
- * figures so digits don't reflow mid-input, which is a property of the screen, not the palette.
+ * rest countdown) are added alongside the screens that need them: they require tabular figures
+ * so digits do not reflow while you type, which is a property of the screen, not the palette.
  */
 val GgymTypography = Typography().let { base ->
     base.copy(

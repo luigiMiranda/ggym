@@ -7,7 +7,7 @@ import androidx.compose.ui.res.stringResource
 import com.ggym.app.R
 import com.ggym.app.ui.common.EmptyState
 
-/** Workouts tab. Routine CRUD arrives in M2; until then the tab is an honest empty state. */
+/** Workouts tab. Routine management is still to come, so the tab shows an honest empty state. */
 @Composable
 fun WorkoutsScreen() {
     EmptyState(

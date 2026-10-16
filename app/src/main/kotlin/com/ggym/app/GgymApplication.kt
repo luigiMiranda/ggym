@@ -4,7 +4,7 @@ import android.app.Application
 import com.ggym.app.di.AppContainer
 
 /**
- * Owns the manual DI container (docs/specs/00-spine.md §4).
+ * Owns the manual DI container (see docs/ARCHITECTURE.md, "State, threading and DI").
  *
  * The container is created lazily-but-once on process start so the DataStore file exists
  * before the first screen renders.

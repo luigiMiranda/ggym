@@ -20,8 +20,8 @@ import androidx.compose.ui.unit.dp
 /**
  * The app's one empty-state presentation: tonal container, big icon, honest copy.
  *
- * Used while a section has no data yet — including during M0–M1, when the feature behind it
- * has not been built. The copy always says what the screen will do, never "coming soon",
+ * Used while a section has no data yet, including while the feature behind it is still being
+ * built. The copy always says what the screen does, never "coming soon",
  * so the shell never lies about being finished.
  */
 @Composable

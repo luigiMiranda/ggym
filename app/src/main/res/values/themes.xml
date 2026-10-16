@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Splash theme: holds the window until theme preferences are read (M0 step 8). -->
+    <!-- Splash theme: holds the window until the theme preference has been read. -->
     <style name="Theme.GGym" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/brand_canvas</item>
         <item name="windowSplashScreenAnimatedIcon">@drawable/ic_launcher_foreground</item>

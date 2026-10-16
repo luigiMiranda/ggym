@@ -17,7 +17,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
  */
 enum class Destination(
     val route: String,
-    /** Label resource id — localized in M6. */
+    /** Label resource id, so the tab labels can be localized. */
     val labelRes: Int,
     val selectedIcon: ImageVector,
     val unselectedIcon: ImageVector,

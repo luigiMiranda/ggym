@@ -8,9 +8,9 @@ import androidx.compose.ui.unit.dp
  * Shape scale. Deliberately generous compared to baseline M3 — Expressive leans on visible,
  * friendly corner radii — and *deliberately mixed*: soft containers versus squarer controls.
  *
- * Shape also encodes state. When the set-complete button lands in M2 it morphs pill → cookie
- * (~29dp radius, squircle-ish); that target belongs to the workout feature rather than to this
- * scale, so it is defined next to the component that morphs.
+ * Shape also encodes state: the set-complete button morphs pill → cookie (~29dp radius,
+ * squircle-ish) once a set is done. That target belongs to the workout feature rather than to
+ * this scale, so it is defined next to the component that morphs.
  */
 val GgymShapes = Shapes(
     extraSmall = RoundedCornerShape(8.dp),   // chips, badges

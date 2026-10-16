@@ -7,7 +7,7 @@ import androidx.compose.ui.res.stringResource
 import com.ggym.app.R
 import com.ggym.app.ui.common.EmptyState
 
-/** Stats & body weight tab. Charts and the weight log arrive in M5. */
+/** Stats and body weight tab. Charts and the body-weight log are still to come. */
 @Composable
 fun StatsScreen() {
     EmptyState(

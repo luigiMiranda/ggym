@@ -9,7 +9,7 @@ import com.ggym.app.data.prefs.createPreferencesDataStore
 import com.ggym.app.ui.settings.SettingsViewModel
 
 /**
- * Manual dependency container — the app's composition root (docs/specs/00-spine.md §4).
+ * Manual dependency container — the app's composition root (docs/ARCHITECTURE.md).
  *
  * Created once by [com.ggym.app.GgymApplication]. Milestones add their repositories and
  * use-cases here; screens never reach for singletons themselves.

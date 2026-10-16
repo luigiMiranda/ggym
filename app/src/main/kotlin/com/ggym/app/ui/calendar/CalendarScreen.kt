@@ -7,7 +7,7 @@ import androidx.compose.ui.res.stringResource
 import com.ggym.app.R
 import com.ggym.app.ui.common.EmptyState
 
-/** Calendar tab. Workout history and day inspection arrive in M4. */
+/** Calendar tab. Workout history and day inspection are still to come. */
 @Composable
 fun CalendarScreen() {
     EmptyState(

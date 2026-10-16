@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   GGym is 100% offline and portable by design: the user moves data with the in-app JSON
-  export/import (M1), not with a cloud account. Auto Backup and device-to-device transfer are
+  export/import, not with a cloud account. Auto Backup and device-to-device transfer are
   therefore switched off explicitly, so "your data never leaves the device unless you say so"
   is a property of the build, not a promise in a README.
 -->

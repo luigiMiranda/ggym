@@ -5,7 +5,7 @@ composeBom = "2026.09.00"
 # Material 3 Expressive APIs (MotionScheme.expressive(), MaterialExpressiveTheme,
 # expressiveLightColorScheme) are INTERNAL in material3 1.4.0 stable and only become public
 # API on the 1.5.0 line. Expressive compliance is a hard requirement, so material3 is pinned
-# explicitly and overrides the BOM constraint. Verified empirically: see docs/PROGRESS.md.
+# explicitly and overrides the BOM constraint. See docs/ARCHITECTURE.md ("Build stack").
 material3 = "1.5.0-beta01"
 coreKtx = "1.19.1"
 activityCompose = "1.13.0"

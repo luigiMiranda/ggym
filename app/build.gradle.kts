@@ -17,7 +17,7 @@ android {
 
     buildTypes {
         release {
-            // R8 shrinking + signing config land in M6 together with the release APK.
+            // R8 shrinking and the signing config land together with the release APK.
             isMinifyEnabled = false
         }
     }
@@ -33,7 +33,7 @@ android {
 
     lint {
         // We deliberately stay on AGP 9.3.1: Kotlin 2.4.21's Gradle plugin supports AGP up to
-        // 9.3.1, and AGP 9.4 requires a KGP bump we do not want yet (docs/specs/00-spine.md §2).
+        // 9.3.1, and AGP 9.4 requires a KGP bump we do not want yet.
         disable += "AndroidGradlePluginVersion"
         // Lint must not fail the build on warnings, but errors still abort it.
         abortOnError = true

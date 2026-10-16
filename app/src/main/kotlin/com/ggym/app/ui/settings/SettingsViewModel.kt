@@ -11,8 +11,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
- * Settings state holder. M0 covers appearance; the rest timer toggle (M3) and backup
- * actions (M1/M6) join this screen as their features land.
+ * Settings state holder. Appearance is implemented; the rest-timer toggle and the backup
+ * actions join this screen together with those features.
  */
 class SettingsViewModel(
     private val themePreferences: ThemePreferences,
