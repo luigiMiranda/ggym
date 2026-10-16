@@ -4,6 +4,7 @@ import com.ggym.app.domain.repository.RestTimerCommands
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.repository.RestTimerStore
 import com.ggym.app.domain.repository.WorkoutPreferences
+import com.ggym.app.service.RestAlertPlayer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 
@@ -79,5 +80,19 @@ internal class TestClock(var millis: Long = 1_750_000_000_000L) {
 
     fun advanceSeconds(seconds: Int) {
         millis += seconds * 1_000L
+    }
+}
+
+/**
+ * The alert, counted instead of played: the service's job is to ask for it, and the tone and the
+ * audio focus are `AndroidRestAlertPlayer`'s own business.
+ */
+internal class FakeRestAlertPlayer : RestAlertPlayer {
+
+    var played = 0
+        private set
+
+    override fun play() {
+        played++
     }
 }

@@ -216,6 +216,27 @@ which the service turns into the completion alert, whereas `skip` ends a rest si
 `remainingMillis` / `hasElapsed` are the arithmetic both the banner and the service use.
 `totalSeconds` is the length the set asked for; the deadline is the truth.
 
+**Running in the background.** The countdown's other half is `service/RestTimerService`, a foreground
+service with the `specialUse` type (a rest is none of the named cases) and a low-importance silent
+notification: the countdown is drawn by the system (`usesChronometer` + `chronometerCountDown`, based
+on the stored deadline), and its three actions — `+15 s`, `-15 s`, `Skip` — send the same intents the
+app's own banner sends. Tapping a timer notification opens the app. There are two channels: the
+running one silent and ongoing, and a high-importance one with vibration and no sound for the alert,
+whose tone the app plays itself (`AndroidRestAlertPlayer`, a `ToneGenerator` beep while holding
+`AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`, so the user's music dips instead of stopping).
+
+A rest ends through whichever path arrives first: the service's own task for the deadline, or the
+exact alarm (`RestTimerAlarms`, `setExactAndAllowWhileIdle`) that wakes a suspended, dozing or dead
+process and delivers a broadcast to `RestTimerAlertReceiver`. Both go through `RestTimerCompletion`,
+so the alert, the notification and the stored state cannot disagree, and a completion is precise
+about which rest it ends — a set completed exactly as the previous rest runs out must not lose its
+new countdown. The receiver is what makes the backstop work in the worst case: a manifest receiver is
+always allowed to play a tone, write the store and post a notification, while starting a foreground
+service from the background is not. If the alarm turns out to be early (a wall clock that moved), the
+rest is not over and the alarm is simply re-armed. Denied `POST_NOTIFICATIONS` is an ordinary
+outcome: the countdown, the in-app banner and the tone all work, only the drawer notification is
+missing.
+
 **Backup format** is human-readable JSON carrying `schemaVersion`, `exportedAt` and `appVersion`,
 with one array per table. Every row carries its primary key, so a restore reproduces the database
 exactly — including the identity of rows — and children are nested inside their parent instead of

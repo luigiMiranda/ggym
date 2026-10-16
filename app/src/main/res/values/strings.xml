@@ -115,4 +115,21 @@
     <string name="exercise_delete_message">“%1$s” will be removed from the dictionary. If a routine still plans it, GGym will tell you which one.</string>
     <string name="exercise_delete_blocked_title">Still planned</string>
     <string name="exercise_delete_blocked_message">This exercise is still planned in %1$s. Remove it there first.</string>
+
+    <!--
+      Rest timer: the notification the countdown lives in, and the two channels it can arrive on.
+      The running one is a silent chronometer; the finished one vibrates, and the tone itself is
+      played by the app (`AndroidRestAlertPlayer`) so that it can duck the user's music instead of
+      being mixed over it by the system.
+    -->
+    <string name="rest_notification_text">Resting</string>
+    <string name="rest_action_subtract_time">-15 s</string>
+    <string name="rest_action_add_time">+15 s</string>
+    <string name="rest_action_skip">Skip</string>
+    <string name="rest_finished_notification_title">Rest over</string>
+    <string name="rest_finished_notification_text">Time for %1$s</string>
+    <string name="rest_channel_running_name">Rest timer</string>
+    <string name="rest_channel_running_description">The countdown between sets</string>
+    <string name="rest_channel_finished_name">Rest finished</string>
+    <string name="rest_channel_finished_description">Tells you when a rest is over</string>
 </resources>

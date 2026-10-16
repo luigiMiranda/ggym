@@ -1,7 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- 100% offline: no permissions are declared anywhere in this app. -->
+    <!--
+      100% offline: no network permission is declared anywhere in this app, so nothing here can
+      send data anywhere. The rest timer adds four capabilities and no others: a foreground service
+      (with the "special use" type, because a rest countdown is none of the named cases), the right
+      to show its notification, the right to vibrate when a rest is over, and an exact alarm for the
+      countdown's backstop.
+    -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!--
+      Two names for one capability across the range this app supports: USE_EXACT_ALARM (API 33+,
+      granted at install, which is why no screen has to ask the user for anything) and
+      SCHEDULE_EXACT_ALARM, which is what an API 31/32 device checks. The alarm only backs up a
+      countdown the foreground service already keeps: without it a rest still ends, a few seconds
+      late, and the countdown shown in the app and the notification is always the stored deadline.
+    -->
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+
     <!--
       allowBackup=false covers API <= 30; dataExtractionRules covers API 31+ (Auto Backup and
       device transfer both excluded). Lint flags the pair as redundant, but deliberately keeping
@@ -27,6 +47,26 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!--
+          The rest countdown. `stopWithTask="false"` is the point of the service: swiping the app
+          out of recents is not a reason to lose a rest that is still running.
+        -->
+        <service
+            android:name=".service.RestTimerService"
+            android:exported="false"
+            android:foregroundServiceType="specialUse"
+            android:stopWithTask="false">
+            <!-- Play reviews special-use subtypes; a rest countdown is the whole reason. -->
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="rest_between_sets_countdown" />
+        </service>
+
+        <!-- The exact alarm's backstop. Not exported: only this app's own alarm sends it. -->
+        <receiver
+            android:name=".service.RestTimerAlertReceiver"
+            android:exported="false" />
     </application>
 
 </manifest>

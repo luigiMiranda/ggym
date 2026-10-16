@@ -21,7 +21,13 @@ import com.ggym.app.domain.repository.RestTimerStore
 import com.ggym.app.domain.repository.RoutineRepository
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
 import com.ggym.app.domain.repository.WorkoutPreferences
+import com.ggym.app.domain.workout.RestTimerUseCases
 import com.ggym.app.domain.workout.WorkingWeightUseCases
+import com.ggym.app.service.AndroidRestAlertPlayer
+import com.ggym.app.service.RestTimerAlarms
+import com.ggym.app.service.RestTimerDependencies
+import com.ggym.app.service.RestTimerNotifications
+import com.ggym.app.service.ServiceRestTimerCommands
 import com.ggym.app.ui.exercises.ExercisePickerViewModel
 import com.ggym.app.ui.exercises.SlotEditorViewModel
 import com.ggym.app.ui.settings.SettingsViewModel
@@ -59,6 +65,25 @@ class AppContainer(context: Context) {
      * active-workout screen reads it to draw the banner.
      */
     val restTimerStore: RestTimerStore = DataStoreRestTimerStore(restTimerDataStore)
+
+    /**
+     * The rest timer, in both of its halves: the rules the app calls, and the dependencies the
+     * foreground service and its alarm backstop are built with.
+     */
+    val restTimerUseCases: RestTimerUseCases = RestTimerUseCases(
+        store = restTimerStore,
+        commands = ServiceRestTimerCommands(appContext),
+        preferences = workoutPreferences,
+    )
+
+    /** Read by [com.ggym.app.service.RestTimerService] and its receiver, never by a screen. */
+    val restTimerDependencies = RestTimerDependencies(
+        store = restTimerStore,
+        timers = restTimerUseCases,
+        notifications = RestTimerNotifications(appContext),
+        alarms = RestTimerAlarms(appContext),
+        alerts = AndroidRestAlertPlayer(appContext),
+    )
 
     val exerciseRepository: ExerciseRepository = RoomExerciseRepository(database)
 
