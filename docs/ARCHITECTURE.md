@@ -229,6 +229,14 @@ The expressive checklist the UI is held to:
   identity hash with the one Room writes into the installed database, so the snapshot cannot drift
   from the schema a build actually creates.
 - Coroutine tests use `kotlinx-coroutines-test`; Flow assertions use Turbine.
+- **UI tests run on the JVM under Robolectric too** (`androidx.compose.ui:ui-test-junit4`, with
+  `ui-test-manifest` on the debug variant so the test rule has an activity to host). They cover what
+  a ViewModel test structurally cannot: composition wiring — which slot a sheet is bound to, which
+  node a tap reaches — and they exist because exactly such a bug shipped once. Two environment
+  facts come with them: they pin `@Config(sdk = [36])`, because Espresso's idling path reflects on
+  the hidden `android.hardware.input.InputManager.getInstance()` that AOSP removed in Android 17 (the
+  Room tests keep the app's API 37); and a test that waits for a `viewModelScope` write must poll
+  with `waitForIdle()`, since that dispatcher only progresses while the main looper is idled.
 - No test depends on wall-clock time or on the host machine's locale.
 - Lint must stay at zero findings. The two intentional suppressions live in `app/lint.xml`, each
   with the reason written next to it.
