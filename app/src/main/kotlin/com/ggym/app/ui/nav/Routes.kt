@@ -27,6 +27,9 @@ object Routes {
      */
     const val WORKOUT = "workout/{$SESSION_ID}"
 
+    /** One past workout, opened from the calendar to correct or delete it. */
+    const val HISTORY = "history/{$SESSION_ID}"
+
     fun routine(routineId: Long): String = "routine/$routineId"
 
     fun day(routineId: Long, dayId: Long): String = "day/$routineId/$dayId"
@@ -34,6 +37,8 @@ object Routes {
     fun exercisePicker(routineDayId: Long): String = "picker/$routineDayId"
 
     fun workout(sessionId: Long): String = "workout/$sessionId"
+
+    fun history(sessionId: Long): String = "history/$sessionId"
 }
 
 /** Reads a long argument of the current destination, so each screen parses the route once. */

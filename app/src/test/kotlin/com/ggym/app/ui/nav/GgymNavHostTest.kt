@@ -124,7 +124,7 @@ class GgymNavHostTest {
         waitForText("Push Day")
         compose.onNodeWithText(context.getString(R.string.nav_calendar)).performClick()
 
-        waitForText(context.getString(R.string.calendar_empty_title))
+        waitForText(context.getString(R.string.calendar_today))
     }
 
     @Test
@@ -150,7 +150,7 @@ class GgymNavHostTest {
         waitForText("Push Day")
 
         compose.onNodeWithText(context.getString(R.string.nav_calendar)).performClick()
-        waitForText(context.getString(R.string.calendar_empty_title))
+        waitForText(context.getString(R.string.calendar_today))
     }
 
     private fun count(text: String): Int =

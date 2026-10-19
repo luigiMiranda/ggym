@@ -30,6 +30,7 @@ import androidx.navigation.navArgument
 import com.ggym.app.di.AppContainer
 import com.ggym.app.ui.calendar.CalendarScreen
 import com.ggym.app.ui.exercises.ExercisePickerScreen
+import com.ggym.app.ui.history.HistoryDetailScreen
 import com.ggym.app.ui.settings.SettingsScreen
 import com.ggym.app.ui.stats.StatsScreen
 import com.ggym.app.ui.workout.ActiveWorkoutScreen
@@ -113,7 +114,12 @@ fun GgymNavHost(
                     onOpenWorkout = { sessionId -> navController.navigate(Routes.workout(sessionId)) },
                 )
             }
-            composable(Destination.Calendar.route) { CalendarScreen() }
+            composable(Destination.Calendar.route) {
+                CalendarScreen(
+                    viewModelFactory = container.calendarViewModelFactory,
+                    onOpenHistory = { sessionId -> navController.navigate(Routes.history(sessionId)) },
+                )
+            }
             composable(Destination.Stats.route) { StatsScreen() }
             composable(Destination.Settings.route) {
                 SettingsScreen(viewModelFactory = container.settingsViewModelFactory)
@@ -164,6 +170,20 @@ fun GgymNavHost(
                     routineDayId = dayId,
                     viewModelFactory = remember(dayId) { container.exercisePickerViewModelFactory(dayId) },
                     onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(
+                route = Routes.HISTORY,
+                arguments = listOf(navArgument(Routes.SESSION_ID) { type = NavType.LongType }),
+            ) { entry ->
+                val sessionId = entry.longArgument(Routes.SESSION_ID)
+                HistoryDetailScreen(
+                    viewModelFactory = remember(sessionId) {
+                        container.historyDetailViewModelFactory(sessionId)
+                    },
+                    onBack = { navController.popBackStack() },
+                    onWorkoutDeleted = { navController.popBackStack() },
                 )
             }
 

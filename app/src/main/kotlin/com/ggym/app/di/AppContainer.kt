@@ -29,7 +29,9 @@ import com.ggym.app.service.RestTimerAlarms
 import com.ggym.app.service.RestTimerDependencies
 import com.ggym.app.service.RestTimerNotifications
 import com.ggym.app.service.ServiceRestTimerCommands
+import com.ggym.app.ui.calendar.CalendarViewModel
 import com.ggym.app.ui.exercises.ExercisePickerViewModel
+import com.ggym.app.ui.history.HistoryDetailViewModel
 import com.ggym.app.ui.exercises.SlotEditorViewModel
 import com.ggym.app.ui.settings.SettingsViewModel
 import com.ggym.app.ui.workout.ActiveWorkoutViewModel
@@ -109,6 +111,14 @@ class AppContainer(context: Context) {
         history = workoutHistoryRepository,
         weights = workingWeightUseCases,
     )
+
+    val calendarViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer { CalendarViewModel(workoutHistoryRepository) }
+    }
+
+    fun historyDetailViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
+        initializer { HistoryDetailViewModel(sessionId, workoutHistoryRepository) }
+    }
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
         initializer { SettingsViewModel(themePreferences, restTimerUseCases) }
