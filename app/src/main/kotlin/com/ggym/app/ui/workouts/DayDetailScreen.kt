@@ -2,7 +2,11 @@
 
 package com.ggym.app.ui.workouts
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,27 +15,25 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -42,25 +44,36 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ggym.app.R
 import com.ggym.app.ui.common.ConfirmDeleteDialog
 import com.ggym.app.ui.common.EmptyState
+import com.ggym.app.ui.common.GgymCardShape
+import com.ggym.app.ui.common.GgymFab
+import com.ggym.app.ui.common.GgymPill
+import com.ggym.app.ui.common.GgymScreenHeader
 import com.ggym.app.ui.common.KgFormat
+import com.ggym.app.ui.common.PillTone
 import com.ggym.app.ui.common.RowMenu
 import com.ggym.app.ui.common.RowMenuAction
 import com.ggym.app.ui.common.activeLocale
 import com.ggym.app.ui.exercises.SlotEditorSheet
-import com.ggym.app.ui.theme.GgymHeroWeight
+import com.ggym.app.ui.theme.GgymHeroColors
 
 /**
- * The exercises planned for one training day — the screen where the app's central promise becomes
- * visible: each slot shows the weight to load, and opens an editor that changes *that* slot.
+ * The exercises planned for one training day.
+ *
+ * The start action is a dark plate above the list: it is the one tap this screen exists to offer,
+ * and the plate keeps it louder than the plan it would start. Slots are cards with the weight as a
+ * lime pill, which is the preview's way of making the number findable without making it a headline.
  */
 @Composable
 fun DayDetailScreen(
@@ -83,29 +96,23 @@ fun DayDetailScreen(
     }
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets(0),
         topBar = {
-            LargeTopAppBar(
-                title = { Text(state.dayName.ifEmpty { stringResource(R.string.day_title_fallback) }) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
+            GgymScreenHeader(
+                title = state.dayName.ifEmpty { stringResource(R.string.day_title_fallback) },
+                subtitle = state.routineName.takeIf { it.isNotEmpty() },
+                onBack = onBack,
             )
         },
         floatingActionButton = {
             if (!state.isMissing && !state.isLoading) {
-                ExtendedFloatingActionButton(
+                GgymFab(
+                    text = stringResource(R.string.day_add_exercise),
                     onClick = onAddExercise,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text(stringResource(R.string.day_add_exercise)) },
                 )
             }
         },
-        contentWindowInsets = WindowInsets(0),
     ) { padding ->
         when {
             state.isLoading -> Unit
@@ -117,16 +124,16 @@ fun DayDetailScreen(
                 modifier = Modifier.padding(padding),
             )
 
-            // The start container sits above the slots in every case, so an empty day shows it
+            // The start plate sits above the slots in every case, so an empty day shows it
             // disabled rather than hiding the one thing this screen is for.
             else -> Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-                StartWorkoutCard(
+                StartWorkoutPlate(
                     exerciseCount = state.slots.size,
                     setCount = state.plannedSetCount,
                     onStart = viewModel::startWorkout,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
+                        .padding(start = 16.dp, top = 0.dp, end = 16.dp, bottom = 4.dp),
                 )
 
                 if (state.slots.isEmpty()) {
@@ -140,7 +147,7 @@ fun DayDetailScreen(
                     LazyColumn(
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         itemsIndexed(state.slots, key = { _, slot -> slot.id }) { index, slot ->
                             SlotRow(
@@ -212,36 +219,53 @@ fun DayDetailScreen(
 }
 
 /**
- * "Start workout": the day's shape above the list, so the decision to train is one tap away from
- * the plan. Disabled while nothing is planned, because a workout with no exercises is not a workout.
+ * "Start workout" on the dark plate: the day's shape and one tap. Disabled while nothing is
+ * planned, because a workout with no exercises is not a workout.
  */
 @Composable
-private fun StartWorkoutCard(
+private fun StartWorkoutPlate(
     exerciseCount: Int,
     setCount: Int,
     onStart: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val enabled = exerciseCount > 0
     val exercises = pluralStringResource(R.plurals.day_start_exercises, exerciseCount, exerciseCount)
     val sets = pluralStringResource(R.plurals.day_start_sets, setCount, setCount)
+    val shape = RoundedCornerShape(20.dp)
 
-    Card(
-        onClick = onStart,
-        enabled = exerciseCount > 0,
-        shape = MaterialTheme.shapes.extraLarge,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
-        modifier = modifier,
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .background(GgymHeroColors.InProgress)
+            .border(1.dp, GgymHeroColors.InProgressBorder, shape)
+            .clickable(enabled = enabled, role = Role.Button, onClick = onStart)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = stringResource(R.string.day_start_label),
-                style = MaterialTheme.typography.headlineSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                style = MaterialTheme.typography.titleLarge,
+                color = GgymHeroColors.Content,
             )
             Text(
                 text = stringResource(R.string.day_start_shape, exercises, sets),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
+                style = MaterialTheme.typography.bodySmall,
+                color = GgymHeroColors.Muted,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(if (enabled) MaterialTheme.colorScheme.primary else GgymHeroColors.Button),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Filled.PlayArrow,
+                contentDescription = null,
+                tint = if (enabled) MaterialTheme.colorScheme.onPrimary else GgymHeroColors.Muted,
             )
         }
     }
@@ -259,13 +283,13 @@ private fun SlotRow(
 ) {
     val locale = activeLocale()
 
-    Card(
+    Surface(
         onClick = onEdit,
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        shape = GgymCardShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Row(
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, end = 8.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 4.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -273,36 +297,31 @@ private fun SlotRow(
                 Row {
                     Text(
                         text = stringResource(R.string.slot_target, slot.targetSets, slot.targetReps),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = stringResource(R.string.slot_rest, slot.restSeconds),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             }
             Column(horizontalAlignment = Alignment.End) {
                 slot.weightKg?.let { weight ->
-                    Text(
+                    GgymPill(
                         text = stringResource(R.string.weight_kg, KgFormat.formatNumber(weight, locale)),
-                        style = GgymHeroWeight,
-                        color = MaterialTheme.colorScheme.primary,
+                        tone = PillTone.Lime,
                     )
                     if (!slot.hasOwnWeight) {
                         Text(
                             text = stringResource(R.string.slot_weight_inherited),
-                            style = MaterialTheme.typography.labelSmall,
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                } ?: Text(
-                    text = stringResource(R.string.weight_unknown),
-                    style = GgymHeroWeight,
-                    color = MaterialTheme.colorScheme.outline,
-                )
+                } ?: GgymPill(text = stringResource(R.string.weight_unknown), tone = PillTone.Ghost)
             }
             RowMenu(
                 actions = listOf(

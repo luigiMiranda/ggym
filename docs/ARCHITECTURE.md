@@ -306,19 +306,28 @@ Two rules are enforced by tests rather than by discipline:
    ratios from the real `ColorScheme` values, so a future palette tweak that makes text
    unreadable fails the build.
 
+The UI follows an approved screen preview that is the layout contract for every screen. Its
+tokens live once, in `ui/common/BrandUi.kt` and `ui/theme/`: 27sp screen titles, uppercase 11.5sp
+section labels, 12sp pills, 20dp cards, 28dp hero plates, and a custom navigation bar whose
+selected tab is a lime pill around both the icon and the label. The hero plate
+(`GgymHeroColors`, `LocalGgymDarkTheme`) is near-black in **both** colour schemes — chartreuse on
+the off-white page would be ~1.3:1 — which is what lets the working weight stay the loudest thing
+on screen in light mode too.
+
 The expressive checklist the UI is held to:
 
 - `MaterialExpressiveTheme` with `MotionScheme.expressive()`, and every animation names which
   scheme it is: **spatial** (a little overshoot, so the eye follows it) for things that have a
-  place — pager swipes, the set chip's corner and width as a set is completed, the rest banner
-  entering and leaving, the page dots — and **effects** (fast, damped) for colours and value
-  changes. Destinations cross-fade on purpose: the tabs have no left-to-right order, so a
-  direction would be invented.
+  place — pager swipes, a set row's corner and tint as it is performed, the rest banner entering
+  and leaving, the page dots — and **effects** (fast, damped) for colours and value changes.
+  Destinations cross-fade on purpose: the tabs have no left-to-right order, so a direction would
+  be invented.
 - heavy display weights for hero data (working weight, rest countdown), with tabular figures so
   digits do not reflow while typing;
 - deliberately mixed shapes: soft containers, squarer controls, pill actions, and shape used as
-  *state* — a set chip is a squarer control while it is still a plan and rounds into a pill once
-  it has been performed, which is an animated radius because a `Shape` cannot be interpolated;
+  *state* — a set row is a squarer, tinted control while it is still a plan and rounds into a softer
+  shape once it has been performed, which is an animated radius because a `Shape` cannot be
+  interpolated;
 - tonal containment with `surfaceContainerHigh` / `surfaceContainerHighest` to group related sets
   and cards;
 - light / dark / system theming, plus optional wallpaper colours (Material You) as an opt-in

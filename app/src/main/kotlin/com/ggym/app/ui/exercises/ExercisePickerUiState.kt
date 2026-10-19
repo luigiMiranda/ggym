@@ -1,9 +1,19 @@
 package com.ggym.app.ui.exercises
 
-/** One dictionary entry, as the picker lists it. */
+import com.ggym.app.domain.model.Exercise
+
+/**
+ * One dictionary entry, as the picker lists it.
+ *
+ * The weight and the rest time ride along because the suggestion row is where the user recognises
+ * an exercise they already use: the name alone cannot distinguish "Bench Press" at 82.5 kg from the
+ * one they have not touched since March.
+ */
 data class ExerciseRow(
     val id: Long,
     val name: String,
+    val weightKg: Double? = null,
+    val restSeconds: Int = Exercise.DEFAULT_REST_SECONDS,
 )
 
 /** The exercise picker: search the dictionary, reuse an entry, or create a new one by name. */

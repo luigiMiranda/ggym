@@ -6,6 +6,8 @@ import androidx.compose.material3.MaterialExpressiveTheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalContext
 import com.ggym.app.data.prefs.ThemeMode
 import com.ggym.app.data.prefs.ThemeSettings
@@ -36,14 +38,25 @@ fun GgymTheme(
         else -> GgymLightColorScheme
     }
 
-    MaterialExpressiveTheme(
-        colorScheme = colorScheme,
-        motionScheme = GgymMotionScheme,
-        typography = GgymTypography,
-        shapes = GgymShapes,
-        content = content,
-    )
+    CompositionLocalProvider(LocalGgymDarkTheme provides darkTheme) {
+        MaterialExpressiveTheme(
+            colorScheme = colorScheme,
+            motionScheme = GgymMotionScheme,
+            typography = GgymTypography,
+            shapes = GgymShapes,
+            content = content,
+        )
+    }
 }
+
+/**
+ * Whether the resolved theme is dark.
+ *
+ * The hero card is dark **in both schemes** (the design keeps chartreuse as the loudest colour on a
+ * near-black plate, even on an off-white page), so a component that draws it needs the resolved
+ * scheme rather than the colours it is surrounded by.
+ */
+val LocalGgymDarkTheme = staticCompositionLocalOf { true }
 
 /**
  * Resolves the effective light/dark choice. Shared with `MainActivity` so the system bar

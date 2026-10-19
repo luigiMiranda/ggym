@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Two intentional patterns that lint cannot model, suppressed here (with reasons) rather than
+  Three intentional patterns that lint cannot model, suppressed here (with reasons) rather than
   left as permanent noise in every build log.
 -->
 <lint>
@@ -18,4 +18,13 @@
       redundant mechanism for the same "data never leaves the device" guarantee.
     -->
     <issue id="DataExtractionRules" severity="ignore" />
+
+    <!--
+      Dependency currency is a reviewed decision, not a build property: material3 is pinned to
+      1.5.0-beta01 on purpose, KSP is standalone, and the versions in `libs.versions.toml` were
+      chosen against AGP 9. The detector decides "newer" by querying Maven over the network, so a
+      connected build warns and an offline one does not — a gate that changes with connectivity is
+      not a gate. A version moves when a decision-log row moves it.
+    -->
+    <issue id="NewerVersionAvailable" severity="ignore" />
 </lint>

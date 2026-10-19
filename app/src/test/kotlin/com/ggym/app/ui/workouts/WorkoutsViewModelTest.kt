@@ -65,7 +65,10 @@ class WorkoutsViewModelTest : ViewModelTest() {
         viewModel.uiState.test {
             val state = awaitState { it.routines.isNotEmpty() }
 
-            assertEquals(listOf(RoutineCard(routineId, "Push Day", dayCount = 1, exerciseCount = 1)), state.routines)
+            assertEquals(
+                listOf(RoutineCard(routineId, "Push Day", dayCount = 1, exerciseCount = 1, setCount = 4)),
+                state.routines,
+            )
 
             cancelAndIgnoreRemainingEvents()
         }
@@ -173,7 +176,14 @@ class WorkoutsViewModelTest : ViewModelTest() {
             val state = awaitState { it.resume != null }
 
             assertEquals(
-                ResumeCard(started.sessionId, dayName = "Push A", completedSets = 0, totalSets = 3, elapsedMillis = 23 * 60 * 1_000L),
+                ResumeCard(
+                    started.sessionId,
+                    dayName = "Push A",
+                    completedSets = 0,
+                    totalSets = 3,
+                    elapsedMillis = 23 * 60 * 1_000L,
+                    exerciseName = "Bench Press",
+                ),
                 state.resume,
             )
 

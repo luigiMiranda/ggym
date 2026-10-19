@@ -7,12 +7,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -29,6 +30,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ggym.app.R
+import com.ggym.app.ui.common.GgymPrimaryButton
 import com.ggym.app.ui.common.WeightField
 
 /**
@@ -91,33 +93,30 @@ fun SlotEditorSheet(
         ) {
             Text(state.exerciseName, style = MaterialTheme.typography.headlineSmall)
 
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                EditorField(
                     value = state.sets,
                     onValueChange = viewModel::setSets,
-                    label = { Text(stringResource(R.string.slot_field_sets)) },
-                    singleLine = true,
+                    label = stringResource(R.string.slot_field_sets),
                     isError = state.error == SlotEditorError.SetsTooLow,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                     modifier = Modifier.weight(1f),
                 )
-                OutlinedTextField(
+                EditorField(
                     value = state.reps,
                     onValueChange = viewModel::setReps,
-                    label = { Text(stringResource(R.string.slot_field_reps)) },
-                    singleLine = true,
+                    label = stringResource(R.string.slot_field_reps),
                     isError = state.error == SlotEditorError.RepsBlank,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text, imeAction = ImeAction.Next),
                     modifier = Modifier.weight(1f),
                 )
             }
 
-            OutlinedTextField(
+            EditorField(
                 value = state.restSeconds,
                 onValueChange = viewModel::setRestSeconds,
-                label = { Text(stringResource(R.string.slot_field_rest)) },
-                suffix = { Text(stringResource(R.string.unit_seconds)) },
-                singleLine = true,
+                label = stringResource(R.string.slot_field_rest),
+                suffix = stringResource(R.string.unit_seconds),
                 isError = state.error == SlotEditorError.RestInvalid,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                 modifier = Modifier.fillMaxWidth(),
@@ -143,12 +142,44 @@ fun SlotEditorSheet(
                         color = MaterialTheme.colorScheme.error,
                     )
                 }
-                Button(onClick = viewModel::save, enabled = !state.isLoading) {
-                    Text(stringResource(R.string.action_save))
-                }
+                GgymPrimaryButton(
+                    text = stringResource(R.string.action_save),
+                    onClick = viewModel::save,
+                    enabled = !state.isLoading,
+                )
             }
         }
     }
+}
+
+/** The sheet's one field shape: a filled card with a label, a suffix and room for the error. */
+@Composable
+private fun EditorField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    suffix: String? = null,
+    isError: Boolean = false,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
+        suffix = suffix?.let { { Text(it) } },
+        singleLine = true,
+        isError = isError,
+        keyboardOptions = keyboardOptions,
+        shape = RoundedCornerShape(18.dp),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+            focusedBorderColor = MaterialTheme.colorScheme.primary,
+            unfocusedBorderColor = androidx.compose.ui.graphics.Color.Transparent,
+        ),
+        modifier = modifier,
+    )
 }
 
 @Composable

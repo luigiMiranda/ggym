@@ -94,11 +94,17 @@ class GgymNavHostTest {
         seed()
         openWorkout()
 
-        // The footer's own action opens the same sheet as the menu's; one button, so the tap is
-        // unambiguous even with the popup's copy of the label in the tree.
-        compose.onNodeWithText(context.getString(R.string.workout_finish)).performClick()
+        // The header's "Finish" opens the sheet; the sheet's own action is the one that saves.
+        compose.onNodeWithText(context.getString(R.string.workout_finish_short)).performClick()
         waitForText(context.getString(R.string.workout_finish_title))
         compose.onNodeWithText(context.getString(R.string.workout_finish_confirm)).performClick()
+
+        // The finish is a view-model write: idle the looper until the draft is actually gone, rather
+        // than racing the assertion against a coroutine (the workout's own header says "Push Day"
+        // too, so waiting for that text proves nothing).
+        awaitTrue("the workout was never saved") {
+            runBlocking { container.workoutHistoryRepository.observeDraft().first() } == null
+        }
 
         // The workout ended: the screen must leave, not come back restored with its bottom bar gone.
         waitForText("Push Day")

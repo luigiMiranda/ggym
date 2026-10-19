@@ -107,7 +107,7 @@ class ActiveWorkoutScreenTest : RepositoryTest() {
 
         // Tapping the card opens the focused page on that exercise.
         compose.onNodeWithText("Bench Press").performClick()
-        waitForText("Exercise 1 of 2")
+        waitForText("EXERCISE 1 OF 2")
         compose.onNodeWithText("80").assertExists()
 
         // The hero is the field: 80 goes to 85 (a 2.5 step twice, the plate pair the buttons are for).
@@ -150,7 +150,7 @@ class ActiveWorkoutScreenTest : RepositoryTest() {
 
         waitForText("Bench Press")
         compose.onNodeWithText("Bench Press").performClick()
-        waitForText("Exercise 1 of 2")
+        waitForText("EXERCISE 1 OF 2")
 
         val before = runBlocking { sets(0).map { it.id } }
 
@@ -203,7 +203,7 @@ class ActiveWorkoutScreenTest : RepositoryTest() {
 
         waitForText("Bench Press")
         compose.onNodeWithText("Bench Press").performClick()
-        waitForText("Exercise 1 of 2")
+        waitForText("EXERCISE 1 OF 2")
 
         // Focused → overview, and the workout is still running.
         compose.runOnIdle { back!!.onBackPressed() }
@@ -222,7 +222,7 @@ class ActiveWorkoutScreenTest : RepositoryTest() {
         show()
         waitForText("Bench Press")
 
-        compose.onNodeWithText(context.getString(R.string.workout_finish)).performClick()
+        compose.onNodeWithText(context.getString(R.string.workout_finish_short)).performClick()
         waitForText(context.getString(R.string.workout_finish_title))
         compose.onNodeWithText(context.getString(R.string.workout_finish_confirm)).performClick()
 

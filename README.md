@@ -18,25 +18,27 @@ rather than a promise in a policy document.
 
 ## Status
 
-Early. The foundation is in place:
+The workout core is implemented and tested:
 
-- ✅ Project scaffold: single-module Kotlin/Compose app, Room + DataStore planned and pinned
+- ✅ Project scaffold: single-module Kotlin/Compose app, Room + DataStore
 - ✅ Brand theme: Material 3 **Expressive** (`MaterialExpressiveTheme`, `MotionScheme.expressive()`),
   light / dark / system, optional wallpaper colours (off by default)
-- ✅ Four-tab shell: Workouts · Calendar · Stats · Settings, with a working Appearance section
+- ✅ Four-tab shell: Workouts · Calendar · Stats · Settings, with the pill navigation bar and a
+  working Appearance section
 - ✅ App icon: adaptive + monochrome, transcribed from `artwork/ggym.svg`
+- ✅ Routine management: routines, training days, exercises, an auto-completing dictionary, and a
+  working weight per routine slot that remembers what you actually lifted
+- ✅ Active workout: overview and a swipeable focused view with the working weight as the hero,
+  set completion, add/remove sets, finish/discard, and a draft that survives a process death
+- ✅ Background rest timer: foreground service, notification with ±15 s / skip, an exact-alarm
+  backstop, and an alert that ducks your music instead of stopping it
 - ✅ Tests and lint in CI-ready shape (`./gradlew :app:testDebugUnitTest :app:lintDebug`)
 
-Still to come — the parts that make it useful:
+Still to come:
 
-- ⬜ Routine management: routines, training days, exercises, with an auto-completing exercise
-  dictionary that remembers the last weight you lifted for each movement
-- ⬜ Active workout: overview and a focused, swipeable view with the working weight as the hero
-- ⬜ Background rest timer: foreground service, notification with ±15s / skip, sound that ducks
-  your music instead of stopping it
 - ⬜ History calendar: monthly grid with a dot per workout, day inspection, edit and delete
 - ⬜ Body-weight log and charts: attendance, body-weight trend, per-exercise progression
-- ⬜ JSON backup export/import and a signed release APK
+- ⬜ JSON backup export/import UI, Italian, and a signed release APK
 
 ## Design principles
 
@@ -64,7 +66,8 @@ On a machine without an Android SDK yet, `scripts/bootstrap-toolchain.sh` instal
 the Android command-line tools and the required SDK packages under `$HOME` — no root access needed —
 and `scripts/env.sh` exports the environment for the current shell.
 
-The app declares `minSdk 26`, `targetSdk 37`, and needs no special permissions.
+The app declares `minSdk 26` and `targetSdk 37`, and requests no network permission. The
+notification permission is asked once, when the rest timer is first needed.
 
 ## Technology
 

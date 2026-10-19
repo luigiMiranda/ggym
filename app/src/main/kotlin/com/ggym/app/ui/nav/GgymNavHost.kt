@@ -3,14 +3,9 @@ package com.ggym.app.ui.nav
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -65,33 +60,13 @@ fun GgymNavHost(
     }
 
     Scaffold(
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             if (tab != null) {
-                NavigationBar {
-                    Destination.entries.forEach { destination ->
-                        val selected = destination == tab
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = { navController.navigateToTab(destination) },
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) {
-                                        destination.selectedIcon
-                                    } else {
-                                        destination.unselectedIcon
-                                    },
-                                    contentDescription = null,
-                                )
-                            },
-                            label = { Text(stringResource(destination.labelRes)) },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primary,
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        )
-                    }
-                }
+                GgymNavigationBar(
+                    selected = tab,
+                    onSelect = { destination -> navController.navigateToTab(destination) },
+                )
             }
         },
     ) { innerPadding ->

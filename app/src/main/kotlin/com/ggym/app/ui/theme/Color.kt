@@ -29,6 +29,42 @@ object GgymBrand {
     val Olive = Color(0xFF4A5D00)
 }
 
+/**
+ * The hero plate: the near-black card the weight and the countdown live on.
+ *
+ * It stays dark in the light scheme by design — an off-white page would force chartreuse to
+ * disappear (it is ~1.3:1 on white), and the hero number is the one thing on the screen that must
+ * never be quiet. The two surface values keep the plate slightly green-tinted in light mode so it
+ * sits in the olive palette rather than looking like a hole in the page.
+ */
+object GgymHeroColors {
+    val SurfaceDark = Color(0xFF05060A)
+    val SurfaceLight = Color(0xFF101208)
+    val BorderDark = Color(0xFF1B1F14)
+    val BorderLight = Color(0xFF1E2410)
+
+    /** Body text on the plate: the dark scheme's onSurface, readable on both plates. */
+    val Content = Color(0xFFE6E7E4)
+
+    /** Labels and supporting lines on the plate. */
+    val Muted = Color(0xFF8A8F7F)
+
+    /** The number itself. */
+    val Accent = GgymBrand.ChartreuseHero
+
+    /** The "+2.5" button: a lime control on the dark plate. */
+    val AccentButton = GgymBrand.Chartreuse
+    val OnAccentButton = Color(0xFF1A2000)
+
+    /** A neutral control on the plate ("-2.5"). */
+    val Button = Color(0xFF24272C)
+    val OnButton = Color(0xFFE6E7E4)
+
+    /** The in-progress resume card on Workouts. */
+    val InProgress = Color(0xFF12200A)
+    val InProgressBorder = Color(0xFF3A4A00)
+}
+
 val GgymDarkColorScheme = darkColorScheme(
     primary = Color(0xFFD5FF00),
     onPrimary = Color(0xFF1A2000),

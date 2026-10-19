@@ -48,7 +48,14 @@ class ExercisePickerViewModel(
         pendingDelete,
         blockedDeleteRoutines,
     ) { text, results, pendingDelete, blocked ->
-        val rows = results.map { ExerciseRow(id = it.id, name = it.name) }
+        val rows = results.map {
+            ExerciseRow(
+                id = it.id,
+                name = it.name,
+                weightKg = it.currentWorkingWeight,
+                restSeconds = it.defaultRestSeconds,
+            )
+        }
         val typed = text.trim()
 
         ExercisePickerUiState(

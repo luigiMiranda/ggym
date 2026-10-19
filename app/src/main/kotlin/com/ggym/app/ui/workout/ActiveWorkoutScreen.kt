@@ -5,6 +5,8 @@ package com.ggym.app.ui.workout
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
@@ -12,6 +14,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,9 +24,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
@@ -32,40 +36,32 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.FitnessCenter
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -73,12 +69,18 @@ import com.ggym.app.R
 import com.ggym.app.ui.common.ConfirmDeleteDialog
 import com.ggym.app.ui.common.DurationFormat
 import com.ggym.app.ui.common.EmptyState
+import com.ggym.app.ui.common.GgymHeroCard
+import com.ggym.app.ui.common.GgymHeroLabel
+import com.ggym.app.ui.common.GgymPill
+import com.ggym.app.ui.common.GgymPrimaryButton
+import com.ggym.app.ui.common.GgymScreenHeader
+import com.ggym.app.ui.common.GgymStepper
 import com.ggym.app.ui.common.KgFormat
-import com.ggym.app.ui.common.RowMenu
-import com.ggym.app.ui.common.RowMenuAction
+import com.ggym.app.ui.common.PillTone
 import com.ggym.app.ui.common.activeLocale
 import com.ggym.app.ui.common.durationSummary
 import com.ggym.app.ui.common.notificationPermissionGranted
+import com.ggym.app.ui.theme.GgymHeroColors
 import com.ggym.app.ui.theme.GgymHeroWeight
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -113,7 +115,7 @@ fun ActiveWorkoutScreen(
     // Settings says what is missing. So the answer is not read here.
     val notificationPrompt = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     val promptDue by viewModel.isNotificationPromptDue.collectAsStateWithLifecycle(initialValue = false)
-    val context = LocalContext.current
+    val context = androidx.compose.ui.platform.LocalContext.current
     LaunchedEffect(promptDue) {
         if (promptDue) {
             viewModel.notificationPromptShown()
@@ -130,14 +132,8 @@ fun ActiveWorkoutScreen(
     }
 
     Scaffold(
-        topBar = {
-            WorkoutTopBar(
-                state = state,
-                locale = locale,
-                onFinish = viewModel::askFinish,
-                onDiscard = viewModel::askDiscard,
-            )
-        },
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets(0),
         bottomBar = {
             Column {
                 // The banner is the rest starting or ending — a change of place, so it enters and
@@ -167,42 +163,43 @@ fun ActiveWorkoutScreen(
                         )
                     }
                 }
-                if (!state.isLoading && !state.isMissing && state.focused == null) {
-                    WorkoutFooter(state = state, onFinish = viewModel::askFinish)
+
+                if (!state.isLoading && !state.isMissing && state.focused != null) {
+                    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
+                        val focused = state.focused
+                        WorkoutAction(
+                            action = focused?.action ?: FocusedAction.CompleteSet,
+                            enabled = focused == null ||
+                                focused.action != FocusedAction.CompleteSet ||
+                                focused.hero.canComplete,
+                            onClick = { focused?.let { viewModel.runAction(it.action) } },
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                        )
+                    }
                 }
             }
         },
-        contentWindowInsets = WindowInsets(0),
     ) { padding ->
-        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (!state.isLoading && !state.isMissing) {
-                ModePicker(
-                    isFocused = state.focused != null,
-                    onOverview = viewModel::showOverview,
-                    onFocused = {
-                        viewModel.focusExercise(state.focused?.index ?: state.firstOpenExercise())
-                    },
-                )
-            }
+        when {
+            // Nothing is shown until the first read lands, so the empty state never flashes.
+            state.isLoading -> Unit
 
-            when {
-                // Nothing is shown until the first read lands, so the empty state never flashes.
-                state.isLoading -> Unit
+            state.isMissing -> WorkoutGone(onBack = onWorkoutEnded, modifier = Modifier.padding(padding))
 
-                state.isMissing -> WorkoutGone(onBack = onWorkoutEnded)
+            state.focused != null -> WorkoutFocused(
+                state = state,
+                locale = locale,
+                viewModel = viewModel,
+                modifier = Modifier.padding(padding),
+            )
 
-                state.focused != null -> WorkoutFocused(
-                    state = state,
-                    locale = locale,
-                    viewModel = viewModel,
-                )
-
-                else -> WorkoutOverview(
-                    state = state,
-                    locale = locale,
-                    onOpenExercise = viewModel::focusExercise,
-                )
-            }
+            else -> WorkoutOverview(
+                state = state,
+                locale = locale,
+                onOpenExercise = viewModel::focusExercise,
+                onFinish = viewModel::askFinish,
+                modifier = Modifier.padding(padding),
+            )
         }
     }
 
@@ -226,92 +223,73 @@ fun ActiveWorkoutScreen(
     }
 }
 
-/** The day, how long it has been running, and the two ways out. */
-@Composable
-private fun WorkoutTopBar(
-    state: ActiveWorkoutUiState,
-    locale: Locale,
-    onFinish: () -> Unit,
-    onDiscard: () -> Unit,
-) {
-    TopAppBar(
-        title = {
-            Column {
-                Text(
-                    text = state.dayName.ifEmpty { stringResource(R.string.workout_title_fallback) },
-                    style = MaterialTheme.typography.titleLarge,
-                    maxLines = 1,
-                )
-                if (state.routineName.isNotEmpty()) {
-                    Text(
-                        text = state.routineName,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
-            }
-        },
-        actions = {
-            Text(
-                text = DurationFormat.clock(state.elapsedMillis, locale),
-                style = MaterialTheme.typography.titleLarge.copy(fontFeatureSettings = "tnum"),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(horizontal = 8.dp),
-            )
-            RowMenu(
-                actions = listOf(
-                    RowMenuAction(stringResource(R.string.workout_finish), Icons.Filled.Check, onClick = onFinish),
-                    RowMenuAction(stringResource(R.string.workout_discard), Icons.Filled.Delete, onClick = onDiscard),
-                ),
-            )
-        },
-    )
-}
-
-/** The two modes of the one destination: the whole workout, or one exercise at a time. */
-@Composable
-private fun ModePicker(
-    isFocused: Boolean,
-    onOverview: () -> Unit,
-    onFocused: () -> Unit,
-) {
-    SingleChoiceSegmentedButtonRow(
-        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp),
-    ) {
-        SegmentedButton(
-            selected = !isFocused,
-            onClick = onOverview,
-            shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
-            label = { Text(stringResource(R.string.workout_mode_overview)) },
-        )
-        SegmentedButton(
-            selected = isFocused,
-            onClick = onFocused,
-            shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
-            label = { Text(stringResource(R.string.workout_mode_focused)) },
-        )
-    }
-}
-
 /** The workout as a list: what is planned, what has been done, and the weight to load next. */
 @Composable
 private fun WorkoutOverview(
     state: ActiveWorkoutUiState,
     locale: Locale,
     onOpenExercise: (Int) -> Unit,
+    onFinish: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        itemsIndexed(state.exercises, key = { _, card -> card.exerciseLogId }) { index, card ->
-            ExerciseCardRow(
-                card = card,
-                locale = locale,
-                onClick = { onOpenExercise(index) },
+    Column(modifier = modifier.fillMaxSize()) {
+        GgymScreenHeader(
+            title = state.dayName.ifEmpty { stringResource(R.string.workout_title_fallback) },
+            subtitle = state.routineName.takeIf { it.isNotEmpty() },
+            trailing = {
+                GgymPill(
+                    text = stringResource(R.string.workout_finish_short),
+                    tone = PillTone.Ghost,
+                    onClick = onFinish,
+                )
+            },
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(
+                    R.string.workout_session_label,
+                    DurationFormat.clock(state.elapsedMillis, locale),
+                ).uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp, letterSpacing = 1.1.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = stringResource(
+                    R.string.workout_overview_sets,
+                    state.completedSets,
+                    pluralStringResource(R.plurals.workout_sets, state.totalSets, state.totalSets),
+                ),
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.5.sp, letterSpacing = 1.1.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        LinearProgressIndicator(
+            progress = {
+                if (state.totalSets == 0) 0f else state.completedSets.toFloat() / state.totalSets
+            },
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 8.dp).height(4.dp),
+            color = MaterialTheme.colorScheme.primary,
+            trackColor = MaterialTheme.colorScheme.surfaceVariant,
+            drawStopIndicator = {},
+        )
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            itemsIndexed(state.exercises, key = { _, card -> card.exerciseLogId }) { index, card ->
+                ExerciseCardRow(
+                    card = card,
+                    locale = locale,
+                    onClick = { onOpenExercise(index) },
+                )
+            }
         }
     }
 }
@@ -322,88 +300,48 @@ private fun ExerciseCardRow(
     locale: Locale,
     onClick: () -> Unit,
 ) {
-    // "Started" earns a tonal step up: a glance down the list has to say what is left to do.
-    val container = if (card.isStarted) {
-        MaterialTheme.colorScheme.secondaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-
-    Card(
+    // A started exercise earns the brighter container: a glance down the list has to say what is
+    // left to do. The weight pill is lime for the same reason.
+    Surface(
         onClick = onClick,
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = container),
+        shape = com.ggym.app.ui.common.GgymCardShape,
+        color = if (card.isStarted) {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 16.dp),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(card.exerciseName, style = MaterialTheme.typography.titleLarge)
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(card.exerciseName, style = MaterialTheme.typography.titleMedium)
                     Text(
                         text = stringResource(
                             R.string.workout_overview_sets,
                             card.completedSets,
                             pluralStringResource(R.plurals.workout_sets, card.totalSets, card.totalSets),
                         ),
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                Text(
+                GgymPill(
                     text = card.workingWeightKg?.let { weight ->
                         stringResource(R.string.weight_kg, KgFormat.formatNumber(weight, locale))
                     } ?: stringResource(R.string.weight_unknown),
-                    style = GgymHeroWeight,
-                    color = if (card.isStarted) {
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                    } else {
-                        MaterialTheme.colorScheme.primary
-                    },
+                    tone = if (card.isStarted) PillTone.Lime else PillTone.Ghost,
                 )
             }
-            if (card.totalSets > 0) {
-                LinearProgressIndicator(
-                    progress = { card.progress },
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.primary,
-                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                )
-            }
-        }
-    }
-}
-
-/** What the workout has done so far, and the way to end it. */
-@Composable
-private fun WorkoutFooter(
-    state: ActiveWorkoutUiState,
-    onFinish: () -> Unit,
-) {
-    Surface(color = MaterialTheme.colorScheme.surfaceContainer) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(
-                        R.string.workout_progress,
-                        state.completedSets,
-                        pluralStringResource(R.plurals.workout_sets, state.totalSets, state.totalSets),
-                    ),
-                    style = GgymHeroWeight,
-                )
-                Text(
-                    text = durationSummary(state.elapsedMillis),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            FilledTonalButton(onClick = onFinish) {
-                Text(stringResource(R.string.workout_finish))
-            }
+            LinearProgressIndicator(
+                progress = { card.progress },
+                modifier = Modifier.fillMaxWidth().height(4.dp),
+                color = MaterialTheme.colorScheme.primary,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                drawStopIndicator = {},
+            )
         }
     }
 }
@@ -414,6 +352,7 @@ private fun WorkoutFocused(
     state: ActiveWorkoutUiState,
     locale: Locale,
     viewModel: ActiveWorkoutViewModel,
+    modifier: Modifier = Modifier,
 ) {
     val focused = state.focused ?: return
     val scope = rememberCoroutineScope()
@@ -423,22 +362,60 @@ private fun WorkoutFocused(
     )
 
     // A swipe is a selection: the pager's page and the ViewModel's focus are kept the same thing,
-    // so the chips, the hero and the action always belong to the exercise on screen.
+    // so the rows, the hero and the action always belong to the exercise on screen.
     LaunchedEffect(pagerState) {
         snapshotFlow { pagerState.currentPage }.collect { page -> viewModel.focusExercise(page) }
     }
 
-    Column(modifier = Modifier.fillMaxSize()) {
+    // The bottom action can say "Next exercise": the ViewModel moves first, and the pager follows
+    // it (rather than the other way round, which is what a swipe does).
+    LaunchedEffect(focused.index) {
+        if (pagerState.currentPage != focused.index) pagerState.animateScrollToPage(focused.index)
+    }
+
+    Column(modifier = modifier.fillMaxSize()) {
+        // The previous and next exercise are the page's own navigation, as in the preview: at the
+        // first one, "Overview" is what sits to the left, so the way back is never a hidden gesture.
         Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 4.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            val previous = state.exercises.getOrNull(focused.index - 1)
+            val next = state.exercises.getOrNull(focused.index + 1)
+
             Text(
-                text = stringResource(R.string.workout_exercise_of, focused.index + 1, state.exercises.size),
-                style = MaterialTheme.typography.titleMedium,
+                text = "‹ " + (previous?.exerciseName ?: stringResource(R.string.workout_mode_overview)),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(role = Role.Button) {
+                        if (previous == null) viewModel.showOverview()
+                        else scope.launch { pagerState.animateScrollToPage(focused.index - 1) }
+                    },
             )
-            Spacer(Modifier.weight(1f))
-            PageDots(count = state.exercises.size, current = focused.index)
+            if (next != null) {
+                Text(
+                    text = next.exerciseName + " ›",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.End,
+                    modifier = Modifier
+                        .weight(1f)
+                        .clickable(role = Role.Button) {
+                            scope.launch { pagerState.animateScrollToPage(focused.index + 1) }
+                        },
+                )
+            } else {
+                Spacer(Modifier.weight(1f))
+            }
         }
 
         HorizontalPager(
@@ -453,6 +430,7 @@ private fun WorkoutFocused(
 
             ExercisePage(
                 focused = pageView,
+                exerciseCount = state.exercises.size,
                 locale = locale,
                 onWeightChange = viewModel::editWeight,
                 onStepWeight = viewModel::stepWeight,
@@ -460,22 +438,19 @@ private fun WorkoutFocused(
                 onSelectSet = viewModel::selectSet,
                 onRemoveSet = viewModel::removeSet,
                 onAddSet = viewModel::addSet,
-                onAction = { action ->
-                    when (action) {
-                        FocusedAction.CompleteSet -> viewModel.completeSelectedSet()
-                        FocusedAction.AddSet -> viewModel.addSet()
-                        FocusedAction.FinishWorkout -> viewModel.askFinish()
-                        FocusedAction.NextExercise -> scope.launch { pagerState.animateScrollToPage(page + 1) }
-                    }
-                },
+                onStartRest = viewModel::startRest,
             )
         }
+
+        PageDots(count = state.exercises.size, current = focused.index)
     }
+
 }
 
 @Composable
 private fun ExercisePage(
     focused: FocusedExercise,
+    exerciseCount: Int,
     locale: Locale,
     onWeightChange: (String) -> Unit,
     onStepWeight: (Double) -> Unit,
@@ -483,38 +458,78 @@ private fun ExercisePage(
     onSelectSet: (Long) -> Unit,
     onRemoveSet: (Long) -> Unit,
     onAddSet: () -> Unit,
-    onAction: (FocusedAction) -> Unit,
+    onStartRest: () -> Unit,
 ) {
-    Column(modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 8.dp)) {
-        Column(
-            modifier = Modifier.weight(1f).verticalScroll(rememberScrollState()),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        val selectedPosition = focused.sets.firstOrNull { it.id == focused.hero.selectedSetId }?.position
+        val sets = pluralStringResource(R.plurals.workout_sets, focused.sets.size, focused.sets.size)
+
+        GgymHeroCard(modifier = Modifier.fillMaxWidth()) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                GgymHeroLabel(stringResource(R.string.workout_exercise_of, focused.index + 1, exerciseCount))
+                Spacer(Modifier.weight(1f))
+                if (selectedPosition != null) {
+                    GgymPill(
+                        text = stringResource(R.string.workout_set_of, selectedPosition, focused.sets.size),
+                        tone = PillTone.Lime,
+                    )
+                }
+            }
+            Text(
+                text = focused.exerciseName,
+                style = MaterialTheme.typography.titleLarge.copy(fontSize = 20.sp),
+                color = GgymHeroColors.Content,
+                modifier = Modifier.padding(top = 6.dp),
+            )
+            Text(
+                text = stringResource(
+                    R.string.day_start_shape,
+                    sets,
+                    stringResource(R.string.slot_rest, focused.restSeconds),
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = GgymHeroColors.Muted,
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Spacer(Modifier.height(12.dp))
             WeightHero(
                 hero = focused.hero,
                 onWeightChange = onWeightChange,
                 onStep = onStepWeight,
             )
-            RepsStepper(reps = focused.hero.reps, onStep = onStepReps)
-            Text(
-                text = stringResource(R.string.slot_rest, focused.restSeconds),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            GgymStepper(
+                label = stringResource(R.string.slot_field_reps),
+                value = focused.hero.reps.toString(),
+                onDecrease = { onStepReps(-1) },
+                onIncrease = { onStepReps(1) },
+                decreaseLabel = stringResource(R.string.workout_reps_decrease),
+                increaseLabel = stringResource(R.string.workout_reps_increase),
+                modifier = Modifier.weight(1f),
             )
-            SetChipRow(
-                sets = focused.sets,
-                selectedSetId = focused.hero.selectedSetId,
-                locale = locale,
-                onSelect = onSelectSet,
-                onRemove = onRemoveSet,
-                onAddSet = onAddSet,
+            GgymStepper(
+                label = stringResource(R.string.slot_field_rest),
+                value = stringResource(R.string.rest_seconds_short, focused.restSeconds),
+                modifier = Modifier.weight(1f),
             )
         }
-        WorkoutAction(
-            action = focused.action,
-            enabled = focused.action != FocusedAction.CompleteSet || focused.hero.canComplete,
-            onClick = { onAction(focused.action) },
+
+        SetRowList(
+            sets = focused.sets,
+            selectedSetId = focused.hero.selectedSetId,
+            locale = locale,
+            onSelect = onSelectSet,
+            onRemove = onRemoveSet,
+            onAddSet = onAddSet,
+            onStartRest = onStartRest,
         )
     }
 }
@@ -522,7 +537,11 @@ private fun ExercisePage(
 /** Page dots: the shape of the workout, and where in it the user is. */
 @Composable
 private fun PageDots(count: Int, current: Int) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+    ) {
         repeat(count) { index ->
             val active = index == current
             val width by animateDpAsState(
@@ -532,6 +551,7 @@ private fun PageDots(count: Int, current: Int) {
             )
             Box(
                 modifier = Modifier
+                    .padding(horizontal = 3.dp)
                     .size(width = width, height = 8.dp)
                     .clip(CircleShape)
                     .background(
@@ -544,29 +564,21 @@ private fun PageDots(count: Int, current: Int) {
 
 /** The workout ended elsewhere: say so, and offer the way out rather than an empty screen. */
 @Composable
-private fun WorkoutGone(onBack: () -> Unit) {
-    Column(modifier = Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+private fun WorkoutGone(onBack: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
         EmptyState(
             icon = Icons.Outlined.FitnessCenter,
             title = stringResource(R.string.workout_missing_title),
             message = stringResource(R.string.workout_missing_message),
             modifier = Modifier.weight(1f),
         )
-        Button(
+        GgymPrimaryButton(
+            text = stringResource(R.string.workout_back_to_workouts),
             onClick = onBack,
             modifier = Modifier.padding(bottom = 32.dp),
-        ) {
-            Text(stringResource(R.string.workout_back_to_workouts))
-        }
+        )
     }
 }
-
-/**
- * The exercise the "Exercise" mode opens on: the first one that still has work in it, else the
- * first. A workout whose every set is done opens on the last exercise rather than nowhere.
- */
-private fun ActiveWorkoutUiState.firstOpenExercise(): Int =
-    exercises.indexOfFirst { !it.isFinished }.takeIf { it >= 0 } ?: exercises.lastIndex.coerceAtLeast(0)
 
 /**
  * A page's own view of itself, for the moment before the focused state follows the pager. It shows
@@ -595,4 +607,14 @@ private fun WorkoutExerciseCard.asPage(index: Int, locale: Locale): FocusedExerc
         ),
         action = if (sets.isEmpty()) FocusedAction.AddSet else FocusedAction.CompleteSet,
     )
+}
+
+/** What the bottom action does, shared by the bar above it and the screen's own callbacks. */
+private fun ActiveWorkoutViewModel.runAction(action: FocusedAction) {
+    when (action) {
+        FocusedAction.CompleteSet -> completeSelectedSet()
+        FocusedAction.AddSet -> addSet()
+        FocusedAction.FinishWorkout -> askFinish()
+        FocusedAction.NextExercise -> focusNextExercise()
+    }
 }

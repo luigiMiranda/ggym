@@ -3,7 +3,6 @@
 package com.ggym.app.ui.workouts
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -12,22 +11,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -42,12 +36,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ggym.app.R
 import com.ggym.app.ui.common.ConfirmDeleteDialog
 import com.ggym.app.ui.common.EmptyState
+import com.ggym.app.ui.common.GgymCardShape
+import com.ggym.app.ui.common.GgymFab
+import com.ggym.app.ui.common.GgymScreenHeader
+import com.ggym.app.ui.common.GgymSectionLabel
 import com.ggym.app.ui.common.NameInputDialog
 import com.ggym.app.ui.common.RowMenu
 import com.ggym.app.ui.common.RowMenuAction
 
 /**
- * One routine and its training days.
+ * One routine and its training days, presented as the preview's list: a small uppercase section
+ * label, then a card per day with the shape of what is inside it.
  *
  * Days are a list inside a routine, so reordering is done from each row's menu ("Move up" /
  * "Move down") and the ends of the list simply disable the entry that cannot go further.
@@ -62,21 +61,19 @@ fun RoutineDetailScreen(
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     Scaffold(
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentWindowInsets = WindowInsets(0),
         topBar = {
-            LargeTopAppBar(
-                title = { Text(state.routineName.ifEmpty { stringResource(R.string.routine_title_fallback) }) },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(
-                            Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = stringResource(R.string.action_back),
-                        )
-                    }
-                },
-                actions = {
+            GgymScreenHeader(
+                title = state.routineName.ifEmpty { stringResource(R.string.routine_title_fallback) },
+                onBack = onBack,
+                trailing = {
                     if (!state.isMissing && !state.isLoading) {
                         IconButton(onClick = { viewModel.startRenameRoutine(state.routineName) }) {
-                            Icon(Icons.Filled.Edit, contentDescription = stringResource(R.string.routine_rename_title))
+                            Icon(
+                                Icons.Filled.Edit,
+                                contentDescription = stringResource(R.string.routine_rename_title),
+                            )
                         }
                     }
                 },
@@ -84,14 +81,12 @@ fun RoutineDetailScreen(
         },
         floatingActionButton = {
             if (!state.isMissing && !state.isLoading) {
-                ExtendedFloatingActionButton(
+                GgymFab(
+                    text = stringResource(R.string.routine_add_day),
                     onClick = viewModel::startAddDay,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text(stringResource(R.string.routine_add_day)) },
                 )
             }
         },
-        contentWindowInsets = WindowInsets(0),
     ) { padding ->
         when {
             state.isLoading -> Unit
@@ -112,9 +107,15 @@ fun RoutineDetailScreen(
 
             else -> LazyColumn(
                 modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 0.dp, bottom = 96.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
+                item(key = "label") {
+                    GgymSectionLabel(
+                        text = stringResource(R.string.routine_days_section),
+                        modifier = Modifier.padding(top = 4.dp, start = 4.dp, bottom = 2.dp),
+                    )
+                }
                 itemsIndexed(state.days, key = { _, day -> day.id }) { index, day ->
                     DayRow(
                         day = day,
@@ -172,16 +173,19 @@ private fun DayRow(
     onMoveDown: () -> Unit,
     onDelete: () -> Unit,
 ) {
-    Card(
+    Surface(
         onClick = onOpen,
-        shape = MaterialTheme.shapes.large,
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
+        shape = GgymCardShape,
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Row(
-            modifier = Modifier.padding(start = 20.dp, top = 12.dp, end = 8.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 16.dp, top = 14.dp, end = 4.dp, bottom = 14.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            androidx.compose.foundation.layout.Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
                 Text(day.name, style = MaterialTheme.typography.titleMedium)
                 Text(
                     text = pluralStringResource(
@@ -189,7 +193,7 @@ private fun DayRow(
                         day.exerciseCount,
                         day.exerciseCount,
                     ),
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }

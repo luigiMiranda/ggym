@@ -56,14 +56,14 @@
 
     <!-- Routines -->
     <string name="workouts_new_routine">New routine</string>
-    <string name="workouts_resume_label">Workout in progress</string>
-    <string name="workouts_resume_detail">%1$s · %2$s</string>
+    <string name="workouts_in_progress">In progress · %1$s</string>
+    <string name="workouts_resume_action">Resume</string>
     <string name="routine_new_title">New routine</string>
     <string name="routine_rename_title">Rename routine</string>
     <string name="routine_name_label">Routine name</string>
     <string name="routine_delete_title">Delete routine?</string>
     <string name="routine_delete_message">“%1$s” and everything in it will be deleted. Your logged workouts are kept.</string>
-    <string name="routine_summary">%1$s · %2$s</string>
+    <string name="routine_summary_full">%1$s · %2$s · %3$s</string>
     <string name="routine_title_fallback">Routine</string>
     <string name="routine_missing_title">This routine is gone</string>
     <string name="routine_missing_message">It was deleted while you were away. Go back to Workouts and pick another one.</string>
@@ -75,9 +75,14 @@
         <item quantity="one">%1$d exercise</item>
         <item quantity="other">%1$d exercises</item>
     </plurals>
+    <plurals name="routine_set_count">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d sets</item>
+    </plurals>
 
     <!-- Training days -->
     <string name="routine_add_day">Add day</string>
+    <string name="routine_days_section">Training days</string>
     <string name="day_new_title">New training day</string>
     <string name="day_rename_title">Rename day</string>
     <string name="day_name_label">Day name</string>
@@ -109,6 +114,7 @@
     <!-- Exercise slots -->
     <string name="slot_target">%1$d × %2$s</string>
     <string name="slot_rest">%1$d s rest</string>
+    <string name="rest_seconds_short">%1$ds</string>
     <string name="slot_remove">Remove from day</string>
     <string name="slot_delete_title">Remove exercise?</string>
     <string name="slot_delete_message">“%1$s” will be removed from this day. Everything you have already logged stays in your history.</string>
@@ -130,6 +136,8 @@
 
     <!-- Exercise picker -->
     <string name="picker_title">Add exercise</string>
+    <string name="picker_suggested">Suggested</string>
+    <string name="picker_detail">%1$s · %2$s</string>
     <string name="picker_search_label">Search or type a new name</string>
     <string name="picker_create">Create “%1$s”</string>
     <string name="picker_empty">No exercise matches. Type a name to create it.</string>
@@ -169,7 +177,6 @@
     -->
     <string name="workout_title_fallback">Workout</string>
     <string name="workout_mode_overview">Overview</string>
-    <string name="workout_mode_focused">Exercise</string>
     <plurals name="workout_sets">
         <item quantity="one">%1$d set</item>
         <item quantity="other">%1$d sets</item>
@@ -181,6 +188,13 @@
         <item quantity="other">%1$d exercises skipped</item>
     </plurals>
     <string name="workout_finish">Finish workout</string>
+    <string name="workout_finish_short">Finish</string>
+    <string name="workout_session_label">Session %1$s</string>
+    <string name="workout_set_label">Set %1$d</string>
+    <string name="workout_set_of">Set %1$d of %2$d</string>
+    <string name="workout_set_reps_unknown">× —</string>
+    <string name="workout_weight_hint">Tap the number to type a weight</string>
+    <string name="workout_start_rest">Start rest</string>
     <string name="workout_finish_title">Finish workout?</string>
     <string name="workout_finish_confirm">Finish &amp; save</string>
     <string name="workout_finish_detail">%1$s · %2$s</string>
@@ -194,10 +208,9 @@
     <string name="workout_exercise_of">Exercise %1$d of %2$d</string>
     <string name="workout_complete_set">Complete set</string>
     <string name="workout_next_exercise">Next exercise</string>
-    <string name="workout_add_set">Add set</string>
+    <string name="workout_add_set">+ Add set</string>
     <string name="workout_remove_set">Remove set %1$d</string>
     <string name="workout_set_reps">× %1$d</string>
-    <string name="workout_reps_label">reps</string>
     <string name="workout_reps_decrease">One rep fewer</string>
     <string name="workout_reps_increase">One rep more</string>
     <string name="workout_resting">Rest</string>

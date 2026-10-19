@@ -25,6 +25,8 @@ data class DayDetailUiState(
     /** The day (or its routine) is gone, so the screen says so instead of showing an empty day. */
     val isMissing: Boolean = false,
     val dayName: String = "",
+    /** The routine the day belongs to, for the header's supporting line. */
+    val routineName: String = "",
     val slots: List<SlotRow> = emptyList(),
     val pendingDelete: SlotRow? = null,
     /** Set while the resume-or-discard question about a running workout is open. */

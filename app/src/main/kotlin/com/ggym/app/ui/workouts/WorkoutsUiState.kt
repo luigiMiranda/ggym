@@ -9,6 +9,7 @@ data class RoutineCard(
     val name: String,
     val dayCount: Int,
     val exerciseCount: Int,
+    val setCount: Int = 0,
 )
 
 /** The routine list, as the screen renders it. */
@@ -32,7 +33,12 @@ data class ResumeCard(
     val completedSets: Int,
     val totalSets: Int,
     val elapsedMillis: Long,
-)
+    /** The exercise the next tap would land on, for the card's "Push Day · Bench Press" line. */
+    val exerciseName: String? = null,
+) {
+    /** How much of the workout is behind the user, for the card's progress bar. */
+    val progress: Float get() = if (totalSets == 0) 0f else completedSets.toFloat() / totalSets
+}
 
 /**
  * The name dialog, shared by "new routine" and "rename routine": [routineId] is `null` while
@@ -55,6 +61,10 @@ internal fun WorkoutSession.toResumeCard(at: Long): ResumeCard {
         totalSets = sets.size,
         // A draft always carries its start (the domain writes it); a missing one shows no elapsed time.
         elapsedMillis = startedAtMillis?.let { (at - it).coerceAtLeast(0L) } ?: 0L,
+        exerciseName = exercises
+            .firstOrNull { exercise -> exercise.sets.any { set -> !set.isCompleted } }
+            ?.exerciseNameSnapshot
+            ?: exercises.lastOrNull()?.exerciseNameSnapshot,
     )
 }
 
@@ -63,4 +73,5 @@ internal fun Routine.toCard(): RoutineCard = RoutineCard(
     name = name,
     dayCount = days.size,
     exerciseCount = days.sumOf { day -> day.plannedExercises.size },
+    setCount = days.sumOf { day -> day.plannedExercises.sumOf { slot -> slot.targetSets } },
 )

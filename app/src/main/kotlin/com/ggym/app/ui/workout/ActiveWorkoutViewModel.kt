@@ -117,6 +117,14 @@ class ActiveWorkoutViewModel(
         }
     }
 
+    /** The big action at the end of an exercise: the next page, as if the user had swiped. */
+    fun focusNextExercise() {
+        screen.update { current ->
+            val next = (current.focusedIndex ?: return@update current) + 1
+            if (next > uiState.value.exercises.lastIndex) current else current.copy(focusedIndex = next)
+        }
+    }
+
     /** Back to the exercise list. */
     fun showOverview() {
         screen.update { it.withoutEdits().copy(focusedIndex = null) }
@@ -179,6 +187,22 @@ class ActiveWorkoutViewModel(
             // The selection follows the workout: the next unperformed set is the one the hero
             // should point at, which is what a user who just performed one is looking for.
             screen.update { it.withoutEdits().copy(selectedSetId = null) }
+        }
+    }
+
+    /**
+     * "Start rest": the countdown the next tap would otherwise wait for a completed set to begin.
+     *
+     * The preview offers it next to "Add set" because a user who has just walked back from the
+     * water fountain should not have to complete a set to buy themselves two minutes. It writes
+     * nothing: the rest timer is the only state it touches.
+     */
+    fun startRest() {
+        val state = uiState.value
+        val focused = state.focused ?: return
+        val card = state.exercises.getOrNull(focused.index) ?: return
+        viewModelScope.launch {
+            restTimer.startForSet(card.exerciseLogId, card.exerciseName, focused.restSeconds)
         }
     }
 

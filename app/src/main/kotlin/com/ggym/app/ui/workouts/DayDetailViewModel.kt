@@ -66,6 +66,7 @@ class DayDetailViewModel(
         DayDetailUiState(
             isLoading = false,
             dayName = day.dayName,
+            routineName = routine.name,
             slots = day.plannedExercises.map { slot ->
                 SlotRow(
                     id = slot.id,
