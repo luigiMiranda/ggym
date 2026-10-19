@@ -172,12 +172,32 @@ fun GgymNavHost(
                 val sessionId = entry.longArgument(Routes.SESSION_ID)
                 ActiveWorkoutScreen(
                     viewModelFactory = remember(sessionId) { container.activeWorkoutViewModelFactory(sessionId) },
-                    // A finished or discarded workout has no parent to pop to when it was opened
-                    // from the notification, so leaving means going back to the Workouts tab.
-                    onWorkoutEnded = { navController.navigateToTab(Destination.Workouts) },
+                    onWorkoutEnded = navController::returnToWorkouts,
                 )
             }
         }
+    }
+}
+
+/**
+ * Leaving a workout — finished, discarded, or found already over — lands on the Workouts tab with
+ * the workout gone from its stack.
+ *
+ * It cannot go through [navigateToTab]. That pattern saves the tab's back stack on the way out and
+ * restores it on the way in, and the stack a workout is pushed onto *is* the Workouts stack — so
+ * restoring put the user straight back on the dead workout screen, with the bottom bar hidden
+ * because a workout is not a tab: the "Back to workouts" button and every tab appeared dead.
+ * Dropping the saved state and popping the tab's stack to nothing is what makes the way out a way
+ * out.
+ *
+ * The other tabs are untouched, so a routine half-edited in the Workouts tree is gone (it led to a
+ * workout that no longer exists) while the Calendar and Stats keep their own stacks.
+ */
+private fun NavHostController.returnToWorkouts() {
+    clearBackStack(Destination.Workouts.route)
+    navigate(Destination.Workouts.route) {
+        popUpTo(Destination.Workouts.route) { inclusive = true }
+        launchSingleTop = true
     }
 }
 
