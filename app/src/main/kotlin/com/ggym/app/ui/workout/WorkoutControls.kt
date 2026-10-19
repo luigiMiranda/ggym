@@ -4,7 +4,8 @@ package com.ggym.app.ui.workout
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.spring
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -42,8 +44,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -58,6 +62,7 @@ import com.ggym.app.ui.common.KgFormat
 import com.ggym.app.ui.common.WeightInput
 import com.ggym.app.ui.common.durationSummary
 import com.ggym.app.ui.theme.GgymHeroWeight
+import com.ggym.app.ui.theme.GgymRadii
 import com.ggym.app.ui.theme.GgymHeroWeightDisplay
 import java.util.Locale
 
@@ -217,18 +222,34 @@ private fun SetChip(
     onSelect: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    val container = if (selected) {
-        MaterialTheme.colorScheme.primary
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh
-    }
-    val content = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface
+    // Colour is an *effect* (fast, damped): selection and completion must read instantly, without
+    // the wiggle spatial motion is for. The chip's width, though, is spatial — completing a set
+    // removes its remove-button, and that must be a morph rather than a jump.
+    val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Color>()
+    val container by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceContainerHigh,
+        animationSpec = effects,
+        label = "set-chip-container",
+    )
+    val content by animateColorAsState(
+        targetValue = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurface,
+        animationSpec = effects,
+        label = "set-chip-content",
+    )
+    // Shape as state: a prefill is a squarer control, a performed set rounds out. The radius is
+    // what is animated, because a Shape cannot be interpolated.
+    val corner by animateDpAsState(
+        targetValue = if (set.isCompleted) GgymRadii.setChipCompleted else GgymRadii.setChip,
+        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+        label = "set-chip-corner",
+    )
 
     Surface(
         onClick = onSelect,
-        shape = MaterialTheme.shapes.medium,
+        shape = RoundedCornerShape(corner),
         color = container,
         contentColor = content,
+        modifier = Modifier.animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
         Row(
             modifier = Modifier.padding(start = 14.dp, top = 6.dp, end = if (set.isCompleted) 14.dp else 2.dp, bottom = 6.dp),
@@ -342,18 +363,30 @@ fun WorkoutAction(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    // Read once here: the transition lambda is not a composable scope.
+    val scheme = MaterialTheme.motionScheme
+    val effectsIn = scheme.defaultEffectsSpec<Float>()
+    val effectsOut = scheme.fastEffectsSpec<Float>()
+    val spatialIn = scheme.defaultSpatialSpec<Float>()
+    val spatialOut = scheme.fastSpatialSpec<Float>()
+
     Button(
         onClick = onClick,
         enabled = enabled,
         shape = MaterialTheme.shapes.extraLarge,
         contentPadding = PaddingValues(horizontal = 32.dp, vertical = 20.dp),
-        modifier = modifier.fillMaxWidth().heightIn(min = 64.dp).animateContentSize(),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 64.dp)
+            .animateContentSize(MaterialTheme.motionScheme.defaultSpatialSpec()),
     ) {
         AnimatedContent(
             targetState = action,
             transitionSpec = {
-                (fadeIn(spring()) + scaleIn(spring(), initialScale = 0.9f)) togetherWith
-                    (fadeOut(spring()) + scaleOut(spring(), targetScale = 0.9f))
+                // The label is an effect (it must be read at once) while its arrival is spatial: the
+                // new shape grows into place with the scheme's slight overshoot.
+                (fadeIn(effectsIn) + scaleIn(spatialIn, initialScale = 0.92f)) togetherWith
+                    (fadeOut(effectsOut) + scaleOut(spatialOut, targetScale = 0.92f))
             },
         ) { current ->
             Row(
@@ -416,9 +449,11 @@ fun FinishWorkoutSheet(
                 text = stringResource(R.string.workout_finish_title),
                 style = MaterialTheme.typography.headlineSmall,
             )
+            // The summary's headline number earns the brand hero style: this sheet is the last
+            // thing the user reads before deciding to save.
             Text(
                 text = stringResource(R.string.workout_progress, state.completedSets, sets),
-                style = MaterialTheme.typography.titleMedium,
+                style = GgymHeroWeight,
             )
             Text(
                 text = stringResource(R.string.workout_finish_detail, skipped, durationSummary(state.elapsedMillis)),

@@ -5,7 +5,12 @@ package com.ggym.app.ui.workout
 import android.Manifest
 import android.os.Build
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,6 +54,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -132,14 +140,32 @@ fun ActiveWorkoutScreen(
         },
         bottomBar = {
             Column {
-                state.rest?.let { banner ->
-                    RestBanner(
-                        banner = banner,
-                        locale = locale,
-                        onAddTime = viewModel::addRestTime,
-                        onSubtractTime = viewModel::subtractRestTime,
-                        onSkip = viewModel::skipRest,
-                    )
+                // The banner is the rest starting or ending — a change of place, so it enters and
+                // leaves with spatial motion. The last countdown is kept for the exit: while the
+                // banner slides away the state already holds no rest, and a blank strip would make
+                // the motion meaningless.
+                var lastRest by remember { mutableStateOf<RestBanner?>(null) }
+                state.rest?.let { lastRest = it }
+                AnimatedVisibility(
+                    visible = state.rest != null,
+                    enter = slideInVertically(
+                        animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                        initialOffsetY = { it },
+                    ) + fadeIn(MaterialTheme.motionScheme.fastEffectsSpec()),
+                    exit = slideOutVertically(
+                        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+                        targetOffsetY = { it },
+                    ) + fadeOut(MaterialTheme.motionScheme.fastEffectsSpec()),
+                ) {
+                    lastRest?.let { banner ->
+                        RestBanner(
+                            banner = banner,
+                            locale = locale,
+                            onAddTime = viewModel::addRestTime,
+                            onSubtractTime = viewModel::subtractRestTime,
+                            onSkip = viewModel::skipRest,
+                        )
+                    }
                 }
                 if (!state.isLoading && !state.isMissing && state.focused == null) {
                     WorkoutFooter(state = state, onFinish = viewModel::askFinish)
@@ -367,7 +393,7 @@ private fun WorkoutFooter(
                         state.completedSets,
                         pluralStringResource(R.plurals.workout_sets, state.totalSets, state.totalSets),
                     ),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = GgymHeroWeight,
                 )
                 Text(
                     text = durationSummary(state.elapsedMillis),
@@ -499,7 +525,11 @@ private fun PageDots(count: Int, current: Int) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         repeat(count) { index ->
             val active = index == current
-            val width by animateDpAsState(targetValue = if (active) 20.dp else 8.dp, label = "page-dot")
+            val width by animateDpAsState(
+                targetValue = if (active) 20.dp else 8.dp,
+                animationSpec = MaterialTheme.motionScheme.defaultSpatialSpec(),
+                label = "page-dot",
+            )
             Box(
                 modifier = Modifier
                     .size(width = width, height = 8.dp)

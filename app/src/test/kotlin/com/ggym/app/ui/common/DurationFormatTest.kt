@@ -52,4 +52,16 @@ class DurationFormatTest {
         assertEquals("01:00", DurationFormat.clock(60_000, Locale.ITALIAN))
         assertEquals("01:00", DurationFormat.clock(60_000, Locale.forLanguageTag("en-US")))
     }
+
+    @Test
+    fun `the hour boundary falls exactly where the shapes change`() {
+        // 59:59 is still a countdown, 1:00:00 is a workout: the seconds' field disappears into the
+        // minute, and a summary that is exactly one hour keeps an "0 min" rather than borrowing one.
+        assertEquals("59:59", DurationFormat.clock(3_599_999, Locale.ENGLISH))
+        assertEquals("1:00:00", DurationFormat.clock(3_600_000, Locale.ENGLISH))
+        assertEquals(3_600, DurationFormat.ceilingSeconds(3_599_999))
+        assertEquals(3_600, DurationFormat.ceilingSeconds(3_600_000))
+        assertEquals(0, DurationFormat.minutesWithinHour(3_600_000))
+        assertEquals(60, DurationFormat.minutes(3_600_000))
+    }
 }

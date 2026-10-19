@@ -308,13 +308,17 @@ Two rules are enforced by tests rather than by discipline:
 
 The expressive checklist the UI is held to:
 
-- `MaterialExpressiveTheme` with `MotionScheme.expressive()`; spatial motion (springs that
-  overshoot) for things that move — pager swipes, set-completion morphs, nav changes — and
-  effects motion (fast, damped) for colour and value changes.
+- `MaterialExpressiveTheme` with `MotionScheme.expressive()`, and every animation names which
+  scheme it is: **spatial** (a little overshoot, so the eye follows it) for things that have a
+  place — pager swipes, the set chip's corner and width as a set is completed, the rest banner
+  entering and leaving, the page dots — and **effects** (fast, damped) for colours and value
+  changes. Destinations cross-fade on purpose: the tabs have no left-to-right order, so a
+  direction would be invented.
 - heavy display weights for hero data (working weight, rest countdown), with tabular figures so
   digits do not reflow while typing;
 - deliberately mixed shapes: soft containers, squarer controls, pill actions, and shape used as
-  *state* (a set button morphing from pill to cookie when the set is done);
+  *state* — a set chip is a squarer control while it is still a plan and rounds into a pill once
+  it has been performed, which is an animated radius because a `Shape` cannot be interpolated;
 - tonal containment with `surfaceContainerHigh` / `surfaceContainerHighest` to group related sets
   and cards;
 - light / dark / system theming, plus optional wallpaper colours (Material You) as an opt-in
