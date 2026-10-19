@@ -107,6 +107,21 @@ class DayDetailViewModel(
         }
     }
 
+    /** Counterpart of [RoutineDetailViewModel.reorderDays], for the exercises of this day. */
+    fun reorderSlots(orderedSlotIds: List<Long>) {
+        viewModelScope.launch {
+            val day = routines.observeRoutine(routineId).first()
+                ?.days
+                ?.firstOrNull { it.id == routineDayId }
+                ?: return@launch
+            val current = day.plannedExercises.map { it.id }
+            val wanted = orderedSlotIds.distinct().filter { it in current }
+            val order = wanted + current.filter { it !in wanted }
+            if (order == current) return@launch
+            routines.reorderPlannedExercises(routineDayId, order)
+        }
+    }
+
     fun askDeleteSlot(slot: SlotRow) {
         pendingDelete.value = slot
     }

@@ -23,11 +23,10 @@ The workout core is implemented and tested:
 - ✅ Project scaffold: single-module Kotlin/Compose app, Room + DataStore
 - ✅ Brand theme: Material 3 **Expressive** (`MaterialExpressiveTheme`, `MotionScheme.expressive()`),
   light / dark / system, optional wallpaper colours (off by default)
-- ✅ Four-tab shell: Workouts · Calendar · Stats · Settings, with the pill navigation bar and a
-  working Appearance section
+- ✅ Four-tab shell: Workouts · Calendar · Stats · Settings, with a working Appearance section
 - ✅ App icon: adaptive + monochrome, transcribed from `artwork/ggym.svg`
-- ✅ Routine management: routines, training days, exercises, an auto-completing dictionary, and a
-  working weight per routine slot that remembers what you actually lifted
+- ✅ Routine management: routines, training days, exercises, an auto-completing dictionary, a
+  working weight per routine slot that remembers what you actually lifted, and drag-to-reorder
 - ✅ Active workout: overview and a swipeable focused view with the working weight as the hero,
   set completion, add/remove sets, finish/discard, and a draft that survives a process death
 - ✅ Background rest timer: foreground service, notification with ±15 s / skip, an exact-alarm

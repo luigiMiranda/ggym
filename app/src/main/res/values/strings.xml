@@ -45,6 +45,7 @@
     <string name="action_edit">Edit</string>
     <string name="action_move_up">Move up</string>
     <string name="action_move_down">Move down</string>
+    <string name="action_reorder">Reorder</string>
 
     <!-- Units and numbers -->
     <string name="unit_kg">kg</string>

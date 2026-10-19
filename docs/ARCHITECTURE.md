@@ -308,8 +308,9 @@ Two rules are enforced by tests rather than by discipline:
 
 The UI follows an approved screen preview that is the layout contract for every screen. Its
 tokens live once, in `ui/common/BrandUi.kt` and `ui/theme/`: 27sp screen titles, uppercase 11.5sp
-section labels, 12sp pills, 20dp cards, 28dp hero plates, and a custom navigation bar whose
-selected tab is a lime pill around both the icon and the label. The hero plate
+section labels, 12sp pills, 20dp cards and 28dp hero plates. The shell itself uses Material 3's
+`NavigationBar` with the brand primary indicator (a deliberate preference over the preview's
+custom pill bar). The hero plate
 (`GgymHeroColors`, `LocalGgymDarkTheme`) is near-black in **both** colour schemes — chartreuse on
 the off-white page would be ~1.3:1 — which is what lets the working weight stay the loudest thing
 on screen in light mode too.
@@ -330,6 +331,10 @@ The expressive checklist the UI is held to:
   interpolated;
 - tonal containment with `surfaceContainerHigh` / `surfaceContainerHighest` to group related sets
   and cards;
+- reordering as a direct manipulation: a routine's days and a day's exercises are dragged by a
+  handle (`ui/common/ReorderableColumn`), the row body stays a button, and the whole new order is
+  written once on drop. The handle carries "Move up" / "Move down" accessibility actions, because a
+  gesture is never the only way to do something;
 - light / dark / system theming, plus optional wallpaper colours (Material You) as an opt-in
   preference — off by default, because it replaces the brand palette by definition.
 

@@ -17,15 +17,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.FitnessCenter
 import androidx.compose.material3.AlertDialog
@@ -62,6 +58,7 @@ import com.ggym.app.ui.common.GgymPill
 import com.ggym.app.ui.common.GgymScreenHeader
 import com.ggym.app.ui.common.KgFormat
 import com.ggym.app.ui.common.PillTone
+import com.ggym.app.ui.common.ReorderableColumn
 import com.ggym.app.ui.common.RowMenu
 import com.ggym.app.ui.common.RowMenuAction
 import com.ggym.app.ui.common.activeLocale
@@ -144,22 +141,24 @@ fun DayDetailScreen(
                         modifier = Modifier.weight(1f),
                     )
                 } else {
-                    LazyColumn(
+                    ReorderableColumn(
+                        items = state.slots,
+                        keyOf = { slot -> slot.id },
+                        onReorder = { slots -> viewModel.reorderSlots(slots.map { it.id }) },
+                        handleDescription = stringResource(R.string.action_reorder),
+                        moveUpLabel = stringResource(R.string.action_move_up),
+                        moveDownLabel = stringResource(R.string.action_move_down),
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                    ) {
-                        itemsIndexed(state.slots, key = { _, slot -> slot.id }) { index, slot ->
-                            SlotRow(
-                                slot = slot,
-                                canMoveUp = index > 0,
-                                canMoveDown = index < state.slots.lastIndex,
-                                onEdit = { editedSlotId = slot.id },
-                                onMoveUp = { viewModel.moveSlot(slot.id, up = true) },
-                                onMoveDown = { viewModel.moveSlot(slot.id, up = false) },
-                                onDelete = { viewModel.askDeleteSlot(slot) },
-                            )
-                        }
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 4.dp, bottom = 96.dp),
+                        spacing = 10.dp,
+                    ) { slot, handle, isDragging ->
+                        SlotRow(
+                            slot = slot,
+                            modifier = handle,
+                            isDragging = isDragging,
+                            onEdit = { editedSlotId = slot.id },
+                            onDelete = { viewModel.askDeleteSlot(slot) },
+                        )
                     }
                 }
             }
@@ -274,70 +273,69 @@ private fun StartWorkoutPlate(
 @Composable
 private fun SlotRow(
     slot: SlotRow,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
+    modifier: Modifier,
+    isDragging: Boolean,
     onEdit: () -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val locale = activeLocale()
 
     Surface(
-        onClick = onEdit,
         shape = GgymCardShape,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        color = if (isDragging) {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHigh
+        },
     ) {
         Row(
-            modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 4.dp, bottom = 12.dp),
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(slot.exerciseName, style = MaterialTheme.typography.titleMedium)
-                Row {
-                    Text(
-                        text = stringResource(R.string.slot_target, slot.targetSets, slot.targetReps),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = stringResource(R.string.slot_rest, slot.restSeconds),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            Column(horizontalAlignment = Alignment.End) {
-                slot.weightKg?.let { weight ->
-                    GgymPill(
-                        text = stringResource(R.string.weight_kg, KgFormat.formatNumber(weight, locale)),
-                        tone = PillTone.Lime,
-                    )
-                    if (!slot.hasOwnWeight) {
+            DragHandle(modifier = modifier)
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(14.dp))
+                    .clickable(role = Role.Button, onClick = onEdit)
+                    .padding(start = 12.dp, top = 12.dp, bottom = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(slot.exerciseName, style = MaterialTheme.typography.titleMedium)
+                    Row {
                         Text(
-                            text = stringResource(R.string.slot_weight_inherited),
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            text = stringResource(R.string.slot_target, slot.targetSets, slot.targetReps),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = stringResource(R.string.slot_rest, slot.restSeconds),
+                            style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
-                } ?: GgymPill(text = stringResource(R.string.weight_unknown), tone = PillTone.Ghost)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    slot.weightKg?.let { weight ->
+                        GgymPill(
+                            text = stringResource(R.string.weight_kg, KgFormat.formatNumber(weight, locale)),
+                            tone = PillTone.Lime,
+                        )
+                        if (!slot.hasOwnWeight) {
+                            Text(
+                                text = stringResource(R.string.slot_weight_inherited),
+                                style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    } ?: GgymPill(text = stringResource(R.string.weight_unknown), tone = PillTone.Ghost)
+                }
             }
             RowMenu(
                 actions = listOf(
                     RowMenuAction(stringResource(R.string.action_edit), Icons.Filled.Edit, onClick = onEdit),
-                    RowMenuAction(
-                        label = stringResource(R.string.action_move_up),
-                        icon = Icons.Filled.KeyboardArrowUp,
-                        enabled = canMoveUp,
-                        onClick = onMoveUp,
-                    ),
-                    RowMenuAction(
-                        label = stringResource(R.string.action_move_down),
-                        icon = Icons.Filled.KeyboardArrowDown,
-                        enabled = canMoveDown,
-                        onClick = onMoveDown,
-                    ),
                     RowMenuAction(
                         label = stringResource(R.string.slot_remove),
                         icon = Icons.Filled.Delete,

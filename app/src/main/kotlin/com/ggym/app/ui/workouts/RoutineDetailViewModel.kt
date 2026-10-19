@@ -107,6 +107,22 @@ class RoutineDetailViewModel(
         }
     }
 
+    /**
+     * The order a drag produced, as ids. The tree is re-read inside the write and the ids are
+     * checked against it, so a day deleted or added while the finger was down cannot hitch a ride;
+     * ids the caller did not mention keep their relative order at the end.
+     */
+    fun reorderDays(orderedDayIds: List<Long>) {
+        viewModelScope.launch {
+            val days = routines.observeRoutine(routineId).first()?.days ?: return@launch
+            val current = days.map { it.id }
+            val wanted = orderedDayIds.distinct().filter { it in current }
+            val order = wanted + current.filter { it !in wanted }
+            if (order == current) return@launch
+            routines.reorderDays(routineId, order)
+        }
+    }
+
     fun askDeleteDay(day: DayRow) {
         dialogs.update { it.copy(pendingDelete = day) }
     }

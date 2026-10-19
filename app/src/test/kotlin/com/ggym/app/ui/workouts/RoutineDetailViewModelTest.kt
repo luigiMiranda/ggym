@@ -126,6 +126,32 @@ class RoutineDetailViewModelTest : ViewModelTest() {
     }
 
     @Test
+    fun `a dragged order writes the whole list and ignores ids the routine does not have`() = runTest {
+        routineId = routineRepository.createRoutine("Push Day")
+        val first = routineRepository.addDay(routineId, "Push A")
+        val second = routineRepository.addDay(routineId, "Push B")
+        val third = routineRepository.addDay(routineId, "Push C")
+        val vm = viewModel()
+
+        vm.uiState.test {
+            awaitState { it.days.size == 3 }
+
+            // What a drag hands over: the new order, plus an id that was deleted while the finger
+            // was down (the re-read inside the write is what catches it).
+            vm.reorderDays(listOf(third, first, 9_999L))
+
+            val state = awaitState { it.days.first().id == third }
+            assertEquals("the missing day keeps its place at the end", listOf(third, first, second), state.days.map { it.id })
+
+            val stored = routineRepository.observeRoutine(routineId).first()!!.days
+            assertEquals(listOf(third, first, second), stored.map { it.id })
+            assertEquals("the indices are rewritten, not just the list", listOf(0, 1, 2), stored.map { it.orderIndex })
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `deleting a day asks first, then takes only that day`() = runTest {
         routineId = routineRepository.createRoutine("Push Day")
         routineRepository.addDay(routineId, "Push A")

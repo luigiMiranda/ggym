@@ -1,11 +1,14 @@
 package com.ggym.app.ui.workouts
 
 import android.app.Application
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.core.app.ApplicationProvider
@@ -144,6 +147,27 @@ class DayDetailScreenTest : RepositoryTest() {
     }
 
     @Test
+    fun `dragging the first handle moves that exercise below the next one`() {
+        givenPushDay()
+        show()
+        waitForText("Bench Press")
+
+        val before = runBlocking { slotIds() }
+        compose.onAllNodesWithContentDescription(context.getString(R.string.action_reorder))[0]
+            .performTouchInput {
+                down(center)
+                moveBy(Offset(0f, 250f))
+                up()
+            }
+
+        // The drop is a view-model write: idle the looper until the database has the new order.
+        awaitTrue("the dragged order was never written") {
+            runBlocking { slotIds() } == before.reversed()
+        }
+        assertEquals(before.reversed(), runBlocking { slotIds() })
+    }
+
+    @Test
     fun `a day with nothing planned shows the start action, disabled`() {
         routineId = runBlocking { routineRepository.createRoutine("Push Day") }
         dayId = runBlocking { routineRepository.addDay(routineId, "Rest Day") }
@@ -154,6 +178,14 @@ class DayDetailScreenTest : RepositoryTest() {
         compose.onNodeWithText(context.getString(R.string.day_empty_title)).assertExists()
         assertTrue(opened.isEmpty())
     }
+
+    /** The day's slots in stored order, as exercise ids. */
+    private suspend fun slotIds(): List<Long> =
+        routineRepository.observeRoutine(routineId).first()!!
+            .days
+            .single { it.id == dayId }
+            .plannedExercises
+            .map { it.exerciseId }
 
     private fun waitForText(text: String) {
         compose.waitUntil(TIMEOUT_MILLIS) {

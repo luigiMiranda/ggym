@@ -160,6 +160,31 @@ class DayDetailViewModelTest : ViewModelTest() {
     }
 
     @Test
+    fun `a dragged slot order is written as one list`() = runTest {
+        val bench = database.givenExercise(name = "Bench Press")
+        val fly = database.givenExercise(name = "Cable Fly")
+        routineId = routineRepository.createRoutine("Push Day")
+        dayId = routineRepository.addDay(routineId, "Push A")
+        val benchSlot = routineRepository.addPlannedExercise(dayId, bench, 4, "8-10", 120)
+        val flySlot = routineRepository.addPlannedExercise(dayId, fly, 3, "12", 60)
+        val vm = viewModel()
+
+        vm.uiState.test {
+            awaitState { it.slots.size == 2 }
+            vm.reorderSlots(listOf(flySlot, benchSlot))
+
+            val state = awaitState { it.slots.first().id == flySlot }
+            assertEquals(listOf(flySlot, benchSlot), state.slots.map { it.id })
+
+            val stored = routineRepository.observeRoutine(routineId).first()!!.days.single().plannedExercises
+            assertEquals(listOf(flySlot, benchSlot), stored.map { it.id })
+            assertEquals(listOf(0, 1), stored.map { it.orderIndex })
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `removing a slot asks first, then leaves the others alone`() = runTest {
         val bench = database.givenExercise(name = "Bench Press")
         val fly = database.givenExercise(name = "Cable Fly")
