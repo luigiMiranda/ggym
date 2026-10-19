@@ -23,6 +23,7 @@ import com.ggym.app.domain.repository.WorkoutHistoryRepository
 import com.ggym.app.domain.repository.WorkoutPreferences
 import com.ggym.app.domain.workout.ActiveWorkoutUseCases
 import com.ggym.app.domain.workout.RestTimerUseCases
+import com.ggym.app.domain.stats.BodyWeightUseCases
 import com.ggym.app.domain.workout.WorkingWeightUseCases
 import com.ggym.app.service.AndroidRestAlertPlayer
 import com.ggym.app.service.RestTimerAlarms
@@ -34,6 +35,7 @@ import com.ggym.app.ui.exercises.ExercisePickerViewModel
 import com.ggym.app.ui.history.HistoryDetailViewModel
 import com.ggym.app.ui.exercises.SlotEditorViewModel
 import com.ggym.app.ui.settings.SettingsViewModel
+import com.ggym.app.ui.stats.StatsViewModel
 import com.ggym.app.ui.workout.ActiveWorkoutViewModel
 import com.ggym.app.ui.workouts.DayDetailViewModel
 import com.ggym.app.ui.workouts.RoutineDetailViewModel
@@ -97,6 +99,12 @@ class AppContainer(context: Context) {
 
     val bodyWeightRepository: BodyWeightRepository = RoomBodyWeightRepository(database)
 
+    /**
+     * The only writer of a body weight, and the home of the one-measurement-per-day rule. The
+     * Stats tab's form is its only caller, and the rule holds for any caller a later screen adds.
+     */
+    val bodyWeightUseCases = BodyWeightUseCases(bodyWeightRepository)
+
     /** The "which weight do I load?" rule, shared by the day list and the slot editor. */
     private val workingWeightUseCases = WorkingWeightUseCases(
         routines = routineRepository,
@@ -118,6 +126,16 @@ class AppContainer(context: Context) {
 
     fun historyDetailViewModelFactory(sessionId: Long): ViewModelProvider.Factory = viewModelFactory {
         initializer { HistoryDetailViewModel(sessionId, workoutHistoryRepository) }
+    }
+
+    val statsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer {
+            StatsViewModel(
+                history = workoutHistoryRepository,
+                exercises = exerciseRepository,
+                bodyWeights = bodyWeightUseCases,
+            )
+        }
     }
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

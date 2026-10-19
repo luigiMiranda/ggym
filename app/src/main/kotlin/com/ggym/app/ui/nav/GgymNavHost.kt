@@ -120,7 +120,9 @@ fun GgymNavHost(
                     onOpenHistory = { sessionId -> navController.navigate(Routes.history(sessionId)) },
                 )
             }
-            composable(Destination.Stats.route) { StatsScreen() }
+            composable(Destination.Stats.route) {
+                StatsScreen(viewModelFactory = container.statsViewModelFactory)
+            }
             composable(Destination.Settings.route) {
                 SettingsScreen(viewModelFactory = container.settingsViewModelFactory)
             }

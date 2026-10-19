@@ -6,6 +6,7 @@ import com.ggym.app.data.room.mappers.WorkoutMapper
 import com.ggym.app.data.room.mappers.dayRangeMillis
 import com.ggym.app.data.room.mappers.toLocalDate
 import com.ggym.app.domain.model.LastCompletedSet
+import com.ggym.app.domain.model.LoggedSetPoint
 import com.ggym.app.domain.model.WorkoutSession
 import com.ggym.app.domain.model.WorkoutSetLog
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
@@ -42,8 +43,26 @@ internal class RoomHistoryRepository(
             .map { rows -> rows.map { WorkoutMapper.toDomain(it, zoneId) } }
     }
 
+    override fun observeSessionDates(from: LocalDate, to: LocalDate): Flow<List<LocalDate>> {
+        val range = dayRangeMillis(from, to, zoneId)
+        return dao.observeSessionDates(range.fromInclusive, range.toExclusive)
+            .map { timestamps -> timestamps.map { it.toLocalDate(zoneId) } }
+    }
+
     override fun observeSession(sessionId: Long): Flow<WorkoutSession?> =
         dao.observeSession(sessionId).map { row -> row?.let { WorkoutMapper.toDomain(it, zoneId) } }
+
+    override fun observeCompletedSetsForExercise(exerciseId: Long): Flow<List<LoggedSetPoint>> =
+        progressDao.observeCompletedSets(exerciseId).map { rows ->
+            rows.map { row ->
+                LoggedSetPoint(
+                    date = row.sessionDateTimestamp.toLocalDate(zoneId),
+                    weightKg = row.weight,
+                    reps = row.reps,
+                    sessionId = row.sessionId,
+                )
+            }
+        }
 
     override fun observeDraft(): Flow<WorkoutSession?> =
         dao.observeDraft().map { row -> row?.let { WorkoutMapper.toDomain(it, zoneId) } }

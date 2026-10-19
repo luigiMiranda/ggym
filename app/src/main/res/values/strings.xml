@@ -47,8 +47,64 @@
     <string name="history_missing_title">This workout is gone</string>
     <string name="history_missing_message">It was deleted while you were away. Go back to the calendar and pick another day.</string>
 
-    <string name="stats_empty_title">Progress, measured</string>
-    <string name="stats_empty_message">Workout frequency, body weight over time, and how each exercise is progressing — plus a log for your body weight.</string>
+    <!--
+      Stats. Every chart has a text summary beside it with the same numbers: the picture is a
+      second reading of the data, not the only one.
+    -->
+    <string name="stats_attendance_label">Workouts per month</string>
+    <string name="stats_attendance_summary">%1$s in the last %2$s · best %3$s (%4$d)</string>
+    <string name="stats_attendance_empty">No workouts in the last twelve months. Finish one and it lands here.</string>
+    <plurals name="stats_workout_days">
+        <item quantity="one">%1$d workout day</item>
+        <item quantity="other">%1$d workout days</item>
+    </plurals>
+    <plurals name="stats_months">
+        <item quantity="one">%1$d month</item>
+        <item quantity="other">%1$d months</item>
+    </plurals>
+
+    <string name="stats_body_weight_label">Body weight</string>
+    <string name="stats_range_1m">1M</string>
+    <string name="stats_range_3m">3M</string>
+    <string name="stats_range_6m">6M</string>
+    <string name="stats_range_1y">1Y</string>
+    <string name="stats_range_all">All</string>
+    <string name="stats_body_summary">min %1$s · avg %2$s · max %3$s kg</string>
+    <string name="stats_body_empty">No measurements in this range.</string>
+    <string name="stats_body_empty_action">Log weight</string>
+    <string name="stats_body_one">One measurement so far.</string>
+    <string name="stats_error_weight">Enter a weight between 25 and 300 kg.</string>
+
+    <string name="stats_progression_label">Exercise progression</string>
+    <string name="stats_progression_pick">Choose exercise</string>
+    <string name="stats_exercise_selector">%1$s ▾</string>
+    <string name="stats_progression_empty">No logged sets for “%1$s” yet.</string>
+    <string name="stats_progression_one">One session so far.</string>
+    <string name="stats_progression_no_exercises">Add an exercise to a training day and its progress shows up here.</string>
+    <string name="stats_progression_legend_max">Max working weight</string>
+    <string name="stats_progression_legend_trend">Trend</string>
+    <string name="stats_progression_summary">%1$s · latest %2$s</string>
+    <plurals name="stats_progression_sessions">
+        <item quantity="one">%1$d session</item>
+        <item quantity="other">%1$d sessions</item>
+    </plurals>
+
+    <string name="stats_log_label">Body weight log</string>
+    <string name="stats_log_add">+ Log</string>
+    <string name="stats_log_today">Today</string>
+    <string name="stats_log_empty">No measurements yet.</string>
+
+    <string name="stats_sheet_new_title">Log body weight</string>
+    <string name="stats_sheet_edit_title">Edit body weight</string>
+    <string name="stats_sheet_weight">Weight</string>
+    <string name="stats_sheet_date">Date</string>
+    <string name="stats_sheet_delete">Delete measurement</string>
+    <string name="stats_delete_title">Delete measurement?</string>
+    <string name="stats_delete_message">The measurement on %1$s will be deleted from your log.</string>
+
+    <string name="stats_select_exercise">Choose exercise</string>
+    <string name="stats_exercise_search">Search exercises</string>
+    <string name="stats_exercise_no_match">No exercise matches.</string>
 
     <!-- Settings -->
     <string name="settings_title">Settings</string>

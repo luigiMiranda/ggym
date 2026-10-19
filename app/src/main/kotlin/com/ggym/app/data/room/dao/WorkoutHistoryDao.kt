@@ -46,6 +46,22 @@ internal interface WorkoutHistoryDao {
     )
     fun observeSessionsInRange(fromInclusive: Long, toExclusive: Long): Flow<List<SessionWithExercises>>
 
+    /**
+     * The dates of finished sessions in the range, with no exercise or set trees.
+     *
+     * The attendance chart asks "which days did I train", and loading a year of sets to answer it
+     * would be the expensive way to count days. A session's date is stored at local midnight, so
+     * the bucket is exact; drafts are excluded for the same reason as everywhere else.
+     */
+    @Query(
+        """
+        SELECT dateTimestamp FROM workout_session
+        WHERE dateTimestamp >= :fromInclusive AND dateTimestamp < :toExclusive AND isDraft = 0
+        ORDER BY dateTimestamp ASC, id ASC
+        """,
+    )
+    fun observeSessionDates(fromInclusive: Long, toExclusive: Long): Flow<List<Long>>
+
     /** One finished session, for inspecting or correcting a past workout. Drafts are not history. */
     @Transaction
     @Query("SELECT * FROM workout_session WHERE id = :sessionId AND isDraft = 0")

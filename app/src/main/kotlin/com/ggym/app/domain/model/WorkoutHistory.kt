@@ -76,3 +76,17 @@ data class LastCompletedSet(
     val sessionId: Long,
     val date: LocalDate,
 )
+
+/**
+ * One performed set of one exercise, with the day it happened.
+ *
+ * This is the raw material of the progression chart: the maximum weight per date is the number a
+ * lifter reads as "my bench that day", so the query that produces these rows filters to finished
+ * workouts and completed sets and leaves every decision about grouping to the domain.
+ */
+data class LoggedSetPoint(
+    val date: LocalDate,
+    val weightKg: Double,
+    val reps: Int,
+    val sessionId: Long,
+)

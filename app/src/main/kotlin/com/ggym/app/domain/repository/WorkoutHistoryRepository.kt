@@ -1,6 +1,7 @@
 package com.ggym.app.domain.repository
 
 import com.ggym.app.domain.model.LastCompletedSet
+import com.ggym.app.domain.model.LoggedSetPoint
 import com.ggym.app.domain.model.WorkoutSession
 import com.ggym.app.domain.model.WorkoutSetLog
 import kotlinx.coroutines.flow.Flow
@@ -28,8 +29,27 @@ interface WorkoutHistoryRepository {
      */
     fun observeSessionsInRange(from: LocalDate, to: LocalDate): Flow<List<WorkoutSession>>
 
+    /**
+     * The dates of the finished sessions in the range, both ends included, and nothing else.
+     *
+     * This is the attendance chart's read: it needs to know *which days* were trained, not what was
+     * lifted on them, and loading a year of exercise trees to count days would be the expensive way
+     * to answer a cheap question. A day with two workouts appears twice — "distinct days" is the
+     * aggregation's rule, not the query's.
+     */
+    fun observeSessionDates(from: LocalDate, to: LocalDate): Flow<List<LocalDate>>
+
     /** One finished session with its exercises and sets, for inspecting or correcting a past workout. */
     fun observeSession(sessionId: Long): Flow<WorkoutSession?>
+
+    /**
+     * Every completed set of one exercise, oldest session first, with the day it happened.
+     *
+     * The progression chart's raw material. Drafts and pre-filled (unperformed) sets are not in
+     * here: a point on that chart means "I lifted this", so the filters belong to the read rather
+     * than to each caller — and a session deleted from history takes its points with it.
+     */
+    fun observeCompletedSetsForExercise(exerciseId: Long): Flow<List<LoggedSetPoint>>
 
     /** The one workout in progress, or `null` when there is none. */
     fun observeDraft(): Flow<WorkoutSession?>

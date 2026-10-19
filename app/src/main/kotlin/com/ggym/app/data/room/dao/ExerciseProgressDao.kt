@@ -2,6 +2,7 @@ package com.ggym.app.data.room.dao
 
 import androidx.room.Dao
 import androidx.room.Query
+import kotlinx.coroutines.flow.Flow
 
 /** Row of [ExerciseProgressDao.latestCompletedSet]: the performed values plus where they happened. */
 internal data class LastCompletedSetRow(
@@ -11,6 +12,14 @@ internal data class LastCompletedSetRow(
     val setNumber: Int,
     val sessionId: Long,
     val sessionDateTimestamp: Long,
+)
+
+/** Row of [ExerciseProgressDao.observeCompletedSets]: a performed set and the day it happened. */
+internal data class LoggedSetRow(
+    val sessionDateTimestamp: Long,
+    val weight: Double,
+    val reps: Int,
+    val sessionId: Long,
 )
 
 /**
@@ -49,4 +58,29 @@ internal interface ExerciseProgressDao {
         """,
     )
     suspend fun latestCompletedSet(exerciseId: Long): LastCompletedSetRow?
+
+    /**
+     * Every completed set of one exercise, oldest session first.
+     *
+     * The progression chart reads this raw and does its own grouping (one point per date, the
+     * maximum of the day). Drafts are excluded because a workout in progress has not happened yet,
+     * and pre-filled sets are excluded because they are an intention — `isCompleted` is what
+     * separates "I lifted this" from "I planned this".
+     */
+    @Query(
+        """
+        SELECT workout_session.dateTimestamp AS sessionDateTimestamp,
+               workout_set_log.weight AS weight,
+               workout_set_log.reps AS reps,
+               workout_session.id AS sessionId
+        FROM workout_set_log
+        JOIN workout_exercise_log ON workout_exercise_log.id = workout_set_log.workoutExerciseLogId
+        JOIN workout_session ON workout_session.id = workout_exercise_log.sessionId
+        WHERE workout_exercise_log.exerciseId = :exerciseId
+              AND workout_set_log.isCompleted = 1
+              AND workout_session.isDraft = 0
+        ORDER BY workout_session.dateTimestamp ASC, workout_session.id ASC, workout_set_log.setNumber ASC
+        """,
+    )
+    fun observeCompletedSets(exerciseId: Long): Flow<List<LoggedSetRow>>
 }

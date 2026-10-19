@@ -214,6 +214,48 @@ is the summary of what will be saved: sets completed, exercises skipped, duratio
 "Finish & save" and "Discard workout" behind the shared confirmation dialog. The rest banner is drawn
 in both modes and recomputed from the stored deadline on every tick; the screen owns no countdown.
 
+**History and the calendar.** The Calendar tab is one destination: a month grid whose dots mark
+days with a finished workout, and the selected day's workouts underneath it, so a day is chosen
+while the month that explains it stays on screen. The grid is built by
+`domain/history/CalendarGrid`, a pure function from a `YearMonth` to six Monday-first weeks — six
+always, so paging through months does not resize the calendar — with the adjacent months' days
+included and dimmed. The month is read through the repository's existing inclusive range query, and
+the read is tagged with the month it belongs to so a page turn never draws the previous month's
+sessions. A draft is never on the calendar: `observeSessionsInRange` excludes it, because "a workout
+happened" means a finished one. Selection has three rules in priority order — today when the shown
+month contains it, otherwise the month's first trained day, otherwise the first — so a month with no
+workouts still has a focus for the grid and a date for the line under it. A tapped day in an
+adjacent month's row turns the page to that month first, so the selection never names a day whose
+sessions were not read. "Edit log" opens `history/{sessionId}`: one screen that reads a finished
+session and can correct a set's weight and reps or remove a set. It deliberately has no path to add
+a set, add an exercise, or change the date or duration — history is corrected, never extended — and
+`wasCompleted` is not recomputed by a correction. A correction is `updateSet`, a removal is
+`deleteSet`, and both re-read the session through its flow. Deleting a workout is one cascade behind
+the same confirmation dialog the rest of the app uses.
+
+**Stats and the body-weight log.** The Stats tab is three charts and a log. The charts are drawn on
+a Compose `Canvas` rather than by a charting library: a bar series and two line series do not justify
+another styling language, another dependency to keep aligned with AGP, or a library that might bring
+network capability into an app with no `INTERNET` permission. The arithmetic that decides what is
+drawn is pure code in `domain/stats` and tested on the JVM: `CalendarMonths` (the last twelve
+months), `AttendanceCounts` (distinct trained days per month, zero-filled — two workouts on one day
+is one day of attendance), `BodyWeightStats` (a window's points and their min/average/max),
+`ExerciseProgression` (one point per date, the day's maximum completed weight, and a least-squares
+trend only from three points) and `downsample` (first/last/min/max and an even stride, capped at 240
+points for the *path only*). The statistics are always computed over every point in the window, not
+over the reduced line, so a drawing decision never moves a number the user reads. Every chart is
+decorative to accessibility and sits beside a text summary with the same numbers. Two read-only
+queries feed the tab — the dates of finished sessions in a range, and one exercise's completed sets
+with their session dates — so counting a year of attendance does not load a year of set trees, and
+progression excludes drafts and pre-filled sets by construction. Body weight is entered through the
+Stats tab's sheet, the only place a body weight enters the app by hand. `domain/stats/BodyWeightUseCases`
+is its only writer and owns the rule the schema does not: **one measurement per day**, where logging
+a day that already has a row updates it, and moving an edit onto an occupied day merges rather than
+duplicating. The range filters (1M, 3M, 6M, 1Y, All) are anchored to today, not to the latest
+weigh-in, so "the last three months" does not silently stretch when the user stops weighing. The sheet
+defaults to today, opens the platform date picker, and disables Save for a value outside the same
+`BodyWeightLimits` the repository enforces.
+
 **The rest timer.** A rest is a *deadline* kept in its own DataStore file: `RestTimerState`
 (`endsAtMillis`, `totalSeconds`, `exerciseLogId`, `exerciseName`) as wall-clock epoch millis,
 written as one tuple and cleared as one. A remaining count would have to be decremented by a ticker,

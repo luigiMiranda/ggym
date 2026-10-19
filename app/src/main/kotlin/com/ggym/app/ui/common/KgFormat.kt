@@ -23,6 +23,19 @@ object KgFormat {
     fun formatNumber(weightKg: Double, locale: Locale): String =
         numberFormat(locale).format(weightKg)
 
+    /**
+     * A weight with exactly one decimal, for a statistic: "78.4", "84.0".
+     *
+     * The body-weight summary is a comparison of three numbers, so the decimals line up instead of
+     * trailing zeros being trimmed away; the log and the fields keep [formatNumber]'s behaviour,
+     * where "80" is a weight someone typed and "80,0" would be false precision.
+     */
+    fun formatOneDecimal(weightKg: Double, locale: Locale): String =
+        NumberFormat.getNumberInstance(locale).apply {
+            maximumFractionDigits = 1
+            minimumFractionDigits = 1
+        }.format(weightKg)
+
     private fun numberFormat(locale: Locale): NumberFormat = NumberFormat.getNumberInstance(locale).apply {
         maximumFractionDigits = 2
         minimumFractionDigits = 0

@@ -135,7 +135,7 @@ class GgymNavHostTest {
         waitForText("Push Day")
         compose.onNodeWithText(context.getString(R.string.nav_stats)).performClick()
 
-        waitForText(context.getString(R.string.stats_empty_title))
+        waitForText(context.getString(R.string.stats_body_weight_label).uppercase())
     }
 
     @Test
