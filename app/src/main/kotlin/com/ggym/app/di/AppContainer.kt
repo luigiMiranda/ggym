@@ -111,11 +111,11 @@ class AppContainer(context: Context) {
     )
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(themePreferences) }
+        initializer { SettingsViewModel(themePreferences, restTimerUseCases) }
     }
 
     val workoutsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { WorkoutsViewModel(routineRepository) }
+        initializer { WorkoutsViewModel(routineRepository, workoutHistoryRepository) }
     }
 
     fun routineDetailViewModelFactory(routineId: Long): ViewModelProvider.Factory = viewModelFactory {
@@ -130,6 +130,9 @@ class AppContainer(context: Context) {
                 routines = routineRepository,
                 exercises = exerciseRepository,
                 weights = workingWeightUseCases,
+                history = workoutHistoryRepository,
+                workout = activeWorkoutUseCases,
+                restTimer = restTimerUseCases,
             )
         }
     }
@@ -161,6 +164,7 @@ class AppContainer(context: Context) {
                 history = workoutHistoryRepository,
                 workout = activeWorkoutUseCases,
                 restTimer = restTimerUseCases,
+                preferences = workoutPreferences,
             )
         }
     }

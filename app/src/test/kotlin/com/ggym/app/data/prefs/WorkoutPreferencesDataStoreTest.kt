@@ -60,4 +60,14 @@ class WorkoutPreferencesDataStoreTest {
             assertFalse(awaitItem())
         }
     }
+
+    @Test
+    fun `the notification prompt is not yet shown, and the answer sticks`() = runTest {
+        val preferences = DataStoreWorkoutPreferences(createDataStore(backgroundScope))
+
+        assertFalse(preferences.notificationPromptShown.first())
+
+        preferences.setNotificationPromptShown(true)
+        assertTrue(preferences.notificationPromptShown.first())
+    }
 }

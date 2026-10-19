@@ -1,8 +1,15 @@
 package com.ggym.app.ui.workouts
 
 import app.cash.turbine.test
+import com.ggym.app.domain.workout.ActiveWorkoutUseCases
+import com.ggym.app.domain.workout.StartWorkoutResult
+import com.ggym.app.testing.TestData
 import com.ggym.app.testing.ViewModelTest
 import com.ggym.app.testing.awaitState
+import com.ggym.app.testing.givenExerciseNamed
+import com.ggym.app.testing.givenPlannedDay
+import com.ggym.app.testing.PlannedSlot
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -18,7 +25,23 @@ import org.junit.Test
  */
 class WorkoutsViewModelTest : ViewModelTest() {
 
-    private val viewModel by lazy { WorkoutsViewModel(routineRepository) }
+    /** The elapsed time moves with the ticker, which a test steps by hand. */
+    private val ticks = MutableSharedFlow<Unit>(replay = 1, extraBufferCapacity = 1).also { it.tryEmit(Unit) }
+
+    private val viewModel by lazy {
+        WorkoutsViewModel(routineRepository, historyRepository, now = { clock }, ticks = ticks)
+    }
+
+    private val active by lazy {
+        ActiveWorkoutUseCases(
+            routines = routineRepository,
+            exercises = exerciseRepository,
+            history = historyRepository,
+            weights = workingWeights,
+            now = { clock },
+            zoneId = TestData.zone,
+        )
+    }
 
     @Test
     fun `the list loads before it claims to be empty`() = runTest {
@@ -135,6 +158,75 @@ class WorkoutsViewModelTest : ViewModelTest() {
             assertNull(cancelled.pendingDelete)
             assertEquals(listOf("Push Day"), cancelled.routines.map { it.name })
 
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a running workout is offered first, with its progress and how long it has run`() = runTest {
+        val bench = exerciseRepository.givenExerciseNamed("Bench Press", workingWeight = 80.0)
+        val dayId = routineRepository.givenPlannedDay(PlannedSlot(bench, sets = 3))
+        val started = active.start(dayId) as StartWorkoutResult.Started
+        clock += 23 * 60 * 1_000L
+
+        viewModel.uiState.test {
+            val state = awaitState { it.resume != null }
+
+            assertEquals(
+                ResumeCard(started.sessionId, dayName = "Push A", completedSets = 0, totalSets = 3, elapsedMillis = 23 * 60 * 1_000L),
+                state.resume,
+            )
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the elapsed time follows the clock on the next tick`() = runTest {
+        val bench = exerciseRepository.givenExerciseNamed("Bench Press", workingWeight = 80.0)
+        val dayId = routineRepository.givenPlannedDay(PlannedSlot(bench, sets = 3))
+        active.start(dayId)
+
+        viewModel.uiState.test {
+            awaitState { it.resume != null }
+
+            clock += 60_000L
+            ticks.tryEmit(Unit)
+
+            assertEquals(60_000L, awaitState { it.resume?.elapsedMillis == 60_000L }.resume?.elapsedMillis)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the card goes away when the workout is discarded`() = runTest {
+        val bench = exerciseRepository.givenExerciseNamed("Bench Press", workingWeight = 80.0)
+        val dayId = routineRepository.givenPlannedDay(PlannedSlot(bench, sets = 3))
+        val started = active.start(dayId) as StartWorkoutResult.Started
+
+        viewModel.uiState.test {
+            awaitState { it.resume != null }
+
+            active.discard(started.sessionId)
+
+            assertNull(awaitState { it.resume == null }.resume)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a workout whose routine was deleted can still be resumed`() = runTest {
+        val bench = exerciseRepository.givenExerciseNamed("Bench Press", workingWeight = 80.0)
+        val dayId = routineRepository.givenPlannedDay(PlannedSlot(bench, sets = 3))
+        val started = active.start(dayId) as StartWorkoutResult.Started
+        routineRepository.deleteRoutine(routineRepository.observeRoutines().first().single().id)
+
+        viewModel.uiState.test {
+            val state = awaitState { it.resume != null }
+
+            assertEquals(started.sessionId, state.resume?.sessionId)
+            assertEquals(emptyList<RoutineCard>(), state.routines)
             cancelAndIgnoreRemainingEvents()
         }
     }

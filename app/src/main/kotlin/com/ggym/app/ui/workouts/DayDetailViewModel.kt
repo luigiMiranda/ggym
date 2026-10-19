@@ -4,10 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ggym.app.domain.repository.ExerciseRepository
 import com.ggym.app.domain.repository.RoutineRepository
+import com.ggym.app.domain.repository.WorkoutHistoryRepository
+import com.ggym.app.domain.workout.ActiveWorkoutUseCases
+import com.ggym.app.domain.workout.RestTimerUseCases
+import com.ggym.app.domain.workout.StartWorkoutResult
 import com.ggym.app.domain.workout.WorkingWeightUseCases
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
@@ -27,15 +34,27 @@ class DayDetailViewModel(
     private val routines: RoutineRepository,
     private val exercises: ExerciseRepository,
     private val weights: WorkingWeightUseCases,
+    private val history: WorkoutHistoryRepository,
+    private val workout: ActiveWorkoutUseCases,
+    private val restTimer: RestTimerUseCases,
 ) : ViewModel() {
 
     private val pendingDelete = MutableStateFlow<SlotRow?>(null)
+
+    /** The running workout that blocks a start, while the resume-or-discard question is open. */
+    private val startConflict = MutableStateFlow<StartConflict?>(null)
+
+    private val opened = MutableSharedFlow<DayDetailEffect>(extraBufferCapacity = 1)
+
+    /** One-shots for the screen: the workout that was started or resumed, to open. */
+    val effects: SharedFlow<DayDetailEffect> = opened.asSharedFlow()
 
     val uiState: StateFlow<DayDetailUiState> = combine(
         routines.observeRoutine(routineId),
         exercises.observeAll(),
         pendingDelete,
-    ) { routine, dictionary, pendingDelete ->
+        startConflict,
+    ) { routine, dictionary, pendingDelete, startConflict ->
         val day = routine?.days?.firstOrNull { it.id == routineDayId }
         if (day == null) {
             return@combine DayDetailUiState(isLoading = false, isMissing = true)
@@ -60,6 +79,7 @@ class DayDetailViewModel(
                 )
             },
             pendingDelete = pendingDelete,
+            startConflict = startConflict,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -100,6 +120,58 @@ class DayDetailViewModel(
         viewModelScope.launch {
             routines.deletePlannedExercise(slot.id)
             pendingDelete.update { current -> current?.takeUnless { it.id == slot.id } }
+        }
+    }
+
+    /**
+     * "Start workout". A day can be started only when no workout is running; when one is, the
+     * screen asks whether to resume it or discard it, and nothing is written until it does.
+     */
+    fun startWorkout() {
+        viewModelScope.launch { handleStart(workout.start(routineDayId)) }
+    }
+
+    /** The answer "resume": open the workout that is already running. */
+    fun resumeRunningWorkout() {
+        val conflict = startConflict.value ?: return
+        startConflict.value = null
+        opened.tryEmit(DayDetailEffect.OpenWorkout(conflict.sessionId))
+    }
+
+    /**
+     * The answer "discard and start": the running workout goes, its rest with it (as it does when
+     * the user discards from the workout itself), and this day's workout starts in its place.
+     */
+    fun discardRunningAndStart() {
+        val conflict = startConflict.value ?: return
+
+        viewModelScope.launch {
+            workout.discard(conflict.sessionId)
+            restTimer.stop()
+            startConflict.value = null
+            handleStart(workout.start(routineDayId))
+        }
+    }
+
+    fun dismissStartConflict() {
+        startConflict.value = null
+    }
+
+    private suspend fun handleStart(result: StartWorkoutResult) {
+        when (result) {
+            is StartWorkoutResult.Started -> opened.emit(DayDetailEffect.OpenWorkout(result.sessionId))
+            is StartWorkoutResult.AlreadyRunning -> {
+                // Named in the question, so the user knows which workout they are about to throw away.
+                val running = history.observeDraft(result.sessionId).first() ?: return
+                startConflict.value = StartConflict(
+                    sessionId = running.id,
+                    runningDayName = running.dayNameSnapshot,
+                    runningRoutineName = running.routineNameSnapshot,
+                )
+            }
+            // A day with nothing planned has nothing to start; the button is disabled for it, and a
+            // day deleted in the meantime shows the missing state on its own.
+            StartWorkoutResult.NothingToStart -> Unit
         }
     }
 

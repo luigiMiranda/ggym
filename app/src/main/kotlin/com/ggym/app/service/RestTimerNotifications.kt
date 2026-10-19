@@ -106,14 +106,16 @@ class RestTimerNotifications(private val context: Context) {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
     /**
-     * Tapping a timer notification opens the app, on the screen the user was on — a workout in
-     * progress is on the back stack, and on a cold start it is rebuilt from the database.
+     * Tapping a timer notification opens the running workout. The timer only runs inside a workout,
+     * so the activity is asked to open it ([EXTRA_OPEN_WORKOUT]) rather than being left on whatever
+     * screen the user last saw: after a process death that screen is gone, and the workout is not.
      */
     private fun openApp(): PendingIntent = PendingIntent.getActivity(
         context,
         CONTENT_REQUEST_CODE,
         Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra(EXTRA_OPEN_WORKOUT, true)
         },
         PENDING_INTENT_FLAGS,
     )

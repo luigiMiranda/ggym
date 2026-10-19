@@ -239,6 +239,7 @@ class ActiveWorkoutScreenTest : RepositoryTest() {
                     history = historyRepository,
                     workout = active,
                     restTimer = timer,
+                    preferences = FakeWorkoutPreferences(),
                     now = { clock },
                     ticks = ticks,
                     locale = Locale.ENGLISH,

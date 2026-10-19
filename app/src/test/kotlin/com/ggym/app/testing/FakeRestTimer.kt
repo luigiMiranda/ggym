@@ -66,6 +66,14 @@ internal class FakeWorkoutPreferences(initialRestTimerEnabled: Boolean = true) :
     override suspend fun setRestTimerEnabled(enabled: Boolean) {
         this.enabled.value = enabled
     }
+
+    val promptShown = MutableStateFlow(false)
+
+    override val notificationPromptShown: Flow<Boolean> = promptShown
+
+    override suspend fun setNotificationPromptShown(shown: Boolean) {
+        promptShown.value = shown
+    }
 }
 
 /**

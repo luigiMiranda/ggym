@@ -12,11 +12,13 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavGraph.Companion.findStartDestination
+import kotlinx.coroutines.flow.first
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -44,10 +46,23 @@ import com.ggym.app.ui.workouts.WorkoutsScreen
 @Composable
 fun GgymNavHost(
     container: AppContainer,
+    /**
+     * Bumped each time a rest-timer notification asks for the running workout. Zero means nothing
+     * has asked, which is also the value on a cold start without one.
+     */
+    openWorkoutRequests: Int = 0,
     navController: NavHostController = rememberNavController(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
     val tab = Destination.fromRoute(backStackEntry?.destination?.route)
+
+    // The notification's tap target: the workout that is running, if there still is one. A
+    // notification for a workout that has since ended opens the app where it was, not nowhere.
+    LaunchedEffect(openWorkoutRequests) {
+        if (openWorkoutRequests == 0) return@LaunchedEffect
+        val running = container.workoutHistoryRepository.observeDraft().first() ?: return@LaunchedEffect
+        navController.navigate(Routes.workout(running.id)) { launchSingleTop = true }
+    }
 
     Scaffold(
         bottomBar = {
@@ -93,6 +108,7 @@ fun GgymNavHost(
                 WorkoutsScreen(
                     viewModelFactory = container.workoutsViewModelFactory,
                     onOpenRoutine = { routineId -> navController.navigate(Routes.routine(routineId)) },
+                    onOpenWorkout = { sessionId -> navController.navigate(Routes.workout(sessionId)) },
                 )
             }
             composable(Destination.Calendar.route) { CalendarScreen() }
@@ -133,6 +149,7 @@ fun GgymNavHost(
                     },
                     onBack = { navController.popBackStack() },
                     onAddExercise = { navController.navigate(Routes.exercisePicker(dayId)) },
+                    onOpenWorkout = { sessionId -> navController.navigate(Routes.workout(sessionId)) },
                 )
             }
 

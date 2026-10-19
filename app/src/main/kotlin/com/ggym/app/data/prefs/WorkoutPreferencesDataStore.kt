@@ -26,7 +26,15 @@ class DataStoreWorkoutPreferences(
         dataStore.edit { prefs -> prefs[KEY_REST_TIMER_ENABLED] = enabled }
     }
 
+    override val notificationPromptShown: Flow<Boolean> =
+        dataStore.data.map { prefs -> prefs[KEY_NOTIFICATION_PROMPT_SHOWN] ?: false }
+
+    override suspend fun setNotificationPromptShown(shown: Boolean) {
+        dataStore.edit { prefs -> prefs[KEY_NOTIFICATION_PROMPT_SHOWN] = shown }
+    }
+
     private companion object {
         val KEY_REST_TIMER_ENABLED = booleanPreferencesKey("rest_timer_enabled")
+        val KEY_NOTIFICATION_PROMPT_SHOWN = booleanPreferencesKey("notification_prompt_shown")
     }
 }

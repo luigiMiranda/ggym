@@ -41,6 +41,7 @@ import com.ggym.app.ui.common.EmptyState
 import com.ggym.app.ui.common.NameInputDialog
 import com.ggym.app.ui.common.RowMenu
 import com.ggym.app.ui.common.RowMenuAction
+import com.ggym.app.ui.common.durationSummary
 
 /**
  * Workouts: the routine list, and the way into the routine tree.
@@ -52,6 +53,7 @@ import com.ggym.app.ui.common.RowMenuAction
 fun WorkoutsScreen(
     viewModelFactory: ViewModelProvider.Factory,
     onOpenRoutine: (Long) -> Unit,
+    onOpenWorkout: (Long) -> Unit,
     viewModel: WorkoutsViewModel = viewModel(factory = viewModelFactory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -71,7 +73,9 @@ fun WorkoutsScreen(
             // Nothing is shown until the first read lands, so the empty state never flashes.
             state.isLoading -> Unit
 
-            state.routines.isEmpty() -> EmptyState(
+            // A workout can outlive its routine (it keeps its own names), so the resume card is
+            // reason enough to show the list even when no routine is left.
+            state.routines.isEmpty() && state.resume == null -> EmptyState(
                 icon = Icons.Outlined.FitnessCenter,
                 title = stringResource(R.string.workouts_empty_title),
                 message = stringResource(R.string.workouts_empty_message),
@@ -83,6 +87,11 @@ fun WorkoutsScreen(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                state.resume?.let { resume ->
+                    item(key = "resume") {
+                        ResumeCard(card = resume, onOpen = { onOpenWorkout(resume.sessionId) })
+                    }
+                }
                 items(state.routines, key = { it.id }) { routine ->
                     RoutineRow(
                         routine = routine,
@@ -114,6 +123,48 @@ fun WorkoutsScreen(
             onConfirm = viewModel::confirmDelete,
             onDismiss = viewModel::cancelDelete,
         )
+    }
+}
+
+/**
+ * The running workout, offered first: the one thing the Workouts tab can do that no other screen
+ * can is to get the user back into a workout they are in the middle of.
+ */
+@Composable
+private fun ResumeCard(
+    card: ResumeCard,
+    onOpen: () -> Unit,
+) {
+    Card(
+        onClick = onOpen,
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+            Text(
+                text = stringResource(R.string.workouts_resume_label),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Text(
+                text = card.dayName,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Text(
+                text = stringResource(
+                    R.string.workouts_resume_detail,
+                    stringResource(
+                        R.string.workout_progress,
+                        card.completedSets,
+                        pluralStringResource(R.plurals.workout_sets, card.totalSets, card.totalSets),
+                    ),
+                    durationSummary(card.elapsedMillis),
+                ),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
     }
 }
 

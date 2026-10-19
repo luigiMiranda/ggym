@@ -6,6 +6,7 @@ import com.ggym.app.domain.model.WorkoutExerciseLog
 import com.ggym.app.domain.model.WorkoutSession
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
+import com.ggym.app.domain.repository.WorkoutPreferences
 import com.ggym.app.domain.workout.ActiveWorkoutUseCases
 import com.ggym.app.domain.workout.RemoveSetResult
 import com.ggym.app.domain.workout.RestTimerUseCases
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -50,6 +52,7 @@ class ActiveWorkoutViewModel(
     private val history: WorkoutHistoryRepository,
     private val workout: ActiveWorkoutUseCases,
     private val restTimer: RestTimerUseCases,
+    private val preferences: WorkoutPreferences,
     private val now: () -> Long = System::currentTimeMillis,
     ticks: Flow<Unit> = secondTicks(),
     private val locale: Locale = Locale.getDefault(),
@@ -91,6 +94,17 @@ class ActiveWorkoutViewModel(
             started = SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS),
             initialValue = ActiveWorkoutUiState(),
         )
+
+    /**
+     * Whether the screen should ask for notification permission now: once, the first time a workout
+     * is shown. Asking during a rest, when the user is about to need the countdown, is the one
+     * context a prompt makes sense in; the answer is not this class's business.
+     */
+    val isNotificationPromptDue: Flow<Boolean> = preferences.notificationPromptShown.map { !it }
+
+    fun notificationPromptShown() {
+        viewModelScope.launch { preferences.setNotificationPromptShown(true) }
+    }
 
     /** Opens one exercise's focused page. Leaving and re-entering resets the chip selection. */
     fun focusExercise(index: Int) {

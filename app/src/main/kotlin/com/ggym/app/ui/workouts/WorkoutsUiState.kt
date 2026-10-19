@@ -1,6 +1,7 @@
 package com.ggym.app.ui.workouts
 
 import com.ggym.app.domain.model.Routine
+import com.ggym.app.domain.model.WorkoutSession
 
 /** One routine card: the counts are computed on the way in, so a card never loads the tree. */
 data class RoutineCard(
@@ -17,6 +18,20 @@ data class WorkoutsUiState(
     val routines: List<RoutineCard> = emptyList(),
     val nameDialog: RoutineNameDialog? = null,
     val pendingDelete: RoutineCard? = null,
+    /** The workout in progress, if one is: it can be resumed from here, whatever happened to its routine. */
+    val resume: ResumeCard? = null,
+)
+
+/**
+ * The running workout as the resume card shows it. The routine may have been edited or deleted
+ * since it started: the workout keeps the names it was started with, so the card does too.
+ */
+data class ResumeCard(
+    val sessionId: Long,
+    val dayName: String,
+    val completedSets: Int,
+    val totalSets: Int,
+    val elapsedMillis: Long,
 )
 
 /**
@@ -29,6 +44,18 @@ data class RoutineNameDialog(
     val initialName: String = "",
 ) {
     val isCreating: Boolean get() = routineId == null
+}
+
+internal fun WorkoutSession.toResumeCard(at: Long): ResumeCard {
+    val sets = exercises.flatMap { it.sets }
+    return ResumeCard(
+        sessionId = id,
+        dayName = dayNameSnapshot,
+        completedSets = sets.count { it.isCompleted },
+        totalSets = sets.size,
+        // A draft always carries its start (the domain writes it); a missing one shows no elapsed time.
+        elapsedMillis = startedAtMillis?.let { (at - it).coerceAtLeast(0L) } ?: 0L,
+    )
 }
 
 internal fun Routine.toCard(): RoutineCard = RoutineCard(

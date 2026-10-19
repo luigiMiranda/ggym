@@ -239,7 +239,27 @@ on the stored deadline), and its three actions — `+15 s`, `-15 s`, `Skip` — 
 app's own banner sends. Tapping a timer notification opens the app. There are two channels: the
 running one silent and ongoing, and a high-importance one with vibration and no sound for the alert,
 whose tone the app plays itself (`AndroidRestAlertPlayer`, a `ToneGenerator` beep while holding
-`AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`, so the user's music dips instead of stopping).
+`AUDIOFOCUS_GAIN_TRANSIENT_MAY_DUCK`, so the user's music dips instead of stopping). Tapping the
+notification opens the running workout, not just the app: `RestTimerNotifications` puts
+`EXTRA_OPEN_WORKOUT` on the activity intent, the activity counts such requests in state (so a
+configuration change does not replay one) and the nav host navigates to `workout/{sessionId}` for the
+draft that is still open. A notification whose workout has since ended opens the app where it was.
+
+**Entering a workout, and the rest timer's switch.** A workout starts from the training day's
+"Start workout" container, which carries the day's shape (exercises · sets) and is disabled when
+nothing is planned. A second start does not write: `ActiveWorkoutUseCases.start` returns the running
+workout's id, and the day screen turns that into a dialog that names the running day and its routine
+and offers *resume* or *discard and start* — the discard path also stops the rest that belonged to
+the workout it throws away. Workouts lists the running workout above the routines (day name, "3 of 12
+sets", elapsed time, refreshed by a ticker because it is the one thing on that screen that moves
+without a write), read from the draft's own name snapshots so a workout survives its routine being
+edited or deleted. Settings owns the rest timer's master switch and writes it through
+`RestTimerUseCases.setEnabled`, never straight into the preference, so "off" also ends a rest that is
+running. The notification permission is requested once, the first time a workout is on screen
+(`WorkoutPreferences.notificationPromptShown`), never at launch, and denial is an ordinary outcome:
+Settings grows a row that says what is missing and links to the system page. That row is driven by
+the system state, read by the screen on every resume (`rememberNotificationsAllowed`), so no
+ViewModel needs an Android dependency to know it.
 
 A rest ends through whichever path arrives first: the service's own task for the deadline, or the
 exact alarm (`RestTimerAlarms`, `setExactAndAllowWhileIdle`) that wakes a suspended, dozing or dead

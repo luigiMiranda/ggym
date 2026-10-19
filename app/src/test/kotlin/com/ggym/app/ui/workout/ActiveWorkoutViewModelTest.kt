@@ -78,6 +78,7 @@ class ActiveWorkoutViewModelTest : ViewModelTest() {
         history = historyRepository,
         workout = active,
         restTimer = timer,
+        preferences = restPreferences,
         now = { clock },
         ticks = ticks,
         locale = Locale.ENGLISH,
@@ -527,4 +528,20 @@ class ActiveWorkoutViewModelTest : ViewModelTest() {
         .first { it.id == setId }
 
     private suspend fun additionalSet() = draft().exercises.first().sets.last()
+
+    @Test
+    fun `the notification prompt is due until the screen has asked once`() = runTest {
+        // The answer is the user's: the screen asks, a denial is an ordinary outcome, and the
+        // question is not asked again on the next workout.
+        val vm = viewModel()
+
+        vm.isNotificationPromptDue.test {
+            assertTrue(awaitItem())
+
+            vm.notificationPromptShown()
+
+            assertFalse(awaitItem())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
 }

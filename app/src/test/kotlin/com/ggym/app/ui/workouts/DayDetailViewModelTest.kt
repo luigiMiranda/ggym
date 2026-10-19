@@ -1,6 +1,14 @@
 package com.ggym.app.ui.workouts
 
 import app.cash.turbine.test
+import com.ggym.app.domain.repository.RestTimerState
+import com.ggym.app.domain.workout.ActiveWorkoutUseCases
+import com.ggym.app.domain.workout.RestTimerUseCases
+import com.ggym.app.domain.workout.StartWorkoutResult
+import com.ggym.app.testing.FakeRestTimerCommands
+import com.ggym.app.testing.FakeRestTimerStore
+import com.ggym.app.testing.FakeWorkoutPreferences
+import com.ggym.app.testing.RecordedCommand
 import com.ggym.app.testing.TestData
 import com.ggym.app.testing.ViewModelTest
 import com.ggym.app.testing.awaitState
@@ -24,12 +32,41 @@ class DayDetailViewModelTest : ViewModelTest() {
     private var routineId: Long = 0
     private var dayId: Long = 0
 
+    private val restStore = FakeRestTimerStore()
+    private val restCommands = FakeRestTimerCommands()
+
+    private val timer by lazy {
+        RestTimerUseCases(store = restStore, commands = restCommands, preferences = FakeWorkoutPreferences(), now = { clock })
+    }
+
+    private val activeWorkout by lazy {
+        ActiveWorkoutUseCases(
+            routines = routineRepository,
+            exercises = exerciseRepository,
+            history = historyRepository,
+            weights = workingWeights,
+            now = { clock },
+            zoneId = TestData.zone,
+        )
+    }
+
+    /** "Push Day" with one "Push A" day that plans a bench press: the smallest day that can start. */
+    private suspend fun givenStartableDay() {
+        val bench = exerciseRepository.findOrCreate("Bench Press")
+        routineId = routineRepository.createRoutine("Push Day")
+        dayId = routineRepository.addDay(routineId, "Push A")
+        routineRepository.addPlannedExercise(dayId, bench.id, 4, "8-10", 120)
+    }
+
     private fun viewModel() = DayDetailViewModel(
         routineId = routineId,
         routineDayId = dayId,
         routines = routineRepository,
         exercises = exerciseRepository,
         weights = workingWeights,
+        history = historyRepository,
+        workout = activeWorkout,
+        restTimer = timer,
     )
 
     @Test
@@ -164,6 +201,123 @@ class DayDetailViewModelTest : ViewModelTest() {
             assertNull(state.pendingDelete)
 
             cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `starting a day opens the workout it started`() = runTest {
+        givenStartableDay()
+        val vm = viewModel()
+
+        vm.effects.test {
+            vm.startWorkout()
+
+            val opened = awaitItem() as DayDetailEffect.OpenWorkout
+            val draft = historyRepository.observeDraft().first()!!
+            assertEquals("the effect names the one draft that exists", draft.id, opened.sessionId)
+            assertEquals("Push A", draft.dayNameSnapshot)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a second start asks what to do with the running workout and writes nothing`() = runTest {
+        givenStartableDay()
+        val running = (activeWorkout.start(dayId) as StartWorkoutResult.Started).sessionId
+        val vm = viewModel()
+
+        vm.uiState.test {
+            awaitState { it.slots.size == 1 }
+
+            vm.startWorkout()
+            val conflict = awaitState { it.startConflict != null }.startConflict!!
+
+            assertEquals(StartConflict(running, runningDayName = "Push A", runningRoutineName = "Push Day"), conflict)
+            assertEquals("still one draft", listOf(running), historyRepository.observeDraft().first()?.let { listOf(it.id) })
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `resume opens the running workout and changes nothing in it`() = runTest {
+        givenStartableDay()
+        val running = (activeWorkout.start(dayId) as StartWorkoutResult.Started).sessionId
+        val vm = viewModel()
+
+        vm.effects.test {
+            vm.uiState.test {
+                awaitState { it.slots.size == 1 }
+                vm.startWorkout()
+                awaitState { it.startConflict != null }
+                cancelAndIgnoreRemainingEvents()
+            }
+
+            vm.resumeRunningWorkout()
+
+            assertEquals(DayDetailEffect.OpenWorkout(running), awaitItem())
+            assertEquals(running, historyRepository.observeDraft().first()?.id)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `discard and start replaces the running workout, stops its rest, and opens the new one`() = runTest {
+        givenStartableDay()
+        val old = (activeWorkout.start(dayId) as StartWorkoutResult.Started).sessionId
+        restStore.set(RestTimerState(endsAtMillis = clock + 90_000, totalSeconds = 90, exerciseLogId = 1, exerciseName = "Bench Press"))
+        val vm = viewModel()
+
+        vm.effects.test {
+            vm.uiState.test {
+                awaitState { it.slots.size == 1 }
+                vm.startWorkout()
+                awaitState { it.startConflict != null }
+                cancelAndIgnoreRemainingEvents()
+            }
+
+            vm.discardRunningAndStart()
+
+            val opened = awaitItem() as DayDetailEffect.OpenWorkout
+            val draft = historyRepository.observeDraft().first()!!
+            assertTrue("a new workout, not the old one", draft.id != old && draft.id == opened.sessionId)
+            assertTrue("the running rest belonged to the discarded workout", restCommands.received.contains(RecordedCommand.Stop))
+            assertNull("the old draft is gone", historyRepository.observeDraft(old).first())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `dismissing the question changes nothing`() = runTest {
+        givenStartableDay()
+        val running = (activeWorkout.start(dayId) as StartWorkoutResult.Started).sessionId
+        val vm = viewModel()
+
+        vm.uiState.test {
+            awaitState { it.slots.size == 1 }
+            vm.startWorkout()
+            awaitState { it.startConflict != null }
+
+            vm.dismissStartConflict()
+            assertNull(awaitState { it.startConflict == null }.startConflict)
+            assertEquals(running, historyRepository.observeDraft().first()?.id)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a day with nothing planned starts nothing`() = runTest {
+        routineId = routineRepository.createRoutine("Push Day")
+        dayId = routineRepository.addDay(routineId, "Rest Day")
+        val vm = viewModel()
+
+        vm.effects.test {
+            vm.startWorkout()
+
+            expectNoEvents()
+            assertNull(historyRepository.observeDraft().first())
         }
     }
 }

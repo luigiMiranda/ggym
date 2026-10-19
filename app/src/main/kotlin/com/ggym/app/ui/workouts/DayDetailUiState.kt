@@ -27,4 +27,21 @@ data class DayDetailUiState(
     val dayName: String = "",
     val slots: List<SlotRow> = emptyList(),
     val pendingDelete: SlotRow? = null,
+    /** Set while the resume-or-discard question about a running workout is open. */
+    val startConflict: StartConflict? = null,
+) {
+    /** The shape of the day, for the "Start workout" container: "5 exercises · 14 sets". */
+    val plannedSetCount: Int get() = slots.sumOf { it.targetSets }
+}
+
+/** The workout that already runs, named so the question says what would be discarded. */
+data class StartConflict(
+    val sessionId: Long,
+    val runningDayName: String,
+    val runningRoutineName: String,
 )
+
+/** What the day screen must do after a start, resume or discard. */
+sealed interface DayDetailEffect {
+    data class OpenWorkout(val sessionId: Long) : DayDetailEffect
+}

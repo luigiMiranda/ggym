@@ -18,4 +18,13 @@ interface WorkoutPreferences {
     val restTimerEnabled: Flow<Boolean>
 
     suspend fun setRestTimerEnabled(enabled: Boolean)
+
+    /**
+     * Whether the app has already asked for notification permission. The question is asked once,
+     * when a workout is first opened, and never again: a second prompt after a denial is noise, and
+     * the Settings screen is where a user who changed their mind goes.
+     */
+    val notificationPromptShown: Flow<Boolean>
+
+    suspend fun setNotificationPromptShown(shown: Boolean)
 }

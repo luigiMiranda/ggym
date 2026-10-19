@@ -2,6 +2,8 @@
 
 package com.ggym.app.ui.workout
 
+import android.Manifest
+import android.os.Build
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -28,6 +30,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -50,6 +54,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -65,6 +70,7 @@ import com.ggym.app.ui.common.RowMenu
 import com.ggym.app.ui.common.RowMenuAction
 import com.ggym.app.ui.common.activeLocale
 import com.ggym.app.ui.common.durationSummary
+import com.ggym.app.ui.common.notificationPermissionGranted
 import com.ggym.app.ui.theme.GgymHeroWeight
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -92,6 +98,21 @@ fun ActiveWorkoutScreen(
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { onWorkoutEnded() }
+    }
+
+    // The notification permission is asked once, the first time a workout is on screen. A denial is
+    // an ordinary outcome: the countdown, the banner and the tone all work without the drawer, and
+    // Settings says what is missing. So the answer is not read here.
+    val notificationPrompt = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
+    val promptDue by viewModel.isNotificationPromptDue.collectAsStateWithLifecycle(initialValue = false)
+    val context = LocalContext.current
+    LaunchedEffect(promptDue) {
+        if (promptDue) {
+            viewModel.notificationPromptShown()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !context.notificationPermissionGranted()) {
+                notificationPrompt.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
     }
 
     // Back never drops a workout on the floor: focused → overview → the finish sheet. The sheet and

@@ -27,6 +27,12 @@
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_wallpaper_colors_title">Wallpaper colours</string>
     <string name="settings_wallpaper_colors_supporting">Uses colours from your wallpaper instead of GGym\'s. Off by default.</string>
+    <string name="settings_section_workout">Workout</string>
+    <string name="settings_rest_timer_title">Rest timer</string>
+    <string name="settings_rest_timer_supporting">Starts a countdown when you complete a set, and alerts you when the rest is over. Off: completed sets are logged and nothing else happens.</string>
+    <string name="settings_notifications_title">Notifications are off</string>
+    <string name="settings_notifications_supporting">The rest countdown still runs in the app, but the notification and the rest-over alert need notifications. Allow them in the system settings to get both.</string>
+    <string name="settings_notifications_open">Open notification settings</string>
 
     <!-- Shared actions -->
     <string name="action_more">More actions</string>
@@ -50,6 +56,8 @@
 
     <!-- Routines -->
     <string name="workouts_new_routine">New routine</string>
+    <string name="workouts_resume_label">Workout in progress</string>
+    <string name="workouts_resume_detail">%1$s · %2$s</string>
     <string name="routine_new_title">New routine</string>
     <string name="routine_rename_title">Rename routine</string>
     <string name="routine_name_label">Routine name</string>
@@ -83,6 +91,20 @@
     <string name="day_add_exercise">Add exercise</string>
     <string name="day_empty_title">Nothing planned yet</string>
     <string name="day_empty_message">Add the exercises for this day: how many sets, which reps, and the weight to load.</string>
+    <string name="day_start_label">Start workout</string>
+    <plurals name="day_start_exercises">
+        <item quantity="one">%1$d exercise</item>
+        <item quantity="other">%1$d exercises</item>
+    </plurals>
+    <plurals name="day_start_sets">
+        <item quantity="one">%1$d set</item>
+        <item quantity="other">%1$d sets</item>
+    </plurals>
+    <string name="day_start_shape">%1$s · %2$s</string>
+    <string name="day_conflict_title">A workout is already running</string>
+    <string name="day_conflict_message">“%1$s” from “%2$s” is still in progress. Resume it, or discard it and start this day instead.</string>
+    <string name="day_conflict_resume">Resume</string>
+    <string name="day_conflict_discard">Discard and start</string>
 
     <!-- Exercise slots -->
     <string name="slot_target">%1$d × %2$s</string>

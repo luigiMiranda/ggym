@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,13 +33,16 @@ import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.ViewModelProvider
@@ -63,10 +68,19 @@ fun DayDetailScreen(
     slotEditorViewModelFactory: (Long) -> ViewModelProvider.Factory,
     onBack: () -> Unit,
     onAddExercise: () -> Unit,
+    onOpenWorkout: (Long) -> Unit,
     viewModel: DayDetailViewModel = viewModel(factory = viewModelFactory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var editedSlotId by rememberSaveable { mutableStateOf<Long?>(null) }
+
+    LaunchedEffect(viewModel) {
+        viewModel.effects.collect { effect ->
+            when (effect) {
+                is DayDetailEffect.OpenWorkout -> onOpenWorkout(effect.sessionId)
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -103,31 +117,80 @@ fun DayDetailScreen(
                 modifier = Modifier.padding(padding),
             )
 
-            state.slots.isEmpty() -> EmptyState(
-                icon = Icons.Outlined.FitnessCenter,
-                title = stringResource(R.string.day_empty_title),
-                message = stringResource(R.string.day_empty_message),
-                modifier = Modifier.padding(padding),
-            )
+            // The start container sits above the slots in every case, so an empty day shows it
+            // disabled rather than hiding the one thing this screen is for.
+            else -> Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+                StartWorkoutCard(
+                    exerciseCount = state.slots.size,
+                    setCount = state.plannedSetCount,
+                    onStart = viewModel::startWorkout,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 4.dp),
+                )
 
-            else -> LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(padding),
-                contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                itemsIndexed(state.slots, key = { _, slot -> slot.id }) { index, slot ->
-                    SlotRow(
-                        slot = slot,
-                        canMoveUp = index > 0,
-                        canMoveDown = index < state.slots.lastIndex,
-                        onEdit = { editedSlotId = slot.id },
-                        onMoveUp = { viewModel.moveSlot(slot.id, up = true) },
-                        onMoveDown = { viewModel.moveSlot(slot.id, up = false) },
-                        onDelete = { viewModel.askDeleteSlot(slot) },
+                if (state.slots.isEmpty()) {
+                    EmptyState(
+                        icon = Icons.Outlined.FitnessCenter,
+                        title = stringResource(R.string.day_empty_title),
+                        message = stringResource(R.string.day_empty_message),
+                        modifier = Modifier.weight(1f),
                     )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        itemsIndexed(state.slots, key = { _, slot -> slot.id }) { index, slot ->
+                            SlotRow(
+                                slot = slot,
+                                canMoveUp = index > 0,
+                                canMoveDown = index < state.slots.lastIndex,
+                                onEdit = { editedSlotId = slot.id },
+                                onMoveUp = { viewModel.moveSlot(slot.id, up = true) },
+                                onMoveDown = { viewModel.moveSlot(slot.id, up = false) },
+                                onDelete = { viewModel.askDeleteSlot(slot) },
+                            )
+                        }
+                    }
                 }
             }
         }
+    }
+
+    state.startConflict?.let { conflict ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissStartConflict,
+            title = { Text(stringResource(R.string.day_conflict_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.day_conflict_message,
+                        conflict.runningDayName,
+                        conflict.runningRoutineName,
+                    ),
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = viewModel::resumeRunningWorkout) {
+                    Text(stringResource(R.string.day_conflict_resume))
+                }
+            },
+            dismissButton = {
+                Row {
+                    TextButton(onClick = viewModel::discardRunningAndStart) {
+                        Text(
+                            text = stringResource(R.string.day_conflict_discard),
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    TextButton(onClick = viewModel::dismissStartConflict) {
+                        Text(stringResource(R.string.action_cancel))
+                    }
+                }
+            },
+        )
     }
 
     state.pendingDelete?.let { slot ->
@@ -145,6 +208,42 @@ fun DayDetailScreen(
             viewModelFactory = slotEditorViewModelFactory,
             onDismiss = { editedSlotId = null },
         )
+    }
+}
+
+/**
+ * "Start workout": the day's shape above the list, so the decision to train is one tap away from
+ * the plan. Disabled while nothing is planned, because a workout with no exercises is not a workout.
+ */
+@Composable
+private fun StartWorkoutCard(
+    exerciseCount: Int,
+    setCount: Int,
+    onStart: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val exercises = pluralStringResource(R.plurals.day_start_exercises, exerciseCount, exerciseCount)
+    val sets = pluralStringResource(R.plurals.day_start_sets, setCount, setCount)
+
+    Card(
+        onClick = onStart,
+        enabled = exerciseCount > 0,
+        shape = MaterialTheme.shapes.extraLarge,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
+        modifier = modifier,
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp)) {
+            Text(
+                text = stringResource(R.string.day_start_label),
+                style = MaterialTheme.typography.headlineSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+            Text(
+                text = stringResource(R.string.day_start_shape, exercises, sets),
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
     }
 }
 
