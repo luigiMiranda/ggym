@@ -40,7 +40,7 @@ class RestTimerNotifications(private val context: Context) {
     }
 
     /** The countdown, as the foreground service's notification. */
-    fun running(state: RestTimerState): Notification = base(CHANNEL_RUNNING)
+    fun running(state: RestTimerState): Notification = base(CHANNEL_RUNNING, openWorkout())
         .setContentTitle(state.exerciseName)
         .setContentText(context.getString(R.string.rest_notification_text))
         .setOngoing(true)
@@ -68,12 +68,23 @@ class RestTimerNotifications(private val context: Context) {
         )
         .build()
 
-    /** The alert, once the rest is over. */
-    fun finished(state: RestTimerState): Notification = base(CHANNEL_FINISHED)
+    /**
+     * The alert, once the rest is over.
+     *
+     * It carries **Stop**: M3 could leave this notification actionless because the sound was 700 ms
+     * long, and a ringing alert has to have a way out. Tapping the body also silences it (through
+     * [EXTRA_SILENCE_ALERT]) and opens the workout, which is what the running notification does.
+     */
+    fun finished(state: RestTimerState): Notification = base(CHANNEL_FINISHED, openWorkoutAndSilence())
         .setContentTitle(context.getString(R.string.rest_finished_notification_title))
         .setContentText(context.getString(R.string.rest_finished_notification_text, state.exerciseName))
         .setAutoCancel(true)
         .setCategory(NotificationCompat.CATEGORY_ALARM)
+        .addAction(
+            0,
+            context.getString(R.string.rest_action_stop),
+            command(RestTimerService.silenceIntent(context), REQUEST_CODE_SILENCE),
+        )
         .build()
 
     /**
@@ -99,23 +110,38 @@ class RestTimerNotifications(private val context: Context) {
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
     }
 
-    private fun base(channelId: String): NotificationCompat.Builder =
+    private fun base(channelId: String, content: PendingIntent): NotificationCompat.Builder =
         NotificationCompat.Builder(context, channelId)
             .setSmallIcon(R.drawable.ic_notification_timer)
-            .setContentIntent(openApp())
+            .setContentIntent(content)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
     /**
-     * Tapping a timer notification opens the running workout. The timer only runs inside a workout,
-     * so the activity is asked to open it ([EXTRA_OPEN_WORKOUT]) rather than being left on whatever
-     * screen the user last saw: after a process death that screen is gone, and the workout is not.
+     * Tapping a running countdown opens the workout it belongs to. The timer only runs inside a
+     * workout, so the activity is asked to open it ([EXTRA_OPEN_WORKOUT]) rather than being left on
+     * whatever screen the user last saw: after a process death that screen is gone, and the workout
+     * is not.
      */
-    private fun openApp(): PendingIntent = PendingIntent.getActivity(
+    private fun openWorkout(): PendingIntent =
+        openApp(CONTENT_REQUEST_CODE, silenceAlert = false)
+
+    /** The alert's body tap: the same navigation, plus the silence the alert needs. */
+    private fun openWorkoutAndSilence(): PendingIntent =
+        openApp(ALERT_CONTENT_REQUEST_CODE, silenceAlert = true)
+
+    /**
+     * The two callers above use different request codes on purpose: two pending intents built from
+     * the same activity intent are *the same intent* as far as the framework is concerned, extras
+     * and all, so a shared request code would let whichever was built last decide whether a tap
+     * silences — which is exactly the bug the per-action request codes below avoid.
+     */
+    private fun openApp(requestCode: Int, silenceAlert: Boolean): PendingIntent = PendingIntent.getActivity(
         context,
-        CONTENT_REQUEST_CODE,
+        requestCode,
         Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
             putExtra(EXTRA_OPEN_WORKOUT, true)
+            if (silenceAlert) putExtra(EXTRA_SILENCE_ALERT, true)
         },
         PENDING_INTENT_FLAGS,
     )
@@ -170,6 +196,10 @@ class RestTimerNotifications(private val context: Context) {
         private const val REQUEST_CODE_ADD_TIME = 1
         private const val REQUEST_CODE_SUBTRACT_TIME = 2
         private const val REQUEST_CODE_SKIP = 3
+        private const val REQUEST_CODE_SILENCE = 4
+
+        /** The alert's body tap, kept apart from [CONTENT_REQUEST_CODE] so the extras cannot merge. */
+        private const val ALERT_CONTENT_REQUEST_CODE = 5
         private const val PENDING_INTENT_FLAGS =
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
     }

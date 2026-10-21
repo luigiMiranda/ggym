@@ -45,6 +45,12 @@ class RestTimerService : Service() {
     /** The task that ends the rest on time. Only ever one, and only while a rest runs. */
     private var deadline: Job? = null
 
+    /**
+     * The task that ends the *ring*. Only ever one, and only while an alert rings — and the reason
+     * the service stays in the foreground after the countdown is over.
+     */
+    private var ringing: Job? = null
+
     private lateinit var rest: RestTimerDependencies
 
     override fun onCreate() {
@@ -66,6 +72,10 @@ class RestTimerService : Service() {
 
     override fun onDestroy() {
         deadline?.cancel()
+        ringing?.cancel()
+        // A MediaPlayer outlives the service that started it, so a service the system takes away
+        // mid-ring would otherwise leave the phone ringing with no way to stop it.
+        rest.alerts.stop()
         scope.cancel()
         super.onDestroy()
     }
@@ -74,6 +84,7 @@ class RestTimerService : Service() {
         when (intent?.action) {
             ACTION_START -> start(intent)
             ACTION_EXTEND -> extend(intent.getIntExtra(EXTRA_DELTA_SECONDS, 0))
+            ACTION_SILENCE -> silence()
             ACTION_SKIP, ACTION_STOP -> end()
             // Nothing to go on: either the system restarted the service, or an intent it does not
             // know. The stored deadline decides what happens, not the intent.
@@ -105,6 +116,11 @@ class RestTimerService : Service() {
     /** `Skip` and the app's teardown: the countdown goes away without a sound. */
     private suspend fun end() {
         deadline?.cancel()
+        // Skip, the next set and "the workout is over" all stop a ringing alert too: every one of
+        // them means the user has moved on.
+        ringing?.cancel()
+        ringing = null
+        rest.alerts.stop()
         rest.completion.cancel()
         removeForeground()
         stopSelf()
@@ -145,11 +161,48 @@ class RestTimerService : Service() {
         }
     }
 
-    /** The rest is over: the alert and the finished notification, then the service's own end. */
+    /**
+     * The rest is over: the countdown's notification becomes the alert, the alert starts ringing,
+     * and the ring is scheduled to end.
+     *
+     * The service **stays in the foreground** while it rings. M3 could post the alert and stop, but a
+     * ringing alert has to outlive the call that started it, and a foreground service is the only
+     * thing keeping this process alive — so the finished notification is promoted to the foreground
+     * one, same id, and the countdown becomes the alert in place.
+     */
     private suspend fun complete(state: RestTimerState) {
         deadline?.cancel()
         deadline = null
-        rest.completion.complete(state)
+        if (!rest.completion.complete(state)) return
+
+        val sound = rest.preferences.alertSound.first()
+        val policy = rest.preferences.ringPolicy.first()
+
+        startForeground(RestTimerNotifications.NOTIFICATION_ID, rest.notifications.finished(state))
+        rest.alerts.start(sound)
+        scheduleRingEnd(policy.ringSeconds)
+    }
+
+    /**
+     * Schedules the end of the ring, always — automatic by its own duration, manual by the backstop
+     * [RingPolicy] carries. There is no path where an alert rings without one.
+     */
+    private fun scheduleRingEnd(seconds: Int) {
+        ringing?.cancel()
+        ringing = scope.launch {
+            delay(seconds * MILLIS_PER_SECOND)
+            silence()
+        }
+    }
+
+    /**
+     * Stops the ringing without touching the notification: the rest is long over, so there is no
+     * countdown to clear — only a sound to stop and a service to let go of.
+     */
+    private suspend fun silence() {
+        ringing?.cancel()
+        ringing = null
+        rest.alerts.stop()
         // Detached, not removed: what is on screen now is the alert, and it should stay there until
         // the user looks at it.
         stopForeground(STOP_FOREGROUND_DETACH)
@@ -192,6 +245,9 @@ class RestTimerService : Service() {
         const val ACTION_EXTEND = "com.ggym.app.action.REST_TIMER_EXTEND"
         const val ACTION_SKIP = "com.ggym.app.action.REST_TIMER_SKIP"
         const val ACTION_STOP = "com.ggym.app.action.REST_TIMER_STOP"
+        const val ACTION_SILENCE = "com.ggym.app.action.REST_TIMER_SILENCE"
+
+        private const val MILLIS_PER_SECOND = 1_000L
 
         const val EXTRA_ENDS_AT_MILLIS = "com.ggym.app.extra.REST_TIMER_ENDS_AT_MILLIS"
         const val EXTRA_TOTAL_SECONDS = "com.ggym.app.extra.REST_TIMER_TOTAL_SECONDS"
@@ -221,5 +277,17 @@ class RestTimerService : Service() {
         /** Ends the running rest and the service with it: the workout is over, or the timer is off. */
         fun stopIntent(context: Context): Intent =
             Intent(context, RestTimerService::class.java).setAction(ACTION_STOP)
+
+        /**
+         * Silences a ringing alert, leaving its notification on screen.
+         *
+         * Sent by the notification's Stop action, by the alert's own body tap and by the in-app
+         * banner. Unlike the others it is not a `startForegroundService` in the app's own service
+         * running — the app is by definition visible when the banner sends it — but the notification
+         * action path is allowed to start one because a tap on a notification is a documented
+         * exemption from the background-start restriction.
+         */
+        fun silenceIntent(context: Context): Intent =
+            Intent(context, RestTimerService::class.java).setAction(ACTION_SILENCE)
     }
 }

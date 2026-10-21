@@ -89,6 +89,7 @@ class AppContainer(context: Context) {
         notifications = RestTimerNotifications(appContext),
         alarms = RestTimerAlarms(appContext),
         alerts = AndroidRestAlertPlayer(appContext),
+        preferences = workoutPreferences,
     )
 
     val exerciseRepository: ExerciseRepository = RoomExerciseRepository(database)
@@ -139,7 +140,7 @@ class AppContainer(context: Context) {
     }
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(themePreferences, restTimerUseCases) }
+        initializer { SettingsViewModel(themePreferences, restTimerUseCases, workoutPreferences) }
     }
 
     val workoutsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

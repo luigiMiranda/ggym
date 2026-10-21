@@ -3,6 +3,7 @@ package com.ggym.app.service
 import android.content.Context
 import com.ggym.app.GgymApplication
 import com.ggym.app.domain.repository.RestTimerStore
+import com.ggym.app.domain.repository.WorkoutPreferences
 import com.ggym.app.domain.workout.RestTimerUseCases
 
 /**
@@ -11,8 +12,11 @@ import com.ggym.app.domain.workout.RestTimerUseCases
  *
  * The framework constructs both of them, so neither can take its dependencies through a
  * constructor; this is what they are handed instead. Production builds it once in
- * `AppContainer`; a test replaces it with fakes, which is also how a `ToneGenerator` or a real
+ * `AppContainer`; a test replaces it with fakes, which is also how a `MediaPlayer` or a real
  * notification never has to run in a JVM test.
+ *
+ * [preferences] is here for the alert's own settings — which sound it makes and how long it rings —
+ * because the ring is the service's to hold and stop, so the service is what has to read them.
  */
 class RestTimerDependencies(
     val store: RestTimerStore,
@@ -20,10 +24,11 @@ class RestTimerDependencies(
     val notifications: RestTimerNotifications,
     val alarms: RestTimerAlarms,
     val alerts: RestAlertPlayer,
+    val preferences: WorkoutPreferences,
 ) {
 
     /** The one end-of-rest implementation both entry points use. */
-    val completion: RestTimerCompletion = RestTimerCompletion(store, alarms, notifications, alerts)
+    val completion: RestTimerCompletion = RestTimerCompletion(store, alarms, notifications)
 }
 
 /**

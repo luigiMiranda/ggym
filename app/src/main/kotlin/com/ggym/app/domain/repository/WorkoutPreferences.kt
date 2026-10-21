@@ -1,5 +1,7 @@
 package com.ggym.app.domain.repository
 
+import com.ggym.app.domain.workout.AlertSound
+import com.ggym.app.domain.workout.RingPolicy
 import kotlinx.coroutines.flow.Flow
 
 /**
@@ -27,4 +29,23 @@ interface WorkoutPreferences {
     val notificationPromptShown: Flow<Boolean>
 
     suspend fun setNotificationPromptShown(shown: Boolean)
+
+    /**
+     * Which sound the rest-over alert makes. Absent means [AlertSound.SystemDefault].
+     *
+     * A preference rather than a constant because the sound is played by the app, not by the
+     * notification channel, so the system's own sound setting for the channel cannot reach it.
+     */
+    val alertSound: Flow<AlertSound>
+
+    suspend fun setAlertSound(sound: AlertSound)
+
+    /**
+     * Whether the alert rings until stopped or stops by itself, and for how long.
+     *
+     * Absent means [RingPolicy.Default] — automatic, [RingPolicy.DEFAULT_SECONDS] seconds.
+     */
+    val ringPolicy: Flow<RingPolicy>
+
+    suspend fun setRingPolicy(policy: RingPolicy)
 }

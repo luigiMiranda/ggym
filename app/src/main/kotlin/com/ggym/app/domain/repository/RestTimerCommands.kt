@@ -25,4 +25,14 @@ interface RestTimerCommands {
 
     /** Ends the running countdown and shuts the timer down: the workout is over, or the switch is off. */
     suspend fun stop()
+
+    /**
+     * Silences an alert that is ringing.
+     *
+     * Unlike [skip] this ends no countdown: an alert only exists once the rest is over, so the store
+     * is already empty by the time it rings. It is sent unconditionally for that reason — a caller
+     * cannot check "is an alert ringing?" by looking at the countdown, and the service treats a
+     * silence with nothing to silence as a no-op.
+     */
+    suspend fun silence()
 }

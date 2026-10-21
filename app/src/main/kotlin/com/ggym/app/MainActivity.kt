@@ -14,6 +14,7 @@ import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import com.ggym.app.data.prefs.ThemeSettings
 import com.ggym.app.service.EXTRA_OPEN_WORKOUT
+import com.ggym.app.service.EXTRA_SILENCE_ALERT
 import com.ggym.app.ui.nav.GgymNavHost
 import com.ggym.app.ui.theme.GgymTheme
 import com.ggym.app.ui.theme.isDarkTheme
@@ -40,10 +41,28 @@ class MainActivity : ComponentActivity() {
      */
     private val openWorkoutRequests = mutableIntStateOf(0)
 
+    /**
+     * The container, read lazily: [onNewIntent] needs it and runs after `onCreate`, but not always
+     * after the first composition, so it cannot be a local built inside `onCreate`.
+     */
+    private val container by lazy { (application as GgymApplication).container }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
         consumeOpenWorkoutRequest(intent)
+        consumeSilenceRequest(intent)
+    }
+
+    /**
+     * A tap on the finished alert's body: the rest is already over, so the tap only has to stop the
+     * ringing. Sent as the same silence command the notification's Stop action sends, so there is one
+     * meaning for "stop ringing" wherever it is asked for.
+     */
+    private fun consumeSilenceRequest(intent: Intent) {
+        if (!intent.getBooleanExtra(EXTRA_SILENCE_ALERT, false)) return
+        intent.removeExtra(EXTRA_SILENCE_ALERT)
+        lifecycleScope.launch { container.restTimerUseCases.silenceAlert() }
     }
 
     /**
@@ -60,7 +79,7 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        val container = (application as GgymApplication).container
+        val container = this.container
 
         lifecycleScope.launch {
             container.themePreferences.settings.collect { themeSettings.value = it }
@@ -68,6 +87,7 @@ class MainActivity : ComponentActivity() {
 
         splashScreen.setKeepOnScreenCondition { themeSettings.value == null }
         consumeOpenWorkoutRequest(intent)
+        consumeSilenceRequest(intent)
 
         setContent {
             val settings = themeSettings.value ?: ThemeSettings()

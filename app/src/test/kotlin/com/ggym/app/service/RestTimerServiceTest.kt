@@ -11,7 +11,9 @@ import android.content.Intent
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import com.ggym.app.domain.repository.RestTimerState
+import com.ggym.app.domain.workout.AlertSound
 import com.ggym.app.domain.workout.RestTimerUseCases
+import com.ggym.app.domain.workout.RingPolicy
 import com.ggym.app.testing.FakeRestAlertPlayer
 import com.ggym.app.testing.FakeRestTimerCommands
 import com.ggym.app.testing.FakeRestTimerStore
@@ -20,6 +22,7 @@ import com.ggym.app.testing.TestClock
 import java.time.Duration
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -58,7 +61,7 @@ class RestTimerServiceTest {
     private val alerts = FakeRestAlertPlayer()
     private val notifications = RestTimerNotifications(context)
     private val alarms = RestTimerAlarms(context, now = clock::now, elapsedRealtime = elapsed::now)
-    private val rest = RestTimerDependencies(store, timers, notifications, alarms, alerts)
+    private val rest = RestTimerDependencies(store, timers, notifications, alarms, alerts, preferences)
 
     private var controller: ServiceController<RestTimerService>? = null
 
@@ -138,12 +141,13 @@ class RestTimerServiceTest {
         send(service, RestTimerService.extendIntent(context, -RestTimerUseCases.STEP_SECONDS))
 
         assertNull(store.current.value)
-        assertEquals(1, alerts.played)
+        assertEquals(listOf<AlertSound>(AlertSound.SystemDefault), alerts.started)
         assertEquals(
             RestTimerNotifications.CHANNEL_FINISHED,
-            shadowOf(notificationManager).getNotification(RestTimerNotifications.NOTIFICATION_ID).channelId,
+            shadowOf(service).lastForegroundNotification.channelId,
         )
-        assertTrue(shadowOf(service).isStoppedBySelf)
+        // Still ringing: the service holds the alert, so it has not stopped itself yet.
+        assertFalse(shadowOf(service).isStoppedBySelf)
         assertTrue(shadowOf(alarmManager).scheduledAlarms.isEmpty())
     }
 
@@ -154,7 +158,7 @@ class RestTimerServiceTest {
         send(service, RestTimerService.skipIntent(context))
 
         assertNull(store.current.value)
-        assertEquals(0, alerts.played)
+        assertTrue(alerts.started.isEmpty())
         assertNull(shadowOf(notificationManager).getNotification(RestTimerNotifications.NOTIFICATION_ID))
         assertTrue(shadowOf(alarmManager).scheduledAlarms.isEmpty())
         assertTrue(shadowOf(service).isStoppedBySelf)
@@ -167,7 +171,7 @@ class RestTimerServiceTest {
         send(service, RestTimerService.stopIntent(context))
 
         assertNull(store.current.value)
-        assertEquals(0, alerts.played)
+        assertTrue(alerts.started.isEmpty())
         assertNull(shadowOf(notificationManager).getNotification(RestTimerNotifications.NOTIFICATION_ID))
         assertTrue(shadowOf(service).isStoppedBySelf)
     }
@@ -179,12 +183,12 @@ class RestTimerServiceTest {
         val service = start(intent = null)
 
         assertNull(store.current.value)
-        assertEquals(1, alerts.played)
+        assertEquals(listOf<AlertSound>(AlertSound.SystemDefault), alerts.started)
         assertEquals(
             RestTimerNotifications.CHANNEL_FINISHED,
-            shadowOf(notificationManager).getNotification(RestTimerNotifications.NOTIFICATION_ID).channelId,
+            shadowOf(service).lastForegroundNotification.channelId,
         )
-        assertTrue(shadowOf(service).isStoppedBySelf)
+        assertFalse(shadowOf(service).isStoppedBySelf)
     }
 
     @Test
@@ -197,7 +201,7 @@ class RestTimerServiceTest {
         // Resumed where it was: the deadline is the same one, not ninety seconds from now.
         assertEquals(endsAt, store.current.value?.endsAtMillis)
         assertEquals(endsAt, shadowOf(service).lastForegroundNotification.`when`)
-        assertEquals(0, alerts.played)
+        assertTrue(alerts.started.isEmpty())
 
         // The forty seconds pass for both clocks: the looper's, which fires the task, and the
         // countdown's, which decides the rest is over.
@@ -205,8 +209,8 @@ class RestTimerServiceTest {
         shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(40))
 
         assertNull(store.current.value)
-        assertEquals(1, alerts.played)
-        assertTrue(shadowOf(service).isStoppedBySelf)
+        assertEquals(1, alerts.started.size)
+        assertFalse(shadowOf(service).isStoppedBySelf)
     }
 
     @Test
@@ -232,7 +236,103 @@ class RestTimerServiceTest {
     fun `a command with no rest running leaves no service behind`() {
         val service = start(RestTimerService.extendIntent(context, RestTimerUseCases.STEP_SECONDS))
 
-        assertEquals(0, alerts.played)
+        assertTrue(alerts.started.isEmpty())
+        assertTrue(shadowOf(service).isStoppedBySelf)
+    }
+
+    /** The alert uses the sound the user chose, not the platform default. */
+    @Test
+    fun `the alert rings with the chosen sound`() {
+        preferences.sound.value = AlertSound.Ringtone("content://media/external/audio/media/42")
+        val service = start(
+            RestTimerService.startIntent(context, rest(endsAtMillis = clock.millis + 5_000L)),
+        )
+
+        send(service, RestTimerService.extendIntent(context, -RestTimerUseCases.STEP_SECONDS))
+
+        assertEquals(
+            listOf<AlertSound>(AlertSound.Ringtone("content://media/external/audio/media/42")),
+            alerts.started,
+        )
+    }
+
+    /**
+     * Automatic stops itself, and the service goes with it: nothing is left running once the ring is
+     * over, which is what keeps a completed rest from leaving a foreground service behind.
+     */
+    @Test
+    fun `an automatic policy ends the ring by itself`() {
+        preferences.policy.value = RingPolicy.Automatic(5)
+        val service = start(
+            RestTimerService.startIntent(context, rest(endsAtMillis = clock.millis + 5_000L)),
+        )
+
+        send(service, RestTimerService.extendIntent(context, -RestTimerUseCases.STEP_SECONDS))
+        assertEquals(0, alerts.stops)
+
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(5))
+
+        assertEquals(1, alerts.stops)
+        assertTrue(shadowOf(service).isStoppedBySelf)
+    }
+
+    /**
+     * Manual keeps ringing well past the automatic default, and still ends — at the backstop, so that
+     * "until I stop it" cannot mean "until the battery dies".
+     */
+    @Test
+    fun `a manual policy rings past the automatic default and stops at the backstop`() {
+        preferences.policy.value = RingPolicy.Manual
+        val service = start(
+            RestTimerService.startIntent(context, rest(endsAtMillis = clock.millis + 5_000L)),
+        )
+
+        send(service, RestTimerService.extendIntent(context, -RestTimerUseCases.STEP_SECONDS))
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(120))
+        assertEquals("two minutes of ringing is still ringing", 0, alerts.stops)
+
+        shadowOf(Looper.getMainLooper())
+            .idleFor(Duration.ofSeconds((RingPolicy.BACKSTOP_SECONDS - 120).toLong()))
+
+        assertEquals(1, alerts.stops)
+        assertTrue(shadowOf(service).isStoppedBySelf)
+    }
+
+    /**
+     * Stop: the sound ends, the service lets go, and the alert's notification stays on screen because
+     * the user still has something to read.
+     */
+    @Test
+    fun `Stop silences the ring and leaves the alert on screen`() {
+        preferences.policy.value = RingPolicy.Manual
+        val service = start(
+            RestTimerService.startIntent(context, rest(endsAtMillis = clock.millis + 5_000L)),
+        )
+        send(service, RestTimerService.extendIntent(context, -RestTimerUseCases.STEP_SECONDS))
+        assertEquals(1, alerts.started.size)
+
+        send(service, RestTimerService.silenceIntent(context))
+
+        assertEquals(1, alerts.stops)
+        assertTrue(shadowOf(service).isStoppedBySelf)
+        assertEquals(
+            RestTimerNotifications.CHANNEL_FINISHED,
+            shadowOf(notificationManager).getNotification(RestTimerNotifications.NOTIFICATION_ID).channelId,
+        )
+    }
+
+    /** Moving on to the next set silences a ring that is still going: the user has already decided. */
+    @Test
+    fun `skip silences a ringing alert`() {
+        preferences.policy.value = RingPolicy.Manual
+        val service = start(
+            RestTimerService.startIntent(context, rest(endsAtMillis = clock.millis + 5_000L)),
+        )
+        send(service, RestTimerService.extendIntent(context, -RestTimerUseCases.STEP_SECONDS))
+
+        send(service, RestTimerService.skipIntent(context))
+
+        assertEquals(1, alerts.stops)
         assertTrue(shadowOf(service).isStoppedBySelf)
     }
 

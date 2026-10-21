@@ -1,10 +1,16 @@
 package com.ggym.app.ui.settings
 
 import android.content.Context
+import android.content.Intent
+import android.media.RingtoneManager
+import android.net.Uri
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,19 +28,24 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.core.content.IntentCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ggym.app.R
 import com.ggym.app.data.prefs.ThemeMode
+import com.ggym.app.domain.workout.AlertSound
+import com.ggym.app.domain.workout.RingPolicy
 import com.ggym.app.ui.common.GgymCardShape
 import com.ggym.app.ui.common.GgymPill
 import com.ggym.app.ui.common.GgymScreenHeader
 import com.ggym.app.ui.common.GgymSectionLabel
+import com.ggym.app.ui.common.GgymStepper
 import com.ggym.app.ui.common.PillTone
 import com.ggym.app.ui.common.appNotificationSettingsIntent
 import com.ggym.app.ui.common.rememberNotificationsAllowed
@@ -118,6 +129,19 @@ fun SettingsScreen(
                 },
             )
 
+            AlertSoundCard(
+                sound = state.alertSound,
+                enabled = state.restTimerEnabled,
+                onSelect = viewModel::setAlertSound,
+            )
+
+            RingingCard(
+                policy = state.ringPolicy,
+                enabled = state.restTimerEnabled,
+                onSelect = viewModel::setRingPolicy,
+                onStep = viewModel::stepRingSeconds,
+            )
+
             // Dynamic colour needs an API 31+ device; hidden rather than shown-as-dead elsewhere.
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 SettingsRow(
@@ -165,6 +189,16 @@ fun SettingsScreen(
 /** The rest timer's switch, named for the Compose tests that drive it. */
 internal const val REST_TIMER_SWITCH_TAG = "rest_timer_switch"
 
+internal const val ALERT_SOUND_SYSTEM_TAG = "alert_sound_system"
+internal const val ALERT_SOUND_RINGTONE_TAG = "alert_sound_ringtone"
+internal const val ALERT_SOUND_NONE_TAG = "alert_sound_none"
+internal const val RINGING_AUTOMATIC_TAG = "ringing_automatic"
+internal const val RINGING_MANUAL_TAG = "ringing_manual"
+internal const val RINGING_SECONDS_TAG = "ringing_seconds"
+
+/** How far the two alert cards fade when the rest timer is off and they do nothing. */
+private const val INACTIVE_ALPHA = 0.45f
+
 private fun Context.openNotificationSettings() {
     startActivity(appNotificationSettingsIntent())
 }
@@ -207,3 +241,190 @@ private fun ThemeMode.label(): String = stringResource(
         ThemeMode.Dark -> R.string.settings_theme_dark
     },
 )
+
+/**
+ * The alert's sound: the platform default, a ringtone the user picked, or nothing.
+ *
+ * A row of pills rather than a chooser, because that is how the theme is chosen three cards up and
+ * three options do not need a second screen. The middle pill opens the platform's ringtone picker,
+ * which previews a ringtone as it is tapped — so the sound is heard before it is chosen, and no
+ * separate "test" button is needed.
+ */
+@Composable
+private fun AlertSoundCard(
+    sound: AlertSound,
+    enabled: Boolean,
+    onSelect: (AlertSound) -> Unit,
+) {
+    val context = LocalContext.current
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        val picked = result.data?.let { data ->
+            IntentCompat.getParcelableExtra(data, RingtoneManager.EXTRA_RINGTONE_PICKED_URI, Uri::class.java)
+        } ?: return@rememberLauncherForActivityResult
+        onSelect(AlertSound.Ringtone(picked.toString()))
+    }
+
+    AlertCard(
+        title = stringResource(R.string.settings_alert_sound_title),
+        supporting = alertSoundSupporting(context, sound, enabled),
+        enabled = enabled,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            GgymPill(
+                text = stringResource(R.string.settings_alert_sound_system),
+                tone = if (sound == AlertSound.SystemDefault) PillTone.Lime else PillTone.Ghost,
+                onClick = if (enabled) { { onSelect(AlertSound.SystemDefault) } } else null,
+                modifier = Modifier.testTag(ALERT_SOUND_SYSTEM_TAG),
+            )
+            GgymPill(
+                text = stringResource(R.string.settings_alert_sound_ringtone),
+                tone = if (sound is AlertSound.Ringtone) PillTone.Lime else PillTone.Ghost,
+                onClick = if (enabled) { { picker.launch(ringtonePicker(context, sound)) } } else null,
+                modifier = Modifier.testTag(ALERT_SOUND_RINGTONE_TAG),
+            )
+            GgymPill(
+                text = stringResource(R.string.settings_alert_sound_none),
+                tone = if (sound == AlertSound.None) PillTone.Lime else PillTone.Ghost,
+                onClick = if (enabled) { { onSelect(AlertSound.None) } } else null,
+                modifier = Modifier.testTag(ALERT_SOUND_NONE_TAG),
+            )
+        }
+    }
+}
+
+/**
+ * How long the alert rings: until stopped, or for a chosen number of seconds.
+ *
+ * The stepper only exists in automatic mode, and its ends are [RingPolicy]'s, so the buttons simply
+ * disappear at 5 s and at 120 s rather than the screen clamping a value it was handed.
+ */
+@Composable
+private fun RingingCard(
+    policy: RingPolicy,
+    enabled: Boolean,
+    onSelect: (RingPolicy) -> Unit,
+    onStep: (Int) -> Unit,
+) {
+    val automatic = policy as? RingPolicy.Automatic
+
+    AlertCard(
+        title = stringResource(R.string.settings_ringing_title),
+        supporting = when {
+            !enabled -> stringResource(R.string.settings_alert_inactive)
+            automatic == null -> stringResource(R.string.settings_ringing_manual_supporting)
+            else -> stringResource(R.string.settings_ringing_supporting)
+        },
+        enabled = enabled,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            GgymPill(
+                text = stringResource(R.string.settings_ringing_automatic),
+                tone = if (automatic != null) PillTone.Lime else PillTone.Ghost,
+                onClick = if (enabled) {
+                    {
+                        onSelect(
+                            RingPolicy.automatic(automatic?.seconds ?: RingPolicy.DEFAULT_SECONDS),
+                        )
+                    }
+                } else {
+                    null
+                },
+                modifier = Modifier.testTag(RINGING_AUTOMATIC_TAG),
+            )
+            GgymPill(
+                text = stringResource(R.string.settings_ringing_manual),
+                tone = if (automatic == null) PillTone.Lime else PillTone.Ghost,
+                onClick = if (enabled) { { onSelect(RingPolicy.Manual) } } else null,
+                modifier = Modifier.testTag(RINGING_MANUAL_TAG),
+            )
+        }
+
+        if (automatic != null) {
+            GgymStepper(
+                label = stringResource(R.string.settings_ringing_seconds),
+                value = stringResource(R.string.rest_seconds_short, automatic.seconds),
+                onDecrease = if (enabled && automatic.seconds > RingPolicy.MIN_SECONDS) {
+                    { onStep(-1) }
+                } else {
+                    null
+                },
+                onIncrease = if (enabled && automatic.seconds < RingPolicy.MAX_SECONDS) {
+                    { onStep(1) }
+                } else {
+                    null
+                },
+                decreaseLabel = stringResource(R.string.settings_ringing_less),
+                increaseLabel = stringResource(R.string.settings_ringing_more),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(RINGING_SECONDS_TAG),
+            )
+        }
+    }
+}
+
+/** One alert card: a title, an explanation, and whatever controls the setting has. */
+@Composable
+private fun AlertCard(
+    title: String,
+    supporting: String,
+    enabled: Boolean,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = GgymCardShape,
+        modifier = Modifier
+            .fillMaxWidth()
+            // Dimmed rather than hidden: the settings still exist, they just do nothing while the
+            // rest timer is off, and the supporting line says so.
+            .alpha(if (enabled) 1f else INACTIVE_ALPHA),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Column {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = supporting,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            content()
+        }
+    }
+}
+
+/**
+ * The sound's own explanation: the shared line, except where the choice has something to say — the
+ * name of the ringtone that was picked, or that "None" still vibrates.
+ */
+@Composable
+private fun alertSoundSupporting(context: Context, sound: AlertSound, enabled: Boolean): String = when {
+    !enabled -> stringResource(R.string.settings_alert_inactive)
+    sound == AlertSound.None -> stringResource(R.string.settings_alert_sound_none_supporting)
+    sound is AlertSound.Ringtone -> ringtoneTitle(context, sound.uri)
+        ?: stringResource(R.string.settings_alert_sound_supporting)
+
+    else -> stringResource(R.string.settings_alert_sound_supporting)
+}
+
+/** The platform picker, pointed at alarm sounds and pre-selecting whatever is chosen today. */
+private fun ringtonePicker(context: Context, sound: AlertSound): Intent =
+    Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
+        putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, context.getString(R.string.settings_alert_sound_ringtone_pick))
+        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
+        // The silent case is our own explicit "None" pill, so the picker does not offer a second one.
+        putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
+        (sound as? AlertSound.Ringtone)?.let {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(it.uri))
+        }
+    }
+
+/** The display name of a picked ringtone, or `null` when it has since been deleted or unmounted. */
+private fun ringtoneTitle(context: Context, uri: String): String? = runCatching {
+    RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context)
+}.getOrNull()

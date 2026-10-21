@@ -25,6 +25,8 @@ class ServiceRestTimerCommands(private val context: Context) : RestTimerCommands
 
     override suspend fun stop() = send(RestTimerService.stopIntent(context))
 
+    override suspend fun silence() = send(RestTimerService.silenceIntent(context))
+
     private fun send(intent: Intent) {
         ContextCompat.startForegroundService(context, intent)
     }

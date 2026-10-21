@@ -5,31 +5,35 @@ import com.ggym.app.domain.repository.RestTimerState
 import kotlinx.coroutines.flow.first
 
 /**
- * The end of a rest, in one place — because a countdown ends in two of them.
+ * The end of a rest, in one place.
  *
- * Normally [RestTimerService]'s own task reaches the deadline and calls [complete]; when the
- * process was asleep, suspended or gone, the exact alarm's [RestTimerAlertReceiver] does. Both go
- * through this class, so the alert, the notification and the stored state cannot disagree about
- * what happened, and both are the *only* thing that writes the timer outside the service's own
- * command handling.
+ * What *ending* a rest means is small and must not be written twice: the stored deadline goes, and
+ * the backstop alarm that would otherwise end it again goes with it.
  *
- * A completion is precise about what it ends: [complete] takes the state it is finishing and does
- * nothing when a different rest has started in the meantime. A set completed exactly as the
- * previous rest runs out must not have its countdown cancelled by the old one.
+ * What happens **after** that deliberately is not here, because it is not the same for both callers:
+ *
+ * - [RestTimerService] turns the countdown's notification into the alert and rings it, and it has to
+ *   stay in the foreground to keep the ring alive — a notification posted from this class could not
+ *   hold the process open;
+ * - [RestTimerAlertReceiver]'s fallback, for the case where the platform refuses a service start,
+ *   posts the alert and lets it be, because it has no process to ring from.
+ *
+ * A completion is precise about what it ends: [complete] takes the state it is finishing, and does
+ * nothing when a different rest has started in the meantime. A set completed exactly as the previous
+ * rest runs out must not have its countdown cancelled by the old one.
  */
 class RestTimerCompletion(
     private val store: RestTimerStore,
     private val alarms: RestTimerAlarms,
     private val notifications: RestTimerNotifications,
-    private val alerts: RestAlertPlayer,
 ) {
 
     /**
-     * The rest that ran out: the alert sounds, the countdown's notification becomes the finished
-     * one, the backstop is cancelled and the stored deadline is cleared so that nothing resumes it.
+     * The rest that ran out: the deadline is cleared and the backstop cancelled, so that nothing
+     * resumes it.
      *
-     * Returns whether this call ended [state]; `false` means another path had already ended it (or
-     * a newer rest replaced it), which makes the alarm and the service safe to have fire together.
+     * Returns whether this call ended [state]; `false` means another path had already ended it (or a
+     * newer rest replaced it), which is what makes the alarm and the service safe to fire together.
      */
     suspend fun complete(state: RestTimerState): Boolean {
         val running = store.state.first() ?: return false
@@ -37,8 +41,6 @@ class RestTimerCompletion(
 
         store.set(null)
         alarms.cancel()
-        notifications.post(notifications.finished(state))
-        alerts.play()
         return true
     }
 

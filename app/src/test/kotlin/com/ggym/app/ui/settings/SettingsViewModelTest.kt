@@ -45,7 +45,7 @@ class SettingsViewModelTest {
         now = { 1_000L },
     )
 
-    private val viewModel by lazy { SettingsViewModel(FakeThemePreferences(), timer) }
+    private val viewModel by lazy { SettingsViewModel(FakeThemePreferences(), timer, workoutPreferences) }
 
     @Before
     fun setMainDispatcher() {

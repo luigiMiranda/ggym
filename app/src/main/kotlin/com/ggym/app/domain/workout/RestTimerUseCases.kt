@@ -79,6 +79,17 @@ class RestTimerUseCases(
     }
 
     /**
+     * Silences a ringing alert, if there is one.
+     *
+     * Sent unconditionally, unlike the others above: the countdown has already been cleared by the
+     * time an alert rings, so a "is anything running?" guard would suppress exactly the call that
+     * stops the sound. The service ignores a silence with nothing to silence.
+     */
+    suspend fun silenceAlert() {
+        commands.silence()
+    }
+
+    /**
      * Writes the master switch. Turning it off also ends a rest that is running — a switch reading
      * "off" above a live countdown would be a lie.
      */

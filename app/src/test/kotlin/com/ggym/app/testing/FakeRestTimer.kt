@@ -4,6 +4,8 @@ import com.ggym.app.domain.repository.RestTimerCommands
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.repository.RestTimerStore
 import com.ggym.app.domain.repository.WorkoutPreferences
+import com.ggym.app.domain.workout.AlertSound
+import com.ggym.app.domain.workout.RingPolicy
 import com.ggym.app.service.RestAlertPlayer
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -32,6 +34,7 @@ internal sealed interface RecordedCommand {
     data class Extend(val deltaSeconds: Int) : RecordedCommand
     data object Skip : RecordedCommand
     data object Stop : RecordedCommand
+    data object Silence : RecordedCommand
 }
 
 /** The command channel, recording instead of sending. */
@@ -54,6 +57,10 @@ internal class FakeRestTimerCommands : RestTimerCommands {
     override suspend fun stop() {
         received += RecordedCommand.Stop
     }
+
+    override suspend fun silence() {
+        received += RecordedCommand.Silence
+    }
 }
 
 /** The master switch, in memory. */
@@ -74,6 +81,22 @@ internal class FakeWorkoutPreferences(initialRestTimerEnabled: Boolean = true) :
     override suspend fun setNotificationPromptShown(shown: Boolean) {
         promptShown.value = shown
     }
+
+    val sound = MutableStateFlow<AlertSound>(AlertSound.SystemDefault)
+
+    override val alertSound: Flow<AlertSound> = sound
+
+    override suspend fun setAlertSound(sound: AlertSound) {
+        this.sound.value = sound
+    }
+
+    val policy = MutableStateFlow<RingPolicy>(RingPolicy.Default)
+
+    override val ringPolicy: Flow<RingPolicy> = policy
+
+    override suspend fun setRingPolicy(policy: RingPolicy) {
+        this.policy.value = policy
+    }
 }
 
 /**
@@ -92,15 +115,31 @@ internal class TestClock(var millis: Long = 1_750_000_000_000L) {
 }
 
 /**
- * The alert, counted instead of played: the service's job is to ask for it, and the tone and the
- * audio focus are `AndroidRestAlertPlayer`'s own business.
+ * The alert, recorded instead of played: the service's job is to start it with the right sound and
+ * to stop it at the right moment, and the sound itself and the audio focus are
+ * `AndroidRestAlertPlayer`'s own business.
  */
 internal class FakeRestAlertPlayer : RestAlertPlayer {
 
-    var played = 0
+    /** Every sound that was started, in the order it was started. */
+    val started = mutableListOf<AlertSound>()
+
+    /** How many times the alert was silenced. */
+    var stops = 0
         private set
 
-    override fun play() {
-        played++
+    /** The sound ringing right now, or `null` when nothing is. */
+    var ringing: AlertSound? = null
+        private set
+
+    override fun start(sound: AlertSound) {
+        started += sound
+        // The real player treats `None` as "do not play", so the fake must not claim to be ringing.
+        ringing = sound.takeIf { it != AlertSound.None }
+    }
+
+    override fun stop() {
+        stops++
+        ringing = null
     }
 }
