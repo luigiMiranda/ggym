@@ -367,6 +367,10 @@ Three rules are enforced by tests rather than by discipline:
    the real vector drawables and measures the farthest opaque pixel; the content scale is 64dp of
    the canvas (`scaleX/scaleY = 0.071111`). It was 70.2dp until M6.5, which put the outer barbell
    plates 35.10dp from the centre against a 33dp radius, so a circular launcher cut them short.
+4. The barbell plates are **light steel** (`#949AA6 → #6E737D → #545962`), not a ghost. On the
+   near-black icon background the first dark-metal gradient faded to roughly 1:1 at its darkest,
+   which read as a shadow rather than a plate; the same test now also asserts the darkest plate
+   pixel clears 2:1 against the background, so a later "tidy-up" cannot dim it back.
 
 The UI follows an approved screen preview that is the layout contract for every screen. Its
 tokens live once, in `ui/common/BrandUi.kt` and `ui/theme/`: 27sp screen titles, uppercase 11.5sp
@@ -404,7 +408,7 @@ The expressive checklist the UI is held to:
 
 The app ships **English** (`values/`, the default) and **Italian** (`values-it/`), declared to the
 platform through `android:localeConfig`, and the user can choose between them — or leave it to the
-device — from **Settings → Appearance → Language**. Every user-visible string lives in
+device — from **Settings → Language**. Every user-visible string lives in
 `strings.xml`; `MissingTranslation` makes an incomplete translation a build failure, so the two files
 cannot drift.
 

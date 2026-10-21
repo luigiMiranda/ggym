@@ -16,28 +16,36 @@ calendar and a handful of charts. No account, no sync, no internet connection �
 for the `INTERNET` permission, so "your data stays on your device" is a property of the build
 rather than a promise in a policy document.
 
+**[Download the latest signed APK →](https://github.com/luigiMiranda/ggym/releases/latest)**
+
 ## Status
 
-The workout core is implemented and tested:
+v1 is feature-complete and shipped:
 
 - ✅ Project scaffold: single-module Kotlin/Compose app, Room + DataStore
 - ✅ Brand theme: Material 3 **Expressive** (`MaterialExpressiveTheme`, `MotionScheme.expressive()`),
   light / dark / system, optional wallpaper colours (off by default)
-- ✅ Four-tab shell: Workouts · Calendar · Stats · Settings, with a working Appearance section
+- ✅ Four-tab shell: Workouts · Calendar · Stats · Settings
 - ✅ App icon: adaptive + monochrome, transcribed from `artwork/ggym.svg`
 - ✅ Routine management: routines, training days, exercises, an auto-completing dictionary, a
   working weight per routine slot that remembers what you actually lifted, and drag-to-reorder
 - ✅ Active workout: overview and a swipeable focused view with the working weight as the hero,
-  set completion, add/remove sets, finish/discard, and a draft that survives a process death
-- ✅ Background rest timer: foreground service, notification with ±15 s / skip, an exact-alarm
-  backstop, and an alert that ducks your music instead of stopping it
-- ✅ Tests and lint in CI-ready shape (`./gradlew :app:testDebugUnitTest :app:lintDebug`)
+  set completion and un-completion, add/remove sets, rename an exercise, finish/discard, and a
+  draft that survives a process death
+- ✅ Background rest timer: foreground service, a notification with ±15 s / skip, an exact-alarm
+  backstop, and an alert that ducks your music instead of stopping it — with a chosen alert sound
+  and a ring policy (automatic after N seconds, or until stopped)
+- ✅ History: a monthly calendar with a dot per workout, day inspection, edit and delete
+- ✅ Stats: body-weight log and trend, workout attendance, and per-exercise progression charts
+  (drawn on a custom `Canvas`, no charting dependency)
+- ✅ Localized in **English and Italian**, with an in-app language switch (or follow the system)
+- ✅ 527 JVM/Robolectric tests and a clean lint run (`./gradlew :app:testDebugUnitTest :app:lintDebug`)
 
-Still to come:
+Not yet in v1:
 
-- ⬜ History calendar: monthly grid with a dot per workout, day inspection, edit and delete
-- ⬜ Body-weight log and charts: attendance, body-weight trend, per-exercise progression
-- ⬜ JSON backup export/import UI, Italian, and a signed release APK
+- ⬜ JSON backup export/import UI — the format and the manager exist
+  (`data/backup/BackupManager`), but the Settings rows that reach them are still to come. Until
+  then "your data stays on your device" also means it does not leave it.
 
 ## Design principles
 
@@ -47,7 +55,8 @@ Still to come:
   so when you open a routine you immediately know what to load on the bar.
 - **Weight first, everything else second.** On the workout screen the weight is the largest,
   most prominent control; reps and rest follow.
-- **You own the data.** Export is a human-readable JSON file you can keep in your own storage.
+- **You own the data.** Everything lives in an on-device SQLite database; the backup format is
+  plain, human-readable JSON, so a backup you export is a file you can read, diff and keep.
 - **Expressive but not silly.** Spring motion and shape changes carry meaning (a set is done, a
   swipe moved you between exercises) rather than decorating the screen.
 
@@ -57,9 +66,14 @@ Requirements: JDK 17 or newer (21 tested), Android SDK with platform 37 and buil
 
 ```bash
 ./gradlew :app:assembleDebug        # debug APK -> app/build/outputs/apk/debug/
+./gradlew :app:assembleRelease      # R8-shrunk, signed release APK -> app/build/outputs/apk/release/
 ./gradlew :app:testDebugUnitTest    # JVM unit tests
 ./gradlew :app:lintDebug            # Android lint
 ```
+
+The release build is signed from a keystore that is intentionally **not** in this repository: it
+reads `keystore.properties` at the repo root (git-ignored) and fails loudly if the file is missing,
+rather than producing an unsigned APK. Without your own keystore, use the debug build.
 
 On a machine without an Android SDK yet, `scripts/bootstrap-toolchain.sh` installs a local JDK 21,
 the Android command-line tools and the required SDK packages under `$HOME` — no root access needed —

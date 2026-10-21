@@ -1,8 +1,24 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     id("com.google.devtools.ksp")
+}
+
+//
+// Release signing. The keystore and `keystore.properties` are deliberately **not** in the repo
+// (both are git-ignored): the keystore is the user's custody, and losing it means the same
+// `applicationId` can never be updated on a device that installed a release. The debug build and
+// every task that does not build `release` work without the file; `assembleRelease` fails loudly
+// instead of producing an unsigned APK.
+//
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -17,10 +33,30 @@ android {
         versionName = "0.1.0"
     }
 
+    signingConfigs {
+        if (keystorePropertiesFile.exists()) {
+            create("release") {
+                storeFile = file(keystoreProperties.getProperty("storeFile"))
+                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")
+                keyPassword = keystoreProperties.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // R8 shrinking and the signing config land together with the release APK.
-            isMinifyEnabled = false
+            // R8 shrinking + resource shrinking, and the release signature, land together with the
+            // first downloadable APK. The keep rules in `proguard-rules.pro` cover what reflection
+            // touches: kotlinx.serialization's generated serializers and the enum names that
+            // DataStore and the JSON backup persist as strings.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+            )
+            signingConfig = signingConfigs.findByName("release")
         }
     }
 
