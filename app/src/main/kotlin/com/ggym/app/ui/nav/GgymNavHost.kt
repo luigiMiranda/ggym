@@ -41,9 +41,12 @@ import com.ggym.app.ui.workouts.WorkoutsScreen
 /**
  * The app shell: one activity, the four tabs, and the routine tree behind the Workouts tab.
  *
- * The bottom bar belongs to the tabs and disappears in the routine tree — those screens are a
- * drill-down with their own back path, not a fifth tab. Each tab keeps its own back stack and
- * scroll position, so returning to Workouts puts the user where they were.
+ * The bottom bar belongs to the tabs. The routine tree keeps its own back path and hides the bar;
+ * a **running workout shows it**, with Workouts selected, because the workout is pushed onto that
+ * tab's stack and its exit returns there — and because the other tabs (Settings included) have to
+ * stay reachable while it runs. Leaving the workout this way does not end it: the draft in the
+ * database and the rest timer's service are what keep it alive, not the screen. Each tab keeps its
+ * own back stack and scroll position, so returning to Workouts puts the user where they were.
  */
 @Composable
 fun GgymNavHost(
@@ -56,7 +59,11 @@ fun GgymNavHost(
     navController: NavHostController = rememberNavController(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val tab = Destination.fromRoute(backStackEntry?.destination?.route)
+    val route = backStackEntry?.destination?.route
+    // A workout belongs to the Workouts tab: it sits on that tab's stack and its exit returns there,
+    // so the bar stays put and the four tabs remain one tap away while it runs. The routine tree is
+    // a drill-down with its own back path, so it still hides the bar.
+    val tab = Destination.fromRoute(route) ?: Destination.Workouts.takeIf { route == Routes.WORKOUT }
 
     // The notification's tap target: the workout that is running, if there still is one. A
     // notification for a workout that has since ended opens the app where it was, not nowhere.

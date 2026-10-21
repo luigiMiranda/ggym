@@ -117,6 +117,30 @@ class GgymNavHostTest {
     }
 
     @Test
+    fun `the tab bar stays on a running workout and the workout survives a trip to Settings`() {
+        seed()
+        openWorkout()
+        val running = runBlocking { container.workoutHistoryRepository.observeDraft().first() }!!
+
+        // The bar is on screen while the workout runs, and Workouts is the tab it belongs to.
+        waitForText(context.getString(R.string.nav_settings))
+        compose.onNodeWithText(context.getString(R.string.nav_settings)).performClick()
+
+        waitForText(context.getString(R.string.settings_theme_label))
+
+        // Coming back to Workouts restores that tab's stack, which is the live workout — the trip
+        // changed which screen is on top and nothing about the workout.
+        compose.onNodeWithText(context.getString(R.string.nav_workouts)).performClick()
+        waitForText(context.getString(R.string.workout_finish_short))
+
+        assertEquals(
+            "navigating away must not end the workout",
+            running.id,
+            runBlocking { container.workoutHistoryRepository.observeDraft().first() }!!.id,
+        )
+    }
+
+    @Test
     fun `the calendar tab opens`() {
         seed()
         show()

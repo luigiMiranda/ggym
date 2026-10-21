@@ -2,7 +2,7 @@
 <!--
   Monochrome layer for Android 13+ themed icons: same geometry as the foreground, single
   colour, tinted by the system. Gradients and the neon glow are dropped by design — themed
-  icons are meant to read as a silhouette.
+  icons are meant to read as a silhouette. Same 64dp content scale as the foreground layer.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
@@ -10,10 +10,10 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <group
-        android:scaleX="0.078"
-        android:scaleY="0.078"
-        android:translateX="14.06"
-        android:translateY="14.06">
+        android:scaleX="0.071111"
+        android:scaleY="0.071111"
+        android:translateX="17.59"
+        android:translateY="17.59">
         <path android:fillColor="#FFFFFFFF"
             android:pathData="M 78,398 H 84 A 16 16 0 0 1 100,414 V 610 A 16 16 0 0 1 84,626 H 78 A 16 16 0 0 1 62,610 V 414 A 16 16 0 0 1 78,398 Z" />
         <path android:fillColor="#FFFFFFFF"

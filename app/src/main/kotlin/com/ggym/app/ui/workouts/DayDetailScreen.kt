@@ -21,6 +21,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.FitnessCenter
@@ -57,6 +58,7 @@ import com.ggym.app.ui.common.GgymFab
 import com.ggym.app.ui.common.GgymPill
 import com.ggym.app.ui.common.GgymScreenHeader
 import com.ggym.app.ui.common.KgFormat
+import com.ggym.app.ui.common.NameInputDialog
 import com.ggym.app.ui.common.PillTone
 import com.ggym.app.ui.common.ReorderableColumn
 import com.ggym.app.ui.common.RowMenu
@@ -157,6 +159,7 @@ fun DayDetailScreen(
                             modifier = handle,
                             isDragging = isDragging,
                             onEdit = { editedSlotId = slot.id },
+                            onRename = { viewModel.startRenameExercise(slot) },
                             onDelete = { viewModel.askDeleteSlot(slot) },
                         )
                     }
@@ -205,6 +208,19 @@ fun DayDetailScreen(
             message = stringResource(R.string.slot_delete_message, slot.exerciseName),
             onConfirm = viewModel::confirmDelete,
             onDismiss = viewModel::cancelDelete,
+        )
+    }
+
+    // Renaming is the dictionary's name, not the slot's: a collision is the database's answer, so
+    // the refusal comes back here and the dialog stays open with the typed text.
+    state.renameDialog?.let { dialog ->
+        NameInputDialog(
+            title = stringResource(R.string.exercise_rename_title),
+            label = stringResource(R.string.exercise_rename_label),
+            initialName = dialog.initialName,
+            onSave = viewModel::saveExerciseName,
+            onDismiss = viewModel::dismissRenameExercise,
+            error = if (dialog.nameTaken) stringResource(R.string.exercise_rename_taken) else null,
         )
     }
 
@@ -276,6 +292,7 @@ private fun SlotRow(
     modifier: Modifier,
     isDragging: Boolean,
     onEdit: () -> Unit,
+    onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val locale = activeLocale()
@@ -335,6 +352,11 @@ private fun SlotRow(
             }
             RowMenu(
                 actions = listOf(
+                    RowMenuAction(
+                        label = stringResource(R.string.exercise_rename_title),
+                        icon = Icons.Filled.DriveFileRenameOutline,
+                        onClick = onRename,
+                    ),
                     RowMenuAction(stringResource(R.string.action_edit), Icons.Filled.Edit, onClick = onEdit),
                     RowMenuAction(
                         label = stringResource(R.string.slot_remove),

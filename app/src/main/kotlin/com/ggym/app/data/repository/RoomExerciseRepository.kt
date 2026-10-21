@@ -8,6 +8,7 @@ import com.ggym.app.data.room.mappers.ExerciseMapper
 import com.ggym.app.domain.model.Exercise
 import com.ggym.app.domain.repository.DeleteExerciseResult
 import com.ggym.app.domain.repository.ExerciseRepository
+import com.ggym.app.domain.repository.RenameExerciseResult
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 
@@ -76,6 +77,22 @@ internal class RoomExerciseRepository(
 
     override suspend fun updateCurrentWorkingWeight(exerciseId: Long, weightKg: Double) {
         dao.updateCurrentWorkingWeight(exerciseId, weightKg)
+    }
+
+    override suspend fun renameExercise(exerciseId: Long, newName: String): RenameExerciseResult {
+        val trimmed = newName.trim()
+        val existing = dao.getById(exerciseId) ?: return RenameExerciseResult.NotFound
+        // Exact equality only: a rename to a different *case* of the row's own name is a legitimate
+        // fix ("bench press" → "Bench Press") and must reach the database.
+        if (existing.name == trimmed) return RenameExerciseResult.Unchanged
+
+        return try {
+            dao.rename(exerciseId, trimmed)
+            RenameExerciseResult.Renamed(ExerciseMapper.toDomain(existing.copy(name = trimmed)))
+        } catch (_: SQLiteConstraintException) {
+            // The unique `NOCASE` index refused: some other entry already answers to this name.
+            RenameExerciseResult.NameTaken
+        }
     }
 
     override suspend fun deleteExercise(exerciseId: Long): DeleteExerciseResult =

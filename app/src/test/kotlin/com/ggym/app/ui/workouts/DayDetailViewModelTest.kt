@@ -16,6 +16,7 @@ import com.ggym.app.testing.givenExercise
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -204,6 +205,65 @@ class DayDetailViewModelTest : ViewModelTest() {
             val state = awaitState { it.slots.size == 1 && it.pendingDelete == null }
 
             assertEquals(listOf("Cable Fly"), state.slots.map { it.exerciseName })
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the rename dialog opens with the exercise's current name`() = runTest {
+        givenStartableDay()
+        val vm = viewModel()
+
+        vm.uiState.test {
+            val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
+
+            vm.startRenameExercise(loaded.slots.single())
+
+            val dialog = awaitState { it.renameDialog != null }.renameDialog!!
+            assertEquals("it renames the entry the slot plans", loaded.slots.single().exerciseId, dialog.exerciseId)
+            assertEquals("and it starts from the name the user is looking at", "Bench Press", dialog.initialName)
+            assertEquals("no refusal is being shown yet", false, dialog.nameTaken)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `renaming a slot's exercise changes the dictionary and closes the dialog`() = runTest {
+        givenStartableDay()
+        val vm = viewModel()
+
+        vm.uiState.test {
+            val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
+            vm.startRenameExercise(loaded.slots.single())
+
+            vm.saveExerciseName("Barbell Bench Press")
+
+            awaitState { it.renameDialog == null && it.slots.single().exerciseName == "Barbell Bench Press" }
+            assertNotNull("the dictionary moved", exerciseRepository.findByName("Barbell Bench Press"))
+            assertNull("and the old name is gone", exerciseRepository.findByName("Bench Press"))
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a rename that collides with another exercise is explained and the dialog stays open`() = runTest {
+        givenStartableDay()
+        exerciseRepository.findOrCreate("Cable Fly")
+        val vm = viewModel()
+
+        vm.uiState.test {
+            val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
+            vm.startRenameExercise(loaded.slots.single())
+
+            vm.saveExerciseName("cable fly")
+
+            val refused = awaitState { it.renameDialog?.nameTaken == true }
+            assertEquals("the row keeps the name it had", "Bench Press", refused.slots.single().exerciseName)
+            assertNotNull("the entry it collided with is untouched", exerciseRepository.findByName("Cable Fly"))
+            assertNotNull("and so is the one it tried to rename", exerciseRepository.findByName("Bench Press"))
 
             cancelAndIgnoreRemainingEvents()
         }

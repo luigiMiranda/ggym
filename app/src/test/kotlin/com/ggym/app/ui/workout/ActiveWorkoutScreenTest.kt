@@ -5,6 +5,7 @@ import androidx.activity.OnBackPressedDispatcher
 import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -34,6 +35,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -171,6 +173,34 @@ class ActiveWorkoutScreenTest : RepositoryTest() {
         awaitStored { sets(0).size == 1 }
         awaitChipGone(2)
         assertEquals("the planned set is the one that was there", before, runBlocking { sets(0).map { it.id } })
+    }
+
+    @Test
+    fun `a completed set can be taken back from the strip`() {
+        // One planned set, so the strip fits and the completed row's control is on screen.
+        runBlocking { seed(benchSets = 1) }
+        show()
+
+        waitForText("Bench Press")
+        compose.onNodeWithText("Bench Press").performClick()
+        waitForText("EXERCISE 1 OF 2")
+
+        compose.onNodeWithText(context.getString(R.string.workout_complete_set)).performClick()
+        awaitStored { row(0, 0)?.isCompleted == true }
+
+        // The control names its own set, so the tap cannot land on another row's undo. Waiting for
+        // it as well: the database write lands before Room's invalidation reaches the composition.
+        val undo = context.getString(R.string.workout_uncomplete_set, 1)
+        awaitTrue("the completed row never offered its undo") {
+            compose.onAllNodesWithContentDescription(undo).fetchSemanticsNodes().isNotEmpty()
+        }
+        compose.onNodeWithContentDescription(undo).performClick()
+        awaitStored { row(0, 0)?.isCompleted == false }
+
+        val set = runBlocking { row(0, 0)!! }
+        assertFalse("the row is a plan again", set.isCompleted)
+        assertEquals("the numbers stay on the row", 80.0, set.weight, 0.0)
+        assertEquals(8, set.reps)
     }
 
     @Test

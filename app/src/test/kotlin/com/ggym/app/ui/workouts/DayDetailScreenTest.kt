@@ -43,6 +43,14 @@ import java.util.Locale
  * question when a workout already runs, and the disabled state of a day with nothing planned.
  *
  * SDK 36 for the same reason as the other Compose suites: the framework's Espresso reflection.
+ *
+ * **One limitation, found here**: a text field inside a `Dialog` window never reports idle under
+ * Robolectric — `NameInputDialog` (an `AlertDialog` with an `OutlinedTextField`) fails every
+ * `waitForIdle` with `AppNotIdleException`, while the same field inside a `ModalBottomSheet`
+ * (`SlotEditorSheetTest`) and an `AlertDialog` with no field (`ConfirmDeleteDialog`) both idle. So
+ * the renamed-exercise *form* is exercised by `DayDetailViewModelTest` and
+ * `RoomExerciseRepositoryTest`, and by the device gate; this class pins the entry point that opens
+ * it.
  */
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], qualifiers = "w411dp-h891dp")
@@ -168,6 +176,26 @@ class DayDetailScreenTest : RepositoryTest() {
     }
 
     @Test
+    fun `a slot's row menu offers renaming the exercise beside editing the slot`() {
+        givenPushDay()
+        show()
+        waitForText("Bench Press")
+
+        compose.onAllNodesWithContentDescription(context.getString(R.string.action_more))[0].performClick()
+
+        // The name on the row has its own verb, and it is not the same verb as editing the slot's
+        // sets: one moves the dictionary entry, the other this day's numbers.
+        compose.onNodeWithText(context.getString(R.string.exercise_rename_title)).assertExists()
+        compose.onNodeWithText(context.getString(R.string.action_edit)).assertExists()
+        compose.onNodeWithText(context.getString(R.string.slot_remove)).assertExists()
+
+        // Opening and dismissing the rename form is deliberately *not* driven here: a text field
+        // inside a dialog window never reports idle under Robolectric (see the class KDoc), so the
+        // form's own flow — prefill, the `NOCASE` refusal, the rename landing — is
+        // `DayDetailViewModelTest`'s and `RoomExerciseRepositoryTest`'s, and the device gate's.
+    }
+
+    @Test
     fun `a day with nothing planned shows the start action, disabled`() {
         routineId = runBlocking { routineRepository.createRoutine("Push Day") }
         dayId = runBlocking { routineRepository.addDay(routineId, "Rest Day") }
@@ -178,6 +206,7 @@ class DayDetailScreenTest : RepositoryTest() {
         compose.onNodeWithText(context.getString(R.string.day_empty_title)).assertExists()
         assertTrue(opened.isEmpty())
     }
+
 
     /** The day's slots in stored order, as exercise ids. */
     private suspend fun slotIds(): List<Long> =

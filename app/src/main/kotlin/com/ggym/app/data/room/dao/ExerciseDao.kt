@@ -51,6 +51,16 @@ internal interface ExerciseDao {
     @Query("UPDATE exercise SET currentWorkingWeight = :weightKg WHERE id = :exerciseId")
     suspend fun updateCurrentWorkingWeight(exerciseId: Long, weightKg: Double)
 
+    /**
+     * Renames one dictionary entry.
+     *
+     * The unique `NOCASE` index is the authority: it throws `SQLiteConstraintException` when
+     * another entry already holds the name, and accepts a row renamed to a different case of its
+     * own name. The repository turns the refusal into a typed result.
+     */
+    @Query("UPDATE exercise SET name = :name WHERE id = :exerciseId")
+    suspend fun rename(exerciseId: Long, name: String)
+
     @Query("DELETE FROM exercise WHERE id = :exerciseId")
     suspend fun deleteById(exerciseId: Long)
 

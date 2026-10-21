@@ -104,7 +104,10 @@ ui/common/    EmptyState, dialogs, the row overflow menu, weight formatting and 
 Two conventions are worth stating because they are easy to get wrong: **routes carry ids, never
 state** (`routine/{routineId}`, `day/{routineId}/{dayId}`), so a back stack restored after process
 death re-reads the current data instead of showing a stale copy; and **the bottom bar belongs to the
-tabs only**, so the routine tree is a drill-down with its own back path rather than a fifth tab.
+tabs**, so the routine tree is a drill-down with its own back path rather than a fifth tab. A
+running workout is the one exception that keeps the bar: it sits on the Workouts tab's stack, so
+showing the bar keeps Home and Settings reachable without ending it — the workout lives in the
+database and in the rest timer's service, not on the screen.
 
 ## 4. State, threading and dependency injection
 
@@ -161,6 +164,13 @@ loss need two different answers:
 - `routine → routine_day → planned_exercise` and `session → log → set` cascade, so removing a
   parent leaves no orphans.
 
+The dictionary itself is addressed by id and its `name` is unique **case-insensitively**
+(`COLLATE NOCASE`). Renaming an entry is a single `UPDATE` judged by that index: a name another
+entry already holds is **refused** rather than merged — merging would mean repointing every planned
+slot and every history row that referenced one of them — and the refusal comes back as a typed
+result the dialog explains without losing what the user typed. A rename never rewrites a snapshot:
+a past workout, and a workout already in progress, keep the name they started with.
+
 **Migrations.** `exportSchema` is on and the schema JSON is committed under `app/schemas/`, so
 migrations are written explicitly and verified against the schema that shipped. Destructive
 fallbacks are not used: they would silently delete a user's training history. Both migrations so
@@ -190,7 +200,11 @@ deleting it cannot move a workout in progress. Completing a set writes the set, 
 greater than zero, because a bodyweight set must not erase a real number — and replaces the group
 default in the exercise's uncompleted sets, the ones still carrying the weight the completed set had
 before, so one edit moves the sets the user is about to do and a set they typed into keeps its own
-number. Only uncompleted sets can be removed. Finishing writes the completed sets as a fresh session
+number. Only uncompleted sets can be removed, and a completed one can be **taken back**: un-completing
+clears the flag and nothing else — the set keeps its numbers, the exercise's working weight is not
+reverted (neither the dictionary nor the draft remembers what it was) and the filled sets are not
+un-filled. The dictionary is a "load next time" hint, not a log; the workout is what happened.
+Finishing writes the completed sets as a fresh session
 (duration = finish − start, sets renumbered from position), drops the prefills nobody performed,
 marks an exercise with no completed set as skipped and deletes the draft in one transaction;
 discarding only deletes the draft. One workout runs at a time: a second start is refused with the
@@ -339,7 +353,7 @@ new device.
 The palette is derived from the app icon: a near-black canvas carrying a neon chartreuse
 (`#D5FF00`, hero tone `#EFFF46`, shade `#B0E600`).
 
-Two rules are enforced by tests rather than by discipline:
+Three rules are enforced by tests rather than by discipline:
 
 1. Chartreuse is never body text on a light surface — it is about 1.3:1 on white. That is why the
    light scheme's primary is a deep olive (`#4A5D00`, ~7:1) and chartreuse survives there as an
@@ -347,6 +361,11 @@ Two rules are enforced by tests rather than by discipline:
 2. Every text pair used in either scheme clears WCAG AA. `BrandPaletteTest` computes the contrast
    ratios from the real `ColorScheme` values, so a future palette tweak that makes text
    unreadable fails the build.
+3. The launcher mark fits inside the **66dp circle in the middle of the 108dp adaptive-icon
+   canvas** — the only area every launcher mask is guaranteed to show. `IconGeometryTest` renders
+   the real vector drawables and measures the farthest opaque pixel; the content scale is 64dp of
+   the canvas (`scaleX/scaleY = 0.071111`). It was 70.2dp until M6.5, which put the outer barbell
+   plates 35.10dp from the centre against a 33dp radius, so a circular launcher cut them short.
 
 The UI follows an approved screen preview that is the layout contract for every screen. Its
 tokens live once, in `ui/common/BrandUi.kt` and `ui/theme/`: 27sp screen titles, uppercase 11.5sp

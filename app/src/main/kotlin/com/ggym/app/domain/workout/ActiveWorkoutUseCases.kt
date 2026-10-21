@@ -195,6 +195,41 @@ class ActiveWorkoutUseCases(
     }
 
     /**
+     * Takes a completed set back to a plan: the mistake remedy for "I marked this by accident".
+     *
+     * It clears exactly one thing — the completed flag — and leaves everything else where it is:
+     *
+     * - the set keeps its weight and reps, so re-completing the corrected numbers is one tap;
+     * - the exercise's working weight is **not** reverted, because neither the dictionary nor the
+     *   draft remembers what it was before the completion, and inventing a value would be worse
+     *   than leaving the "load next time" hint where the user last put it;
+     * - the sets the completion filled are **not** un-filled, for the same reason: the numbers on
+     *   screen stay where the user sees them, and the next completion re-runs the fill.
+     *
+     * A set that was never completed is left alone ([UncompleteSetResult.NotCompleted]), as is one
+     * that belongs to no running workout ([UncompleteSetResult.NotFound]): a tap that arrives after
+     * the workout ended has to be a no-op. The planned slot is untouched, like every other workout
+     * write.
+     *
+     * Stopping the rest the completion started is the *screen's* half of the rule — the timer is
+     * the screen's concern in exactly the way `startForSet` already is — because the domain does not
+     * know whether a countdown is running.
+     */
+    suspend fun uncompleteSet(setId: Long): UncompleteSetResult {
+        val draft = history.observeDraft().first() ?: return UncompleteSetResult.NotFound
+        val set = draft.exercises
+            .asSequence()
+            .flatMap { log -> log.sets.asSequence() }
+            .firstOrNull { it.id == setId }
+            ?: return UncompleteSetResult.NotFound
+
+        if (!set.isCompleted) return UncompleteSetResult.NotCompleted
+
+        history.updateSet(set.copy(isCompleted = false))
+        return UncompleteSetResult.Uncompleted
+    }
+
+    /**
      * Ends the running workout: the completed sets become a finished session — the date it started
      * on, its duration measured from the start, its sets renumbered from position — and the draft
      * disappears in the same transaction.
@@ -282,6 +317,19 @@ sealed interface RemoveSetResult {
 
     /** No such set in the running workout. */
     data object NotFound : RemoveSetResult
+}
+
+/** What happened when the user took a completed set back to a plan. */
+sealed interface UncompleteSetResult {
+
+    /** The set is a plan again. Its numbers and its place in the list are unchanged. */
+    data object Uncompleted : UncompleteSetResult
+
+    /** The set was never completed, so there is nothing to take back. */
+    data object NotCompleted : UncompleteSetResult
+
+    /** No such set in the running workout. */
+    data object NotFound : UncompleteSetResult
 }
 
 /**

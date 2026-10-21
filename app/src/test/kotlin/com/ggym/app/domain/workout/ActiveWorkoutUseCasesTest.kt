@@ -327,6 +327,61 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
     }
 
     @Test
+    fun `un-completing a set clears only the flag, keeping its numbers and the dictionary`() = runTest {
+        val bench = exercise("Bench Press", workingWeight = 70.0)
+        val dayId = plannedDay(Slot(exerciseId = bench, sets = 4, reps = "8-10", restSeconds = 120, weightKg = 80.0))
+        started(dayId)
+        val firstSetId = draft().exercises[0].sets.first().id
+        useCases.completeSet(firstSetId, weightKg = 82.5, reps = 9)
+
+        val result = useCases.uncompleteSet(firstSetId)
+
+        assertEquals(UncompleteSetResult.Uncompleted, result)
+        val sets = draft().exercises[0].sets
+        assertFalse("the set is a plan again", sets[0].isCompleted)
+        assertEquals("the numbers stay, so re-completing is one tap", 82.5, sets[0].weight, 0.0)
+        assertEquals(9, sets[0].reps)
+        assertEquals("its place in the list is unchanged", listOf(1, 2, 3, 4), sets.map { it.setNumber })
+        assertEquals(
+            "the fill is not guessed back: the sets behind it keep the number they were given",
+            listOf(82.5, 82.5, 82.5),
+            sets.drop(1).map { it.weight },
+        )
+        assertEquals(
+            "the dictionary keeps the load it was told about — nothing remembers the old one",
+            82.5,
+            exerciseRepository.findById(bench)!!.currentWorkingWeight!!,
+            0.0,
+        )
+        assertEquals("the plan stays the plan", 80.0, slotsOf(dayId).single().weightKg!!, 0.0)
+    }
+
+    @Test
+    fun `un-completing a set that was never completed is refused`() = runTest {
+        val bench = exercise("Bench Press")
+        val dayId = plannedDay(Slot(exerciseId = bench, sets = 2, reps = "8-10", weightKg = 80.0))
+        started(dayId)
+
+        val result = useCases.uncompleteSet(draft().exercises[0].sets.first().id)
+
+        assertEquals(UncompleteSetResult.NotCompleted, result)
+        assertFalse(draft().exercises[0].sets.first().isCompleted)
+    }
+
+    @Test
+    fun `un-completing a set of a workout that has ended changes nothing`() = runTest {
+        val bench = exercise("Bench Press")
+        val dayId = plannedDay(Slot(exerciseId = bench, sets = 2, reps = "8-10", weightKg = 80.0))
+        val sessionId = started(dayId)
+        val setId = draft().exercises[0].sets.first().id
+        useCases.completeSet(setId, weightKg = 82.5, reps = 8)
+        useCases.discard(sessionId)
+
+        assertEquals(UncompleteSetResult.NotFound, useCases.uncompleteSet(setId))
+        assertNull("the workout is still gone", historyRepository.observeDraft().first())
+    }
+
+    @Test
     fun `finishing keeps only what happened`() = runTest {
         val bench = exercise("Bench Press")
         val fly = exercise("Cable Fly")

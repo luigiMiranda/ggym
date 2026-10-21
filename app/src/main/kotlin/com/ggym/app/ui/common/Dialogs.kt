@@ -59,9 +59,11 @@ fun ConfirmDeleteDialog(
 }
 
 /**
- * A one-field naming dialog, for routines and training days alike.
+ * A one-field naming dialog, for routines, training days and exercises alike.
  *
  * Saving is only reachable with a non-blank name, so a screen never has to explain a blank one.
+ * [error] is for the refusal a name can earn from the database — an exercise name another entry
+ * already holds — and it leaves the dialog open with the typed text intact.
  */
 @Composable
 fun NameInputDialog(
@@ -70,6 +72,7 @@ fun NameInputDialog(
     initialName: String,
     onSave: (String) -> Unit,
     onDismiss: () -> Unit,
+    error: String? = null,
 ) {
     var name by rememberSaveable(initialName) { mutableStateOf(initialName) }
 
@@ -82,6 +85,8 @@ fun NameInputDialog(
                 onValueChange = { name = it },
                 label = { Text(label) },
                 singleLine = true,
+                isError = error != null,
+                supportingText = error?.let { message -> { Text(message) } },
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 modifier = Modifier.fillMaxWidth(),
             )

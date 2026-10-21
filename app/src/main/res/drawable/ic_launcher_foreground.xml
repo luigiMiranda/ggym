@@ -2,8 +2,11 @@
 <!--
   GGym launcher icon — foreground layer.
   Geometry transcribed 1:1 from artwork/ggym.svg (the brand source of truth), mapped into the
-  adaptive-icon safe zone: the SVG's 1024-unit canvas is scaled by 0.078 and centred, which
-  puts the artwork's bounding box (900x500 units) at 70x39dp inside the 72x72 safe zone.
+  adaptive-icon safe zone: the SVG's 1024-unit canvas is scaled by 0.071111 and centred, which
+  puts the artwork's bounding box (900x500 units) at 64x35.6dp. 64dp is inside the **66dp circle
+  that no launcher mask may clip**; at the previous 0.078 (70.2dp) the outer barbell plates sat
+  35.10dp from the centre against a 33dp radius, so a circular mask cut each of them down to a
+  third of its width. The scale was reduced for that reason, not for taste.
 
   Deliberately NOT ported from the SVG:
    - the `feDropShadow` neon glow (VectorDrawable has no blur; a faked halo would smear under
@@ -19,10 +22,10 @@
     android:viewportHeight="108">
 
     <group
-        android:scaleX="0.078"
-        android:scaleY="0.078"
-        android:translateX="14.06"
-        android:translateY="14.06">
+        android:scaleX="0.071111"
+        android:scaleY="0.071111"
+        android:translateX="17.59"
+        android:translateY="17.59">
 
         <!-- barbell plates, left (outer + inner) -->
         <path android:pathData="M 940,398 H 946 A 16 16 0 0 1 962,414 V 610 A 16 16 0 0 1 946,626 H 940 A 16 16 0 0 1 924,610 V 414 A 16 16 0 0 1 940,398 Z">

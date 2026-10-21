@@ -2,6 +2,7 @@ package com.ggym.app.data.repository
 
 import com.ggym.app.domain.model.Exercise
 import com.ggym.app.domain.repository.DeleteExerciseResult
+import com.ggym.app.domain.repository.RenameExerciseResult
 import com.ggym.app.testing.RepositoryTest
 import com.ggym.app.testing.TestData
 import com.ggym.app.testing.givenExercise
@@ -14,6 +15,7 @@ import com.ggym.app.testing.givenSet
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -176,6 +178,75 @@ class RoomExerciseRepositoryTest : RepositoryTest() {
     @Test
     fun `deleting an exercise that does not exist is not an error`() = runTest {
         assertEquals(DeleteExerciseResult.Deleted, exerciseRepository.deleteExercise(4242))
+    }
+
+    @Test
+    fun `renaming changes the entry and keeps what made it the same entry`() = runTest {
+        val created = exerciseRepository.findOrCreate("Bench Pres")
+        exerciseRepository.updateCurrentWorkingWeight(created.id, 82.5)
+
+        val result = exerciseRepository.renameExercise(created.id, "Barbell Bench Press")
+
+        val renamed = (result as RenameExerciseResult.Renamed).exercise
+        assertEquals(created.id, renamed.id)
+        assertEquals("Barbell Bench Press", renamed.name)
+        assertEquals("a rename is not a reset of the weight", 82.5, renamed.currentWorkingWeight!!, 0.0)
+        assertNull(exerciseRepository.findByName("Bench Pres"))
+        assertEquals(created.id, exerciseRepository.findByName("barbell bench press")?.id)
+    }
+
+    @Test
+    fun `renaming onto a name another entry holds is refused`() = runTest {
+        val bench = exerciseRepository.findOrCreate("Bench Press")
+        val squat = exerciseRepository.findOrCreate("Squat")
+
+        assertEquals(RenameExerciseResult.NameTaken, exerciseRepository.renameExercise(squat.id, "bench press"))
+
+        assertEquals("the row it tried to rename is untouched", "Squat", exerciseRepository.findById(squat.id)!!.name)
+        assertEquals("and the row it collided with is untouched", "Bench Press", exerciseRepository.findById(bench.id)!!.name)
+    }
+
+    @Test
+    fun `a rename to a different case of the same name is allowed`() = runTest {
+        val created = exerciseRepository.findOrCreate("bench press")
+
+        val result = exerciseRepository.renameExercise(created.id, "Bench Press")
+
+        assertEquals("Bench Press", (result as RenameExerciseResult.Renamed).exercise.name)
+        assertEquals("Bench Press", exerciseRepository.findById(created.id)!!.name)
+    }
+
+    @Test
+    fun `renaming to the same name and renaming a missing entry are typed outcomes`() = runTest {
+        val created = exerciseRepository.findOrCreate("Bench Press")
+
+        assertEquals(
+            "whitespace does not make it a different name",
+            RenameExerciseResult.Unchanged,
+            exerciseRepository.renameExercise(created.id, "  Bench Press  "),
+        )
+        assertEquals(RenameExerciseResult.NotFound, exerciseRepository.renameExercise(4242, "Anything"))
+    }
+
+    @Test
+    fun `renaming an exercise leaves what history recorded`() = runTest {
+        val exerciseId = exerciseRepository.findOrCreate("Deltoid Raise").id
+        val sessionId = database.givenSession(date = TestData.date())
+        val logId = database.givenExerciseLog(
+            sessionId = sessionId,
+            exerciseId = exerciseId,
+            exerciseNameSnapshot = "Deltoid Raise",
+        )
+        database.givenSet(workoutExerciseLogId = logId, setNumber = 1, weight = 12.5, reps = 12)
+
+        exerciseRepository.renameExercise(exerciseId, "Lateral Raise")
+
+        assertNotNull("the dictionary moved", exerciseRepository.findByName("Lateral Raise"))
+        assertEquals(
+            "the workout still says what it was called when it happened",
+            "Deltoid Raise",
+            database.workoutHistoryDao().getAllSessions().single().exercises.single().log.exerciseNameSnapshot,
+        )
     }
 
     @Test

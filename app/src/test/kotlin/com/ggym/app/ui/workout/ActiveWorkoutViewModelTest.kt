@@ -330,6 +330,95 @@ class ActiveWorkoutViewModelTest : ViewModelTest() {
     }
 
     @Test
+    fun `un-completing a set writes it back to a plan and stops that exercise's rest`() = runTest {
+        val bench = exerciseRepository.givenExerciseNamed("Bench Press", workingWeight = 87.5)
+        clock = TestData.timestamp(TestData.date(month = 6, day = 15))
+        sessionId = started(
+            routineRepository.givenPlannedDay(
+                PlannedSlot(exerciseId = bench, sets = 3, reps = "8-10", restSeconds = 120, weightKg = 80.0),
+            ),
+        )
+        val vm = viewModel()
+
+        vm.uiState.test {
+            awaitState { !it.isLoading }
+            vm.focusExercise(0)
+            awaitState { it.focused != null }
+            vm.editWeight("82.5")
+            awaitState { it.focused?.hero?.weightText == "82.5" }
+            vm.completeSelectedSet()
+            val done = awaitState { it.exercises[0].completedSets == 1 }
+            val setId = done.exercises[0].sets.first().id
+            // The service is the timer's only writer and the fake commands only record, so the
+            // countdown the completion asked for is stood up here.
+            restStore.current.value = RestTimerState(
+                endsAtMillis = clock + 120_000,
+                totalSeconds = 120,
+                exerciseLogId = draft().exercises[0].id,
+                exerciseName = "Bench Press",
+            )
+
+            vm.uncompleteSet(setId)
+
+            awaitState { it.exercises[0].completedSets == 0 }
+            assertFalse("the row is a plan again", row(setId).isCompleted)
+            assertEquals("the number stays on the set", 82.5, row(setId).weight, 0.0)
+            assertTrue(
+                "the rest that belonged to it is stopped",
+                restCommands.received.contains(RecordedCommand.Stop),
+            )
+            assertEquals(
+                "the dictionary is not reverted: nothing remembers the old value",
+                82.5,
+                exerciseRepository.findById(bench)!!.currentWorkingWeight!!,
+                0.0,
+            )
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `un-completing a set leaves another exercise's rest alone`() = runTest {
+        val bench = exerciseRepository.givenExerciseNamed("Bench Press")
+        val fly = exerciseRepository.givenExerciseNamed("Cable Fly")
+        clock = TestData.timestamp(TestData.date(month = 6, day = 15))
+        sessionId = started(
+            routineRepository.givenPlannedDay(
+                PlannedSlot(exerciseId = bench, sets = 2, reps = "8-10", restSeconds = 120, weightKg = 80.0),
+                PlannedSlot(exerciseId = fly, sets = 2, reps = "12", restSeconds = 120, weightKg = 60.0),
+            ),
+        )
+        val vm = viewModel()
+
+        vm.uiState.test {
+            awaitState { !it.isLoading && it.exercises.size == 2 }
+            vm.focusExercise(0)
+            awaitState { it.focused != null }
+            vm.completeSelectedSet()
+            val done = awaitState { it.exercises[0].completedSets == 1 }
+            val setId = done.exercises[0].sets.first().id
+            // A countdown for the *other* exercise: taking a bench set back must not silence it.
+            restStore.current.value = RestTimerState(
+                endsAtMillis = clock + 120_000,
+                totalSeconds = 120,
+                exerciseLogId = draft().exercises[1].id,
+                exerciseName = "Cable Fly",
+            )
+
+            vm.uncompleteSet(setId)
+
+            awaitState { it.exercises[0].completedSets == 0 }
+            assertFalse(
+                "a rest that is not this set's is left running",
+                restCommands.received.contains(RecordedCommand.Stop),
+            )
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `the rest banner follows the stored deadline, not a local countdown`() = runTest {
         val bench = exerciseRepository.givenExerciseNamed("Bench Press")
         clock = TestData.timestamp(TestData.date(month = 6, day = 15))

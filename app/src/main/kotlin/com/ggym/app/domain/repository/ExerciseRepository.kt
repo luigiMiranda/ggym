@@ -39,6 +39,20 @@ interface ExerciseRepository {
     /** Persists the weight to load next time, and remembers when it was set. */
     suspend fun updateCurrentWorkingWeight(exerciseId: Long, weightKg: Double)
 
+    /**
+     * Renames a dictionary entry, and nothing else.
+     *
+     * History keeps the name it was written with: `workout_exercise_log.exerciseNameSnapshot` and
+     * the session name snapshots are not rewritten, so a past workout still says what the exercise
+     * was called when it happened, and a workout already in progress keeps the name it started
+     * with. Only the dictionary row moves.
+     *
+     * The name is trimmed. A name another entry already holds is **refused**, under the same
+     * case-insensitive rule the unique index enforces, rather than merged: merging two entries
+     * would mean repointing every planned slot and every history row that referenced one of them.
+     */
+    suspend fun renameExercise(exerciseId: Long, newName: String): RenameExerciseResult
+
     /** Deletes a dictionary entry, unless a routine still plans it. */
     suspend fun deleteExercise(exerciseId: Long): DeleteExerciseResult
 }
@@ -54,4 +68,20 @@ sealed interface DeleteExerciseResult {
      * slot with nothing to perform. [routineNames] names them, so the UI can say which.
      */
     data class Blocked(val routineNames: List<String>) : DeleteExerciseResult
+}
+
+/** Outcome of [ExerciseRepository.renameExercise]. */
+sealed interface RenameExerciseResult {
+
+    /** The dictionary entry now carries [exercise]. */
+    data class Renamed(val exercise: Exercise) : RenameExerciseResult
+
+    /** Another entry already holds that name, case-insensitively: nothing was written. */
+    data object NameTaken : RenameExerciseResult
+
+    /** No such entry — it was deleted while the dialog was open. */
+    data object NotFound : RenameExerciseResult
+
+    /** The entry already carries exactly this name: there is nothing to write. */
+    data object Unchanged : RenameExerciseResult
 }

@@ -30,6 +30,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -203,6 +204,7 @@ fun SetRowList(
     locale: Locale,
     onSelect: (Long) -> Unit,
     onRemove: (Long) -> Unit,
+    onUncomplete: (Long) -> Unit,
     onAddSet: () -> Unit,
     onStartRest: () -> Unit,
     modifier: Modifier = Modifier,
@@ -215,6 +217,7 @@ fun SetRowList(
                 locale = locale,
                 onSelect = { onSelect(set.id) },
                 onRemove = { onRemove(set.id) },
+                onUncomplete = { onUncomplete(set.id) },
             )
         }
         Row(
@@ -242,6 +245,7 @@ private fun SetRow(
     locale: Locale,
     onSelect: () -> Unit,
     onRemove: () -> Unit,
+    onUncomplete: () -> Unit,
 ) {
     val effects = MaterialTheme.motionScheme.defaultEffectsSpec<Color>()
     val container by animateColorAsState(
@@ -270,7 +274,7 @@ private fun SetRow(
             .clip(RoundedCornerShape(corner))
             .background(container)
             .clickable(role = Role.Button, onClick = onSelect)
-            .padding(start = 12.dp, top = 9.dp, end = if (set.isCompleted) 12.dp else 2.dp, bottom = 9.dp),
+            .padding(start = 12.dp, top = 9.dp, end = 2.dp, bottom = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(
@@ -312,7 +316,23 @@ private fun SetRow(
             style = MaterialTheme.typography.bodyMedium.copy(fontFeatureSettings = "tnum"),
             color = content,
         )
-        if (!set.isCompleted) {
+        // The row's own affordance changes with its state: a plan can be removed, a performed set
+        // can be taken back. Both are one tap in the same place, and neither renumbers a thing.
+        if (set.isCompleted) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clickable(role = Role.Button, onClick = onUncomplete),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Filled.Undo,
+                    contentDescription = stringResource(R.string.workout_uncomplete_set, set.position),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        } else {
             Box(
                 modifier = Modifier
                     .size(36.dp)

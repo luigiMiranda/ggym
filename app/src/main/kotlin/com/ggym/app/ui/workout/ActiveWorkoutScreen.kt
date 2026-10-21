@@ -437,6 +437,7 @@ private fun WorkoutFocused(
                 onStepReps = viewModel::stepReps,
                 onSelectSet = viewModel::selectSet,
                 onRemoveSet = viewModel::removeSet,
+                onUncompleteSet = viewModel::uncompleteSet,
                 onAddSet = viewModel::addSet,
                 onStartRest = viewModel::startRest,
             )
@@ -457,6 +458,7 @@ private fun ExercisePage(
     onStepReps: (Int) -> Unit,
     onSelectSet: (Long) -> Unit,
     onRemoveSet: (Long) -> Unit,
+    onUncompleteSet: (Long) -> Unit,
     onAddSet: () -> Unit,
     onStartRest: () -> Unit,
 ) {
@@ -528,6 +530,7 @@ private fun ExercisePage(
             locale = locale,
             onSelect = onSelectSet,
             onRemove = onRemoveSet,
+            onUncomplete = onUncompleteSet,
             onAddSet = onAddSet,
             onStartRest = onStartRest,
         )

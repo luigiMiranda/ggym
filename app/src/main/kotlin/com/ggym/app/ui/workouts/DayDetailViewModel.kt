@@ -3,6 +3,7 @@ package com.ggym.app.ui.workouts
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ggym.app.domain.repository.ExerciseRepository
+import com.ggym.app.domain.repository.RenameExerciseResult
 import com.ggym.app.domain.repository.RoutineRepository
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
 import com.ggym.app.domain.workout.ActiveWorkoutUseCases
@@ -44,6 +45,9 @@ class DayDetailViewModel(
     /** The running workout that blocks a start, while the resume-or-discard question is open. */
     private val startConflict = MutableStateFlow<StartConflict?>(null)
 
+    /** The exercise-rename dialog, and the collision it may be showing. */
+    private val renameDialog = MutableStateFlow<ExerciseRenameDialog?>(null)
+
     private val opened = MutableSharedFlow<DayDetailEffect>(extraBufferCapacity = 1)
 
     /** One-shots for the screen: the workout that was started or resumed, to open. */
@@ -54,7 +58,8 @@ class DayDetailViewModel(
         exercises.observeAll(),
         pendingDelete,
         startConflict,
-    ) { routine, dictionary, pendingDelete, startConflict ->
+        renameDialog,
+    ) { routine, dictionary, pendingDelete, startConflict, renameDialog ->
         val day = routine?.days?.firstOrNull { it.id == routineDayId }
         if (day == null) {
             return@combine DayDetailUiState(isLoading = false, isMissing = true)
@@ -81,6 +86,7 @@ class DayDetailViewModel(
             },
             pendingDelete = pendingDelete,
             startConflict = startConflict,
+            renameDialog = renameDialog,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -136,6 +142,38 @@ class DayDetailViewModel(
         viewModelScope.launch {
             routines.deletePlannedExercise(slot.id)
             pendingDelete.update { current -> current?.takeUnless { it.id == slot.id } }
+        }
+    }
+
+    /** Opens the rename dialog for the dictionary entry this slot plans. */
+    fun startRenameExercise(slot: SlotRow) {
+        renameDialog.value = ExerciseRenameDialog(exerciseId = slot.exerciseId, initialName = slot.exerciseName)
+    }
+
+    fun dismissRenameExercise() {
+        renameDialog.value = null
+    }
+
+    /**
+     * Renames the dictionary entry. The write is the repository's — it, not the screen, judges the
+     * `NOCASE` collision, because only the database can answer it without a race.
+     *
+     * A name another entry already holds is the one answer the dialog has to explain: it stays
+     * open, the typed text stays where the user left it, and the field says what happened. Every
+     * other outcome dismisses the dialog, because there is nothing left to ask.
+     */
+    fun saveExerciseName(name: String) {
+        val dialog = renameDialog.value ?: return
+        if (name.isBlank()) return
+
+        viewModelScope.launch {
+            when (exercises.renameExercise(dialog.exerciseId, name)) {
+                RenameExerciseResult.NameTaken -> renameDialog.update { it?.copy(nameTaken = true) }
+                is RenameExerciseResult.Renamed,
+                RenameExerciseResult.Unchanged,
+                RenameExerciseResult.NotFound,
+                -> renameDialog.value = null
+            }
         }
     }
 

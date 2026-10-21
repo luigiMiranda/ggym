@@ -10,6 +10,7 @@ import com.ggym.app.domain.repository.WorkoutPreferences
 import com.ggym.app.domain.workout.ActiveWorkoutUseCases
 import com.ggym.app.domain.workout.RemoveSetResult
 import com.ggym.app.domain.workout.RestTimerUseCases
+import com.ggym.app.domain.workout.UncompleteSetResult
 import com.ggym.app.ui.common.DurationFormat
 import com.ggym.app.ui.common.KgFormat
 import com.ggym.app.ui.common.WeightInput
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -222,6 +224,28 @@ class ActiveWorkoutViewModel(
             if (workout.removeSet(setId) == RemoveSetResult.Removed) {
                 screen.update { it.withoutEdits().copy(selectedSetId = null) }
             }
+        }
+    }
+
+    /**
+     * Takes a completed set back to a plan — the mistake remedy.
+     *
+     * The domain clears the flag and nothing else (see [ActiveWorkoutUseCases.uncompleteSet]); the
+     * rest is this screen's half: a countdown that belongs to the exercise whose set was just taken
+     * back is no longer a rest the user asked for, so it is stopped. A rest for another exercise is
+     * left running. The stop is silent, like `Skip`: nothing is ringing and the user is undoing,
+     * not being told something.
+     */
+    fun uncompleteSet(setId: Long) {
+        val focused = uiState.value.focused ?: return
+
+        viewModelScope.launch {
+            if (workout.uncompleteSet(setId) != UncompleteSetResult.Uncompleted) return@launch
+            val rest = restTimer.state.first()
+            if (rest != null && rest.exerciseLogId == focused.exerciseLogId) restTimer.stop()
+            // The hero follows the workout: the set just taken back is a plan again, and it is in
+            // front of the user to correct and re-complete.
+            screen.update { it.withoutEdits().copy(selectedSetId = null) }
         }
     }
 

@@ -246,6 +246,9 @@
     <string name="picker_search_label">Search or type a new name</string>
     <string name="picker_create">Create “%1$s”</string>
     <string name="picker_empty">No exercise matches. Type a name to create it.</string>
+    <string name="exercise_rename_title">Rename exercise</string>
+    <string name="exercise_rename_label">Exercise name</string>
+    <string name="exercise_rename_taken">An exercise with this name already exists.</string>
     <string name="exercise_delete_title">Delete exercise?</string>
     <string name="exercise_delete_message">“%1$s” will be removed from the dictionary. If a routine still plans it, GGym will tell you which one.</string>
     <string name="exercise_delete_blocked_title">Still planned</string>
@@ -317,6 +320,7 @@
     <string name="workout_next_exercise">Next exercise</string>
     <string name="workout_add_set">+ Add set</string>
     <string name="workout_remove_set">Remove set %1$d</string>
+    <string name="workout_uncomplete_set">Mark set %1$d as not done</string>
     <string name="workout_set_reps">× %1$d</string>
     <string name="workout_reps_decrease">One rep fewer</string>
     <string name="workout_reps_increase">One rep more</string>
