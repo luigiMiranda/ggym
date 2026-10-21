@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Italian. Mirrors values/strings.xml key for key: lint's MissingTranslation and
+  ExtraTranslation make an incomplete or an invented key a build failure, so the two files cannot
+  drift. Terminology is gym Italian — scheda, giorno di allenamento, serie, ripetizioni, recupero,
+  carico di lavoro — not a literal translation of the English.
+-->
+<resources>
+    <string name="app_name">GGym</string>
+
+    <!-- Bottom navigation -->
+    <string name="nav_workouts">Schede</string>
+    <string name="nav_calendar">Calendario</string>
+    <string name="nav_stats">Statistiche</string>
+    <string name="nav_settings">Impostazioni</string>
+
+    <!-- Empty states -->
+    <string name="workouts_empty_title">Le tue schede sono qui</string>
+    <string name="workouts_empty_message">Crea una scheda con giorni di allenamento ed esercizi, poi inizia un allenamento e GGym ricorderà il peso che hai davvero sollevato.</string>
+
+    <!-- Calendar -->
+    <string name="calendar_today">Oggi</string>
+    <string name="calendar_previous_month">Mese precedente</string>
+    <string name="calendar_next_month">Mese successivo</string>
+    <string name="calendar_month_empty">Nessun allenamento in %1$s</string>
+    <string name="calendar_day_empty">Niente registrato il %1$s</string>
+    <string name="calendar_day_header">%1$s · %2$s</string>
+    <string name="calendar_day_a11y">%1$s, %2$s</string>
+    <plurals name="calendar_day_workouts">
+        <item quantity="one">%1$d allenamento</item>
+        <item quantity="other">%1$d allenamenti</item>
+    </plurals>
+
+    <!-- History -->
+    <string name="history_title_fallback">Allenamento</string>
+    <string name="history_detail_subtitle">%1$s · %2$s</string>
+    <string name="history_edit_log">Modifica registro</string>
+    <string name="history_delete_workout">Elimina allenamento</string>
+    <string name="history_delete_title">Eliminare %1$s · %2$s?</string>
+    <string name="history_delete_message">Le serie che hai registrato in questo allenamento saranno eliminate con esso. L\'operazione non può essere annullata.</string>
+    <string name="history_exercise_skipped">%1$s — saltato</string>
+    <string name="history_exercise_value">%1$d × %2$s</string>
+    <string name="history_set_values">%1$s × %2$d</string>
+    <string name="history_edit_set">Modifica serie %1$d</string>
+    <string name="history_editor_title">Modifica serie %1$d</string>
+    <string name="history_field_weight">Peso</string>
+    <string name="history_field_reps">Ripetizioni</string>
+    <string name="history_error_weight">Inserisci il peso che hai sollevato, per esempio 82,5.</string>
+    <string name="history_error_reps">Inserisci le ripetizioni che hai fatto.</string>
+    <string name="history_remove_set">Rimuovi serie</string>
+    <string name="history_remove_set_title">Rimuovere questa serie?</string>
+    <string name="history_remove_set_message">Questa serie sarà rimossa dall\'allenamento. L\'esercizio e le altre serie restano.</string>
+    <string name="history_missing_title">Questo allenamento non c\'è più</string>
+    <string name="history_missing_message">È stato eliminato mentre eri altrove. Torna al calendario e scegli un altro giorno.</string>
+
+    <!-- Stats -->
+    <string name="stats_attendance_label">Allenamenti al mese</string>
+    <string name="stats_attendance_summary">%1$s su %2$s · record %3$s (%4$d)</string>
+    <string name="stats_attendance_empty">Nessun allenamento negli ultimi dodici mesi. Terminane uno e comparirà qui.</string>
+    <plurals name="stats_workout_days">
+        <item quantity="one">%1$d giorno di allenamento</item>
+        <item quantity="other">%1$d giorni di allenamento</item>
+    </plurals>
+    <plurals name="stats_months">
+        <item quantity="one">%1$d mese</item>
+        <item quantity="other">%1$d mesi</item>
+    </plurals>
+
+    <string name="stats_body_weight_label">Peso corporeo</string>
+    <string name="stats_range_1m">1M</string>
+    <string name="stats_range_3m">3M</string>
+    <string name="stats_range_6m">6M</string>
+    <string name="stats_range_1y">1A</string>
+    <string name="stats_range_all">Tutto</string>
+    <string name="stats_body_summary">min %1$s · media %2$s · max %3$s kg</string>
+    <string name="stats_body_empty">Nessuna misurazione in questo intervallo.</string>
+    <string name="stats_body_empty_action">Registra peso</string>
+    <string name="stats_body_one">Una sola misurazione finora.</string>
+    <string name="stats_error_weight">Inserisci un peso tra 25 e 300 kg.</string>
+
+    <string name="stats_progression_label">Progressione esercizio</string>
+    <string name="stats_progression_pick">Scegli esercizio</string>
+    <string name="stats_exercise_selector">%1$s ▾</string>
+    <string name="stats_progression_empty">Nessuna serie registrata per “%1$s”.</string>
+    <string name="stats_progression_one">Una sola sessione finora.</string>
+    <string name="stats_progression_no_exercises">Aggiungi un esercizio a un giorno di allenamento e qui comparirà il suo progresso.</string>
+    <string name="stats_progression_legend_max">Carico massimo</string>
+    <string name="stats_progression_legend_trend">Tendenza</string>
+    <string name="stats_progression_summary">%1$s · ultimo %2$s</string>
+    <plurals name="stats_progression_sessions">
+        <item quantity="one">%1$d sessione</item>
+        <item quantity="other">%1$d sessioni</item>
+    </plurals>
+
+    <string name="stats_log_label">Registro del peso corporeo</string>
+    <string name="stats_log_add">+ Registra</string>
+    <string name="stats_log_today">Oggi</string>
+    <string name="stats_log_empty">Nessuna misurazione.</string>
+
+    <string name="stats_sheet_new_title">Registra peso corporeo</string>
+    <string name="stats_sheet_edit_title">Modifica peso corporeo</string>
+    <string name="stats_sheet_weight">Peso</string>
+    <string name="stats_sheet_date">Data</string>
+    <string name="stats_sheet_delete">Elimina misurazione</string>
+    <string name="stats_delete_title">Eliminare la misurazione?</string>
+    <string name="stats_delete_message">La misurazione del %1$s sarà eliminata dal registro.</string>
+
+    <string name="stats_select_exercise">Scegli esercizio</string>
+    <string name="stats_exercise_search">Cerca esercizi</string>
+    <string name="stats_exercise_no_match">Nessun esercizio corrisponde.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_section_appearance">Aspetto</string>
+    <string name="settings_theme_label">Tema</string>
+    <string name="settings_theme_light">Chiaro</string>
+    <string name="settings_theme_system">Sistema</string>
+    <string name="settings_theme_dark">Scuro</string>
+    <string name="settings_language_title">Lingua</string>
+    <string name="settings_language_system">Sistema</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_italian">Italiano</string>
+    <string name="settings_wallpaper_colors_title">Colori dello sfondo</string>
+    <string name="settings_wallpaper_colors_supporting">Usa i colori dello sfondo invece di quelli di GGym. Disattivato per impostazione predefinita.</string>
+    <string name="settings_section_workout">Allenamento</string>
+    <string name="settings_rest_timer_title">Timer di recupero</string>
+    <string name="settings_rest_timer_supporting">Avvia un conto alla rovescia quando completi una serie e ti avvisa quando il recupero è finito. Disattivato: le serie completate vengono registrate e non succede altro.</string>
+    <string name="settings_alert_sound_title">Suono di avviso</string>
+    <string name="settings_alert_sound_supporting">Riprodotto da GGym, così abbassa la musica invece di fermarla.</string>
+    <string name="settings_alert_sound_system">Sistema</string>
+    <string name="settings_alert_sound_ringtone">Suoneria</string>
+    <string name="settings_alert_sound_ringtone_pick">Scegli una suoneria</string>
+    <string name="settings_alert_sound_none">Nessuno</string>
+    <string name="settings_alert_sound_none_supporting">Nessun suono. L\'avviso vibra comunque.</string>
+    <string name="settings_ringing_title">Squillo</string>
+    <string name="settings_ringing_supporting">Per quanto tempo squilla l\'avviso quando il recupero è finito.</string>
+    <string name="settings_ringing_automatic">Automatico</string>
+    <string name="settings_ringing_manual">Manuale</string>
+    <string name="settings_ringing_manual_supporting">Squilla finché non lo fermi — al massimo per dieci minuti.</string>
+    <string name="settings_ringing_seconds">Secondi</string>
+    <string name="settings_ringing_less">Meno tempo di squillo</string>
+    <string name="settings_ringing_more">Più tempo di squillo</string>
+    <string name="settings_alert_inactive">Il timer di recupero è disattivato, quindi non squilla niente.</string>
+    <string name="settings_notifications_title">Le notifiche sono disattivate</string>
+    <string name="settings_notifications_supporting">Il conto alla rovescia funziona comunque nell\'app, ma la notifica e l\'avviso di fine recupero richiedono le notifiche. Consentile nelle impostazioni di sistema per avere entrambe.</string>
+    <string name="settings_notifications_open">Apri le impostazioni delle notifiche</string>
+
+    <!-- Shared actions -->
+    <string name="action_more">Altre azioni</string>
+    <string name="action_back">Indietro</string>
+    <string name="action_save">Salva</string>
+    <string name="action_cancel">Annulla</string>
+    <string name="action_delete">Elimina</string>
+    <string name="action_ok">OK</string>
+    <string name="action_rename">Rinomina</string>
+    <string name="action_edit">Modifica</string>
+    <string name="action_move_up">Sposta su</string>
+    <string name="action_move_down">Sposta giù</string>
+    <string name="action_reorder">Riordina</string>
+
+    <!-- Units and numbers -->
+    <string name="unit_kg">kg</string>
+    <string name="unit_seconds">s</string>
+    <string name="weight_kg">%1$s kg</string>
+    <string name="weight_unknown">—</string>
+    <string name="weight_decrease">Diminuisci il peso di 2,5 kg</string>
+    <string name="weight_increase">Aumenta il peso di 2,5 kg</string>
+
+    <!-- Routines -->
+    <string name="workouts_new_routine">Nuova scheda</string>
+    <string name="workouts_in_progress">In corso · %1$s</string>
+    <string name="workouts_resume_action">Riprendi</string>
+    <string name="routine_new_title">Nuova scheda</string>
+    <string name="routine_rename_title">Rinomina scheda</string>
+    <string name="routine_name_label">Nome della scheda</string>
+    <string name="routine_delete_title">Eliminare la scheda?</string>
+    <string name="routine_delete_message">“%1$s” e tutto ciò che contiene saranno eliminati. Gli allenamenti registrati restano.</string>
+    <string name="routine_summary_full">%1$s · %2$s · %3$s</string>
+    <string name="routine_title_fallback">Scheda</string>
+    <string name="routine_missing_title">Questa scheda non c\'è più</string>
+    <string name="routine_missing_message">È stata eliminata mentre eri altrove. Torna a Schede e scegline un\'altra.</string>
+    <plurals name="routine_day_count">
+        <item quantity="one">%1$d giorno</item>
+        <item quantity="other">%1$d giorni</item>
+    </plurals>
+    <plurals name="routine_exercise_count">
+        <item quantity="one">%1$d esercizio</item>
+        <item quantity="other">%1$d esercizi</item>
+    </plurals>
+    <plurals name="routine_set_count">
+        <item quantity="one">%1$d serie</item>
+        <item quantity="other">%1$d serie</item>
+    </plurals>
+
+    <!-- Training days -->
+    <string name="routine_add_day">Aggiungi giorno</string>
+    <string name="routine_days_section">Giorni di allenamento</string>
+    <string name="day_new_title">Nuovo giorno di allenamento</string>
+    <string name="day_rename_title">Rinomina giorno</string>
+    <string name="day_name_label">Nome del giorno</string>
+    <string name="day_delete_title">Eliminare il giorno?</string>
+    <string name="day_delete_message">“%1$s” e gli esercizi programmati al suo interno saranno eliminati. Gli allenamenti registrati restano.</string>
+    <string name="days_empty_title">Nessun giorno di allenamento</string>
+    <string name="days_empty_message">Una scheda è fatta di giorni — “Spinta A”, “Gambe”, “Lunedì”. Aggiungi il primo.</string>
+    <string name="day_title_fallback">Giorno di allenamento</string>
+    <string name="day_missing_title">Questo giorno non c\'è più</string>
+    <string name="day_missing_message">È stato eliminato mentre eri altrove. Torna alla scheda e scegline un altro.</string>
+    <string name="day_add_exercise">Aggiungi esercizio</string>
+    <string name="day_empty_title">Niente in programma</string>
+    <string name="day_empty_message">Aggiungi gli esercizi di questo giorno: quante serie, quante ripetizioni e il peso da caricare.</string>
+    <string name="day_start_label">Inizia allenamento</string>
+    <plurals name="day_start_exercises">
+        <item quantity="one">%1$d esercizio</item>
+        <item quantity="other">%1$d esercizi</item>
+    </plurals>
+    <plurals name="day_start_sets">
+        <item quantity="one">%1$d serie</item>
+        <item quantity="other">%1$d serie</item>
+    </plurals>
+    <string name="day_start_shape">%1$s · %2$s</string>
+    <string name="day_conflict_title">Un allenamento è già in corso</string>
+    <string name="day_conflict_message">“%1$s” di “%2$s” è ancora in corso. Riprendilo, oppure scartalo e inizia questo giorno.</string>
+    <string name="day_conflict_resume">Riprendi</string>
+    <string name="day_conflict_discard">Scarta e inizia</string>
+
+    <!-- Exercise slots -->
+    <string name="slot_target">%1$d × %2$s</string>
+    <string name="slot_rest">%1$d s di recupero</string>
+    <string name="rest_seconds_short">%1$ds</string>
+    <string name="slot_remove">Rimuovi dal giorno</string>
+    <string name="slot_delete_title">Rimuovere l\'esercizio?</string>
+    <string name="slot_delete_message">“%1$s” sarà rimosso da questo giorno. Tutto ciò che hai già registrato resta nella cronologia.</string>
+    <string name="slot_weight_inherited">ereditato</string>
+    <string name="slot_weight_hint">Lascia vuoto per seguire il peso attuale dell\'esercizio.</string>
+    <string name="slot_field_sets">Serie</string>
+    <string name="slot_field_reps">Ripetizioni</string>
+    <string name="slot_field_rest">Recupero</string>
+    <string name="slot_field_weight">Carico di lavoro</string>
+    <string name="slot_error_sets">Inserisci almeno una serie.</string>
+    <string name="slot_error_reps">Inserisci le ripetizioni previste, per esempio da 8 a 10.</string>
+    <string name="slot_error_rest">Il recupero non può essere negativo.</string>
+    <string name="slot_error_weight">Inserisci un peso come 82,5, oppure lascia vuoto.</string>
+
+    <!-- Exercise picker -->
+    <string name="picker_title">Aggiungi esercizio</string>
+    <string name="picker_suggested">Suggeriti</string>
+    <string name="picker_detail">%1$s · %2$s</string>
+    <string name="picker_search_label">Cerca o scrivi un nuovo nome</string>
+    <string name="picker_create">Crea “%1$s”</string>
+    <string name="picker_empty">Nessun esercizio corrisponde. Scrivi un nome per crearlo.</string>
+    <string name="exercise_rename_title">Rinomina esercizio</string>
+    <string name="exercise_rename_label">Nome dell\'esercizio</string>
+    <string name="exercise_rename_taken">Esiste già un esercizio con questo nome.</string>
+    <string name="exercise_delete_title">Eliminare l\'esercizio?</string>
+    <string name="exercise_delete_message">“%1$s” sarà rimosso dal dizionario. Se una scheda lo prevede ancora, GGym ti dirà quale.</string>
+    <string name="exercise_delete_blocked_title">Ancora in programma</string>
+    <string name="exercise_delete_blocked_message">Questo esercizio è ancora previsto in %1$s. Rimuovilo prima da lì.</string>
+
+    <!-- Rest timer notifications -->
+    <string name="rest_notification_text">In recupero</string>
+    <string name="rest_action_subtract_time">-15 s</string>
+    <string name="rest_action_add_time">+15 s</string>
+    <string name="rest_action_skip">Salta</string>
+    <string name="rest_action_stop">Ferma</string>
+    <string name="rest_finished_notification_title">Recupero finito</string>
+    <string name="rest_finished_notification_text">Tocca a %1$s</string>
+    <string name="rest_finished_notification_text_fallback">Tocca alla prossima serie</string>
+    <string name="rest_channel_running_name">Timer di recupero</string>
+    <string name="rest_channel_running_description">Il conto alla rovescia tra le serie</string>
+    <string name="rest_channel_finished_name">Recupero finito</string>
+    <string name="rest_channel_finished_description">Ti avvisa quando un recupero è finito</string>
+
+    <!-- Durations -->
+    <string name="duration_minutes">%1$d min</string>
+    <string name="duration_hours_minutes">%1$d h %2$02d min</string>
+
+    <!-- The active workout -->
+    <string name="workout_title_fallback">Allenamento</string>
+    <string name="workout_mode_overview">Panoramica</string>
+    <plurals name="workout_sets">
+        <item quantity="one">%1$d serie</item>
+        <item quantity="other">%1$d serie</item>
+    </plurals>
+    <string name="workout_overview_sets">%1$d / %2$s</string>
+    <string name="workout_progress">%1$d di %2$s</string>
+    <plurals name="workout_exercises_skipped">
+        <item quantity="one">%1$d esercizio saltato</item>
+        <item quantity="other">%1$d esercizi saltati</item>
+    </plurals>
+    <string name="workout_finish">Termina allenamento</string>
+    <string name="workout_finish_short">Termina</string>
+    <string name="workout_session_label">Sessione %1$s</string>
+    <string name="workout_set_label">Serie %1$d</string>
+    <string name="workout_set_of">Serie %1$d di %2$d</string>
+    <string name="workout_set_reps_unknown">× —</string>
+    <string name="workout_weight_hint">Tocca il numero per digitare un peso</string>
+    <string name="workout_start_rest">Avvia recupero</string>
+    <string name="workout_finish_title">Terminare l\'allenamento?</string>
+    <string name="workout_finish_confirm">Termina e salva</string>
+    <string name="workout_finish_detail">%1$s · %2$s</string>
+    <string name="workout_discard">Scarta allenamento</string>
+    <string name="workout_discard_title">Scartare l\'allenamento?</string>
+    <string name="workout_discard_message">Niente di questo allenamento sarà salvato: le serie già completate vengono buttate via insieme al resto. Terminare invece le conserva.</string>
+    <string name="workout_keep_training">Continua ad allenarti</string>
+    <string name="workout_missing_title">Questo allenamento è finito</string>
+    <string name="workout_missing_message">È stato terminato o scartato, qui o altrove. Iniziane un altro da un giorno di allenamento.</string>
+    <string name="workout_back_to_workouts">Torna alle schede</string>
+    <string name="workout_exercise_of">Esercizio %1$d di %2$d</string>
+    <string name="workout_complete_set">Completa serie</string>
+    <string name="workout_next_exercise">Esercizio successivo</string>
+    <string name="workout_add_set">+ Aggiungi serie</string>
+    <string name="workout_remove_set">Rimuovi serie %1$d</string>
+    <string name="workout_uncomplete_set">Segna la serie %1$d come non fatta</string>
+    <string name="workout_set_reps">× %1$d</string>
+    <string name="workout_reps_decrease">Una ripetizione in meno</string>
+    <string name="workout_reps_increase">Una ripetizione in più</string>
+    <string name="workout_resting">Recupero</string>
+</resources>

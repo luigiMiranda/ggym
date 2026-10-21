@@ -1,5 +1,6 @@
 package com.ggym.app.ui.settings
 
+import com.ggym.app.data.prefs.AppLanguage
 import com.ggym.app.data.prefs.ThemeSettings
 import com.ggym.app.domain.workout.AlertSound
 import com.ggym.app.domain.workout.RingPolicy
@@ -13,6 +14,8 @@ import com.ggym.app.domain.workout.RingPolicy
  */
 data class SettingsUiState(
     val theme: ThemeSettings = ThemeSettings(),
+    /** Which language the app is shown in; [AppLanguage.System] follows the device. */
+    val language: AppLanguage = AppLanguage.System,
     /** On until the user turns it off, matching the preference's own default. */
     val restTimerEnabled: Boolean = true,
     /** What the rest-over alert sounds like. Mirrors the preference's own default. */

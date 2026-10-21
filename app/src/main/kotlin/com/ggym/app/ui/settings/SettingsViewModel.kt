@@ -2,6 +2,8 @@ package com.ggym.app.ui.settings
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ggym.app.data.prefs.AppLanguage
+import com.ggym.app.data.prefs.LanguagePreferences
 import com.ggym.app.data.prefs.ThemeMode
 import com.ggym.app.data.prefs.ThemePreferences
 import com.ggym.app.domain.repository.WorkoutPreferences
@@ -25,18 +27,21 @@ import kotlinx.coroutines.launch
  */
 class SettingsViewModel(
     private val themePreferences: ThemePreferences,
+    private val languagePreferences: LanguagePreferences,
     private val restTimer: RestTimerUseCases,
     private val workoutPreferences: WorkoutPreferences,
 ) : ViewModel() {
 
     val uiState: StateFlow<SettingsUiState> = combine(
         themePreferences.settings,
+        languagePreferences.language,
         restTimer.isEnabled,
         workoutPreferences.alertSound,
         workoutPreferences.ringPolicy,
-    ) { theme, restTimerEnabled, alertSound, ringPolicy ->
+    ) { theme, language, restTimerEnabled, alertSound, ringPolicy ->
         SettingsUiState(
             theme = theme,
+            language = language,
             restTimerEnabled = restTimerEnabled,
             alertSound = alertSound,
             ringPolicy = ringPolicy,
@@ -53,6 +58,15 @@ class SettingsViewModel(
 
     fun setUseWallpaperColors(enabled: Boolean) {
         viewModelScope.launch { themePreferences.setUseWallpaperColors(enabled) }
+    }
+
+    /**
+     * Writes the language choice. On Android 13+ the platform applies it and recreates the activity
+     * itself; below that the activity notices the change and recreates, so the whole UI — and the
+     * view models' default `Locale` — is rebuilt in the new language.
+     */
+    fun setLanguage(language: AppLanguage) {
+        viewModelScope.launch { languagePreferences.setLanguage(language) }
     }
 
     fun setRestTimerEnabled(enabled: Boolean) {

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The locales GGym ships. Declared in the manifest as `android:localeConfig`, which is what makes
+  the OS's own "App languages" screen list them and what tells the platform which languages the app
+  actually has. English is the default (`values/`), Italian is `values-it/`.
+-->
+<locale-config xmlns:android="http://schemas.android.com/apk/res/android">
+    <locale android:name="en" />
+    <locale android:name="it" />
+</locale-config>

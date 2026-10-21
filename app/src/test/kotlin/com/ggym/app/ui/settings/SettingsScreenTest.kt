@@ -21,12 +21,15 @@ import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.workout.AlertSound
 import com.ggym.app.domain.workout.RestTimerUseCases
 import com.ggym.app.domain.workout.RingPolicy
+import com.ggym.app.data.prefs.AppLanguage
+import com.ggym.app.testing.FakeLanguagePreferences
 import com.ggym.app.testing.FakeRestTimerCommands
 import com.ggym.app.testing.FakeRestTimerStore
 import com.ggym.app.testing.FakeThemePreferences
 import com.ggym.app.testing.FakeWorkoutPreferences
 import com.ggym.app.testing.RecordedCommand
 import com.ggym.app.ui.theme.GgymTheme
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -56,12 +59,14 @@ class SettingsScreenTest {
     private val restStore = FakeRestTimerStore()
     private val restCommands = FakeRestTimerCommands()
     private val workoutPreferences = FakeWorkoutPreferences()
+    private val languagePreferences = FakeLanguagePreferences()
 
     private fun show() {
         val factory = viewModelFactory {
             initializer {
                 SettingsViewModel(
                     themePreferences = FakeThemePreferences(),
+                    languagePreferences = languagePreferences,
                     restTimer = RestTimerUseCases(
                         store = restStore,
                         commands = restCommands,
@@ -92,6 +97,24 @@ class SettingsScreenTest {
         compose.waitUntil(TIMEOUT_MILLIS) { restCommands.received.contains(RecordedCommand.Stop) }
         compose.onNodeWithTag(SWITCH).assertIsOff()
         assertFalse(workoutPreferences.enabled.value)
+    }
+
+    @Test
+    fun `the language pills show the choice and write it`() {
+        show()
+
+        compose.waitUntil(TIMEOUT_MILLIS) {
+            compose.onAllNodesWithTag(LANGUAGE_SYSTEM_TAG).fetchSemanticsNodes().isNotEmpty()
+        }
+        // The three pills are there, and the default is to follow the device.
+        compose.onNodeWithTag(LANGUAGE_SYSTEM_TAG).assertExists()
+        compose.onNodeWithTag(LANGUAGE_ENGLISH_TAG).assertExists()
+        compose.onNodeWithTag(LANGUAGE_ITALIAN_TAG).performClick()
+
+        compose.waitUntil(TIMEOUT_MILLIS) {
+            runBlocking { languagePreferences.language.first() } == AppLanguage.Italian
+        }
+        assertEquals(AppLanguage.Italian, runBlocking { languagePreferences.language.first() })
     }
 
     @Test

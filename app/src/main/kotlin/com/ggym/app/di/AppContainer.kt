@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ggym.app.data.prefs.DataStoreLanguagePreferences
 import com.ggym.app.data.prefs.DataStoreRestTimerStore
 import com.ggym.app.data.prefs.DataStoreThemePreferences
 import com.ggym.app.data.prefs.DataStoreWorkoutPreferences
+import com.ggym.app.data.prefs.LanguagePreferences
 import com.ggym.app.data.prefs.ThemePreferences
 import com.ggym.app.data.prefs.createPreferencesDataStore
 import com.ggym.app.data.prefs.createRestTimerDataStore
@@ -61,6 +63,13 @@ class AppContainer(context: Context) {
     private val database = createGgymDatabase(appContext)
 
     val themePreferences: ThemePreferences = DataStoreThemePreferences(preferencesDataStore)
+
+    /**
+     * The language the app is shown in. The app's own store is the source of truth on every API
+     * level; `MainActivity` and the rest-timer notification apply it to their contexts. See
+     * [LanguagePreferences] for why the platform's own per-app language is not used as the store.
+     */
+    val languagePreferences: LanguagePreferences = DataStoreLanguagePreferences(preferencesDataStore)
 
     val workoutPreferences: WorkoutPreferences = DataStoreWorkoutPreferences(preferencesDataStore)
 
@@ -140,7 +149,9 @@ class AppContainer(context: Context) {
     }
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { SettingsViewModel(themePreferences, restTimerUseCases, workoutPreferences) }
+        initializer {
+            SettingsViewModel(themePreferences, languagePreferences, restTimerUseCases, workoutPreferences)
+        }
     }
 
     val workoutsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {

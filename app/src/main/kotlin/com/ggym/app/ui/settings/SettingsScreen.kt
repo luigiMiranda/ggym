@@ -39,6 +39,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ggym.app.R
+import com.ggym.app.data.prefs.AppLanguage
 import com.ggym.app.data.prefs.ThemeMode
 import com.ggym.app.domain.workout.AlertSound
 import com.ggym.app.domain.workout.RingPolicy
@@ -112,6 +113,11 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            LanguageCard(
+                language = state.language,
+                onSelect = viewModel::setLanguage,
+            )
 
             GgymSectionLabel(
                 text = stringResource(R.string.settings_section_workout),
@@ -196,6 +202,9 @@ internal const val ALERT_SOUND_NONE_TAG = "alert_sound_none"
 internal const val RINGING_AUTOMATIC_TAG = "ringing_automatic"
 internal const val RINGING_MANUAL_TAG = "ringing_manual"
 internal const val RINGING_SECONDS_TAG = "ringing_seconds"
+internal const val LANGUAGE_SYSTEM_TAG = "language_system"
+internal const val LANGUAGE_ENGLISH_TAG = "language_english"
+internal const val LANGUAGE_ITALIAN_TAG = "language_italian"
 
 /** How far the two alert cards fade when the rest timer is off and they do nothing. */
 private const val INACTIVE_ALPHA = 0.45f
@@ -410,6 +419,66 @@ private fun alertSoundSupporting(context: Context, sound: AlertSound, enabled: B
         ?: stringResource(R.string.settings_alert_sound_supporting)
 
     else -> stringResource(R.string.settings_alert_sound_supporting)
+}
+
+/**
+ * The language the app is shown in.
+ *
+ * The same three-pill shape as the theme above it, and for the same reason: three options do not
+ * need a second screen. *System* is the first pill because it is the default, and because it is
+ * also the way back from a choice the user has stopped wanting.
+ */
+@Composable
+private fun LanguageCard(
+    language: AppLanguage,
+    onSelect: (AppLanguage) -> Unit,
+) {
+    Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+        shape = GgymCardShape,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.settings_language_title),
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                AppLanguage.entries.forEach { candidate ->
+                    GgymPill(
+                        text = candidate.label(),
+                        tone = if (language == candidate) PillTone.Lime else PillTone.Ghost,
+                        onClick = { onSelect(candidate) },
+                        modifier = Modifier.testTag(candidate.testTag()),
+                    )
+                }
+            }
+        }
+    }
+}
+
+/**
+ * A language's own name, in its own language — "English", not "Inglese".
+ *
+ * That is the convention a language picker follows everywhere, and it is the only wording that
+ * helps the person who cannot read the language the app is currently in.
+ */
+@Composable
+private fun AppLanguage.label(): String = stringResource(
+    when (this) {
+        AppLanguage.System -> R.string.settings_language_system
+        AppLanguage.English -> R.string.settings_language_english
+        AppLanguage.Italian -> R.string.settings_language_italian
+    },
+)
+
+private fun AppLanguage.testTag(): String = when (this) {
+    AppLanguage.System -> LANGUAGE_SYSTEM_TAG
+    AppLanguage.English -> LANGUAGE_ENGLISH_TAG
+    AppLanguage.Italian -> LANGUAGE_ITALIAN_TAG
 }
 
 /** The platform picker, pointed at alarm sounds and pre-selecting whatever is chosen today. */

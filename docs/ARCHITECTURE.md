@@ -400,7 +400,29 @@ The expressive checklist the UI is held to:
 - light / dark / system theming, plus optional wallpaper colours (Material You) as an opt-in
   preference — off by default, because it replaces the brand palette by definition.
 
-## 8. Testing
+## 8. Localization
+
+The app ships **English** (`values/`, the default) and **Italian** (`values-it/`), declared to the
+platform through `android:localeConfig`, and the user can choose between them — or leave it to the
+device — from **Settings → Appearance → Language**. Every user-visible string lives in
+`strings.xml`; `MissingTranslation` makes an incomplete translation a build failure, so the two files
+cannot drift.
+
+One rule is worth stating because it is the opposite of the obvious choice. The choice is stored in
+the app's own preferences (`AppLanguage` in the same DataStore as the theme), **not** in Android 13's
+per-app language. `LocaleManager` looks like the right home for it, but its public API
+(`getApplicationLocales` / `setApplicationLocales`) has no way to *observe* a change: an app that
+trusted it as the store could not notice a switch made in the system's own App-languages screen. A
+single store that the app controls, plus `Context.withAppLanguage`, is what makes the picker and the
+screens agree.
+
+That helper is applied at the two places where copy reaches the user: the activity's
+`attachBaseContext` (every screen, and `Locale.setDefault` alongside it so the view models that
+format weights and dates agree with the UI) and the rest-timer notification, which is built with the
+application context and so is never covered by the activity's wrapper. `System` means *leave the
+context alone*, so a device in Italian gets an Italian app with no setting touched.
+
+## 9. Testing
 
 - JVM unit tests are the default target: domain rules, mappers, backup round-trips and palette
   assertions all run without a device.

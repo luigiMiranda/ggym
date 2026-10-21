@@ -1,10 +1,12 @@
 package com.ggym.app.ui.settings
 
 import app.cash.turbine.test
+import com.ggym.app.data.prefs.AppLanguage
 import com.ggym.app.data.prefs.ThemeMode
 import com.ggym.app.data.prefs.ThemePreferences
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.workout.RestTimerUseCases
+import com.ggym.app.testing.FakeLanguagePreferences
 import com.ggym.app.testing.FakeRestTimerCommands
 import com.ggym.app.testing.FakeThemePreferences
 import com.ggym.app.testing.FakeRestTimerStore
@@ -13,6 +15,7 @@ import com.ggym.app.testing.RecordedCommand
 import com.ggym.app.testing.awaitState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -45,7 +48,11 @@ class SettingsViewModelTest {
         now = { 1_000L },
     )
 
-    private val viewModel by lazy { SettingsViewModel(FakeThemePreferences(), timer, workoutPreferences) }
+    private val languagePreferences = FakeLanguagePreferences()
+
+    private val viewModel by lazy {
+        SettingsViewModel(FakeThemePreferences(), languagePreferences, timer, workoutPreferences)
+    }
 
     @Before
     fun setMainDispatcher() {
@@ -55,6 +62,23 @@ class SettingsViewModelTest {
     @After
     fun resetMainDispatcher() {
         Dispatchers.resetMain()
+    }
+
+    @Test
+    fun `the language is shown, and a pill writes the choice`() = runTest {
+        viewModel.uiState.test {
+            assertEquals(AppLanguage.System, awaitItem().language)
+
+            viewModel.setLanguage(AppLanguage.Italian)
+
+            assertEquals(AppLanguage.Italian, awaitState { it.language == AppLanguage.Italian }.language)
+            assertEquals(
+                "the screen's write is what the preference holds",
+                AppLanguage.Italian,
+                languagePreferences.language.first(),
+            )
+            cancelAndIgnoreRemainingEvents()
+        }
     }
 
     @Test

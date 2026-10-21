@@ -12,10 +12,14 @@ import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import com.ggym.app.GgymApplication
 import com.ggym.app.MainActivity
 import com.ggym.app.R
+import com.ggym.app.data.prefs.withAppLanguage
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.workout.RestTimerUseCases
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.runBlocking
 
 /**
  * The timer's two notifications and the two channels they arrive on.
@@ -32,6 +36,18 @@ import com.ggym.app.domain.workout.RestTimerUseCases
  */
 class RestTimerNotifications(private val context: Context) {
 
+    /**
+     * The context the notification's copy is read from, with the app's language applied.
+     *
+     * The activity's `attachBaseContext` covers every screen; this is the one surface outside it,
+     * and this class is built by the container with the *application* context, which no activity
+     * ever wrapped. The read is a preference lookup — an in-memory value after the first one.
+     */
+    private fun stringsContext(): Context {
+        val preferences = (context.applicationContext as GgymApplication).container.languagePreferences
+        return context.withAppLanguage(runBlocking { preferences.language.first() })
+    }
+
     /** Creates both channels. Idempotent, so every start can call it. */
     fun ensureChannels() {
         NotificationManagerCompat.from(context).createNotificationChannels(
@@ -42,7 +58,7 @@ class RestTimerNotifications(private val context: Context) {
     /** The countdown, as the foreground service's notification. */
     fun running(state: RestTimerState): Notification = base(CHANNEL_RUNNING, openWorkout())
         .setContentTitle(state.exerciseName)
-        .setContentText(context.getString(R.string.rest_notification_text))
+        .setContentText(stringsContext().getString(R.string.rest_notification_text))
         .setOngoing(true)
         .setSilent(true)
         .setOnlyAlertOnce(true)
@@ -53,17 +69,17 @@ class RestTimerNotifications(private val context: Context) {
         .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
         .addAction(
             0,
-            context.getString(R.string.rest_action_add_time),
+            stringsContext().getString(R.string.rest_action_add_time),
             command(RestTimerService.extendIntent(context, RestTimerUseCases.STEP_SECONDS), REQUEST_CODE_ADD_TIME),
         )
         .addAction(
             0,
-            context.getString(R.string.rest_action_subtract_time),
+            stringsContext().getString(R.string.rest_action_subtract_time),
             command(RestTimerService.extendIntent(context, -RestTimerUseCases.STEP_SECONDS), REQUEST_CODE_SUBTRACT_TIME),
         )
         .addAction(
             0,
-            context.getString(R.string.rest_action_skip),
+            stringsContext().getString(R.string.rest_action_skip),
             command(RestTimerService.skipIntent(context), REQUEST_CODE_SKIP),
         )
         .build()
@@ -76,13 +92,13 @@ class RestTimerNotifications(private val context: Context) {
      * [EXTRA_SILENCE_ALERT]) and opens the workout, which is what the running notification does.
      */
     fun finished(state: RestTimerState): Notification = base(CHANNEL_FINISHED, openWorkoutAndSilence())
-        .setContentTitle(context.getString(R.string.rest_finished_notification_title))
-        .setContentText(context.getString(R.string.rest_finished_notification_text, state.exerciseName))
+        .setContentTitle(stringsContext().getString(R.string.rest_finished_notification_title))
+        .setContentText(stringsContext().getString(R.string.rest_finished_notification_text, state.exerciseName))
         .setAutoCancel(true)
         .setCategory(NotificationCompat.CATEGORY_ALARM)
         .addAction(
             0,
-            context.getString(R.string.rest_action_stop),
+            stringsContext().getString(R.string.rest_action_stop),
             command(RestTimerService.silenceIntent(context), REQUEST_CODE_SILENCE),
         )
         .build()
@@ -99,10 +115,10 @@ class RestTimerNotifications(private val context: Context) {
      * the action is how "nothing is ringing" stops being tappable.
      */
     fun silenced(state: RestTimerState?): Notification = base(CHANNEL_FINISHED, openWorkout())
-        .setContentTitle(context.getString(R.string.rest_finished_notification_title))
+        .setContentTitle(stringsContext().getString(R.string.rest_finished_notification_title))
         .setContentText(
-            state?.let { context.getString(R.string.rest_finished_notification_text, it.exerciseName) }
-                ?: context.getString(R.string.rest_finished_notification_text_fallback),
+            state?.let { stringsContext().getString(R.string.rest_finished_notification_text, it.exerciseName) }
+                ?: stringsContext().getString(R.string.rest_finished_notification_text_fallback),
         )
         .setAutoCancel(true)
         .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -185,22 +201,22 @@ class RestTimerNotifications(private val context: Context) {
     private fun runningChannel(): NotificationChannel =
         NotificationChannel(
             CHANNEL_RUNNING,
-            context.getString(R.string.rest_channel_running_name),
+            stringsContext().getString(R.string.rest_channel_running_name),
             NotificationManager.IMPORTANCE_LOW,
         ).apply {
-            description = context.getString(R.string.rest_channel_running_description)
+            description = stringsContext().getString(R.string.rest_channel_running_description)
             setShowBadge(false)
         }
 
     private fun finishedChannel(): NotificationChannel =
         NotificationChannel(
             CHANNEL_FINISHED,
-            context.getString(R.string.rest_channel_finished_name),
+            stringsContext().getString(R.string.rest_channel_finished_name),
             // Heads-up, because a rest ending is worth looking at; vibration, because the phone may
             // be in a pocket; and no sound, because the sound is ours and ducks.
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = context.getString(R.string.rest_channel_finished_description)
+            description = stringsContext().getString(R.string.rest_channel_finished_description)
             setSound(null, null)
             enableVibration(true)
             setShowBadge(false)
