@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.IntentCompat
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -420,11 +421,11 @@ private fun ringtonePicker(context: Context, sound: AlertSound): Intent =
         // The silent case is our own explicit "None" pill, so the picker does not offer a second one.
         putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, false)
         (sound as? AlertSound.Ringtone)?.let {
-            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, Uri.parse(it.uri))
+            putExtra(RingtoneManager.EXTRA_RINGTONE_EXISTING_URI, it.uri.toUri())
         }
     }
 
 /** The display name of a picked ringtone, or `null` when it has since been deleted or unmounted. */
 private fun ringtoneTitle(context: Context, uri: String): String? = runCatching {
-    RingtoneManager.getRingtone(context, Uri.parse(uri))?.getTitle(context)
+    RingtoneManager.getRingtone(context, uri.toUri())?.getTitle(context)
 }.getOrNull()
