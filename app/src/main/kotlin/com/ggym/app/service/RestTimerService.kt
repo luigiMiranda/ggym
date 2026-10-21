@@ -51,6 +51,13 @@ class RestTimerService : Service() {
      */
     private var ringing: Job? = null
 
+    /**
+     * The rest the alert belongs to, so the alert can be rebuilt without its Stop action once the
+     * ring is over. The stored countdown is cleared the moment the rest ends, which makes this the
+     * only thing left that knows which exercise it was for.
+     */
+    private var alertState: RestTimerState? = null
+
     private lateinit var rest: RestTimerDependencies
 
     override fun onCreate() {
@@ -97,6 +104,7 @@ class RestTimerService : Service() {
         val state = intent.state() ?: return shutDown()
 
         rest.store.set(state)
+        alertState = null
         showRunning(state)
         rest.alarms.arm(state.endsAtMillis)
         scheduleDeadline()
@@ -122,6 +130,7 @@ class RestTimerService : Service() {
         ringing = null
         rest.alerts.stop()
         rest.completion.cancel()
+        alertState = null
         removeForeground()
         stopSelf()
     }
@@ -179,6 +188,7 @@ class RestTimerService : Service() {
         val policy = rest.preferences.ringPolicy.first()
 
         startForeground(RestTimerNotifications.NOTIFICATION_ID, rest.notifications.finished(state))
+        alertState = state
         rest.alerts.start(sound)
         scheduleRingEnd(policy.ringSeconds)
     }
@@ -196,17 +206,24 @@ class RestTimerService : Service() {
     }
 
     /**
-     * Stops the ringing without touching the notification: the rest is long over, so there is no
-     * countdown to clear — only a sound to stop and a service to let go of.
+     * Stops the ringing without ending a rest — there is none left, the countdown was cleared when it
+     * ended — and leaves the alert on screen, now without its Stop action.
+     *
+     * The `startForeground` call is not decoration. Silence arrives either from the alert's Stop
+     * action or from a tap on the notification body, and both are delivered as *foreground* service
+     * intents: a service started that way owes the platform a `startForeground` within five seconds,
+     * or it is killed with a `RemoteServiceException`. A tap that arrives after the ring has already
+     * stopped itself is exactly that situation, and it was crashing the app on the device.
      */
     private suspend fun silence() {
         ringing?.cancel()
         ringing = null
         rest.alerts.stop()
-        // Detached, not removed: what is on screen now is the alert, and it should stay there until
-        // the user looks at it.
-        stopForeground(STOP_FOREGROUND_DETACH)
-        stopSelf()
+        startForeground(
+            RestTimerNotifications.NOTIFICATION_ID,
+            rest.notifications.silenced(alertState),
+        )
+        switchOff()
     }
 
     private fun showRunning(state: RestTimerState) {
@@ -224,6 +241,15 @@ class RestTimerService : Service() {
 
     private fun removeForeground() {
         stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    /**
+     * Lets the service go while leaving its notification on screen: what is there now is the alert,
+     * and it should stay until the user looks at it.
+     */
+    private fun switchOff() {
+        stopForeground(STOP_FOREGROUND_DETACH)
+        stopSelf()
     }
 
     /** The stored countdown an intent carries, or `null` when it is not a well-formed start. */

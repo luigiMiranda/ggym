@@ -315,10 +315,12 @@ class RestTimerServiceTest {
 
         assertEquals(1, alerts.stops)
         assertTrue(shadowOf(service).isStoppedBySelf)
-        assertEquals(
-            RestTimerNotifications.CHANNEL_FINISHED,
-            shadowOf(notificationManager).getNotification(RestTimerNotifications.NOTIFICATION_ID).channelId,
-        )
+        val alert = shadowOf(service).lastForegroundNotification
+        assertEquals(RestTimerNotifications.CHANNEL_FINISHED, alert.channelId)
+        // The Stop action goes away with the ring. Left on screen it would let a second tap start a
+        // service with nothing to do — and one started as foreground owes the platform a
+        // startForeground call, which is what crashed the app on the device.
+        assertEquals("the alert must not stay tappable", 0, alert.actions?.size ?: 0)
     }
 
     /** Moving on to the next set silences a ring that is still going: the user has already decided. */

@@ -88,6 +88,27 @@ class RestTimerNotifications(private val context: Context) {
         .build()
 
     /**
+     * The alert, once it has been silenced: the same notification **without** its Stop action, and
+     * without the body tap's silence.
+     *
+     * The action has to go, and this is not cosmetic. Stop starts the service as a *foreground* one,
+     * which is allowed while the alert rings (the service is in the foreground and a notification tap
+     * is an exemption anyway). Left on screen after the ring has stopped itself, the same tap would
+     * start a service that has nothing to do, and one started as foreground owes the platform a
+     * `startForeground` call within five seconds — the tap would be answered with a crash. Removing
+     * the action is how "nothing is ringing" stops being tappable.
+     */
+    fun silenced(state: RestTimerState?): Notification = base(CHANNEL_FINISHED, openWorkout())
+        .setContentTitle(context.getString(R.string.rest_finished_notification_title))
+        .setContentText(
+            state?.let { context.getString(R.string.rest_finished_notification_text, it.exerciseName) }
+                ?: context.getString(R.string.rest_finished_notification_text_fallback),
+        )
+        .setAutoCancel(true)
+        .setCategory(NotificationCompat.CATEGORY_ALARM)
+        .build()
+
+    /**
      * Posts [notification] for the timer's single id. Used by the alarm backstop, which ends a rest
      * the service's process did not live to see.
      *

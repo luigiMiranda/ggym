@@ -47,6 +47,24 @@ class MainActivity : ComponentActivity() {
      */
     private val container by lazy { (application as GgymApplication).container }
 
+    /**
+     * Whether a tap on the finished alert asked for silence. Acted on in [onResume], not here.
+     *
+     * The command is a *foreground* service start, and the platform refuses one from an app that is
+     * not user-visible yet — `onCreate` is before that transition finishes, and asking there crashed
+     * the app with `ForegroundServiceStartNotAllowedException` every time the alert's body was tapped.
+     * Resumed is the first moment the request is allowed, and still the same `PendingIntent` and the
+     * same command as the notification's Stop action.
+     */
+    private var silenceRequested = false
+
+    override fun onResume() {
+        super.onResume()
+        if (!silenceRequested) return
+        silenceRequested = false
+        lifecycleScope.launch { container.restTimerUseCases.silenceAlert() }
+    }
+
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
@@ -62,7 +80,7 @@ class MainActivity : ComponentActivity() {
     private fun consumeSilenceRequest(intent: Intent) {
         if (!intent.getBooleanExtra(EXTRA_SILENCE_ALERT, false)) return
         intent.removeExtra(EXTRA_SILENCE_ALERT)
-        lifecycleScope.launch { container.restTimerUseCases.silenceAlert() }
+        silenceRequested = true
     }
 
     /**

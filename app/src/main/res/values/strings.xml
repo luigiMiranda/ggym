@@ -264,6 +264,7 @@
     <string name="rest_action_stop">Stop</string>
     <string name="rest_finished_notification_title">Rest over</string>
     <string name="rest_finished_notification_text">Time for %1$s</string>
+    <string name="rest_finished_notification_text_fallback">Time for your next set</string>
     <string name="rest_channel_running_name">Rest timer</string>
     <string name="rest_channel_running_description">The countdown between sets</string>
     <string name="rest_channel_finished_name">Rest finished</string>
