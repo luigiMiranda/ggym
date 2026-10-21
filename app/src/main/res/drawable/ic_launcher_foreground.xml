@@ -13,6 +13,11 @@
      circular masks). The glow survives in artwork/ggym.svg and in preview/index.html.
    - the 2-4 unit highlight strokes on the plates and centre bar (0.16-0.31dp after scaling,
      i.e. sub-pixel).
+
+The plate gradient is **light steel** (`#949AA6 -> #6E737D -> #545962`), not the dark metal the
+first ports carried. On the near-black background the old `#4A4B53 -> #18181C` read as a shadow
+rather than a plate; the brighter steel keeps every plate pixel at least ~2.6:1 against the
+background it sits on. Pinned by `IconGeometryTest` so a later "tidy-up" cannot dim it back.
 -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:aapt="http://schemas.android.com/aapt"
@@ -34,9 +39,9 @@
                     android:type="linear"
                     android:startX="0" android:startY="398"
                     android:endX="0" android:endY="626">
-                    <item android:offset="0.0" android:color="#FF4A4B53" />
-                    <item android:offset="0.5" android:color="#FF2A2B30" />
-                    <item android:offset="1.0" android:color="#FF18181C" />
+                    <item android:offset="0.0" android:color="#FF949AA6" />
+                    <item android:offset="0.5" android:color="#FF6E737D" />
+                    <item android:offset="1.0" android:color="#FF545962" />
                 </gradient>
             </aapt:attr>
         </path>
@@ -46,9 +51,9 @@
                     android:type="linear"
                     android:startX="0" android:startY="328"
                     android:endX="0" android:endY="696">
-                    <item android:offset="0.0" android:color="#FF4A4B53" />
-                    <item android:offset="0.5" android:color="#FF2A2B30" />
-                    <item android:offset="1.0" android:color="#FF18181C" />
+                    <item android:offset="0.0" android:color="#FF949AA6" />
+                    <item android:offset="0.5" android:color="#FF6E737D" />
+                    <item android:offset="1.0" android:color="#FF545962" />
                 </gradient>
             </aapt:attr>
         </path>
@@ -60,9 +65,9 @@
                     android:type="linear"
                     android:startX="0" android:startY="398"
                     android:endX="0" android:endY="626">
-                    <item android:offset="0.0" android:color="#FF4A4B53" />
-                    <item android:offset="0.5" android:color="#FF2A2B30" />
-                    <item android:offset="1.0" android:color="#FF18181C" />
+                    <item android:offset="0.0" android:color="#FF949AA6" />
+                    <item android:offset="0.5" android:color="#FF6E737D" />
+                    <item android:offset="1.0" android:color="#FF545962" />
                 </gradient>
             </aapt:attr>
         </path>
@@ -72,9 +77,9 @@
                     android:type="linear"
                     android:startX="0" android:startY="328"
                     android:endX="0" android:endY="696">
-                    <item android:offset="0.0" android:color="#FF4A4B53" />
-                    <item android:offset="0.5" android:color="#FF2A2B30" />
-                    <item android:offset="1.0" android:color="#FF18181C" />
+                    <item android:offset="0.0" android:color="#FF949AA6" />
+                    <item android:offset="0.5" android:color="#FF6E737D" />
+                    <item android:offset="1.0" android:color="#FF545962" />
                 </gradient>
             </aapt:attr>
         </path>

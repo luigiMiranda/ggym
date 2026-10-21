@@ -113,13 +113,14 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_system">System</string>
     <string name="settings_theme_dark">Dark</string>
-    <string name="settings_language_title">Language</string>
+    <string name="settings_language_title">App language</string>
     <string name="settings_language_system">System</string>
     <string name="settings_language_english">English</string>
     <string name="settings_language_italian">Italiano</string>
     <string name="settings_wallpaper_colors_title">Wallpaper colours</string>
     <string name="settings_wallpaper_colors_supporting">Uses colours from your wallpaper instead of GGym\'s. Off by default.</string>
-    <string name="settings_section_workout">Workout</string>
+    <string name="settings_section_rest_timer">Rest timer &amp; notifications</string>
+    <string name="settings_section_language">Language</string>
     <string name="settings_rest_timer_title">Rest timer</string>
     <string name="settings_rest_timer_supporting">Starts a countdown when you complete a set, and alerts you when the rest is over. Off: completed sets are logged and nothing else happens.</string>
     <string name="settings_alert_sound_title">Alert sound</string>

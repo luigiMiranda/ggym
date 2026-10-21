@@ -53,11 +53,13 @@ import com.ggym.app.ui.common.appNotificationSettingsIntent
 import com.ggym.app.ui.common.rememberNotificationsAllowed
 
 /**
- * Settings tab: appearance and the workout's rest timer, laid out as the preview does it — a
- * section label, a card, a row, repeat. The backup section joins in M6.
+ * Settings tab, grouped the way a phone's own settings are: a section label, the cards that
+ * belong to it, repeat. Three sections, one scrolling page — no second screen.
  *
- * The notification row only appears when GGym cannot post notifications: then the countdown still
- * runs in the app, and the row says what is missing and sends the user to the system page to fix it.
+ * - **Appearance** — theme and wallpaper colours.
+ * - **Rest timer & notifications** — the master switch, the alert's sound and ring policy, and the
+ *   system-notification warning when GGym cannot post notifications.
+ * - **Language** — the app's own language, kept apart from the visual settings.
  */
 @Composable
 fun SettingsScreen(
@@ -114,13 +116,22 @@ fun SettingsScreen(
                 }
             }
 
-            LanguageCard(
-                language = state.language,
-                onSelect = viewModel::setLanguage,
-            )
+            // Dynamic colour needs an API 31+ device; hidden rather than shown-as-dead elsewhere.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                SettingsRow(
+                    title = stringResource(R.string.settings_wallpaper_colors_title),
+                    supporting = stringResource(R.string.settings_wallpaper_colors_supporting),
+                    trailing = {
+                        Switch(
+                            checked = settings.useWallpaperColors,
+                            onCheckedChange = viewModel::setUseWallpaperColors,
+                        )
+                    },
+                )
+            }
 
             GgymSectionLabel(
-                text = stringResource(R.string.settings_section_workout),
+                text = stringResource(R.string.settings_section_rest_timer),
                 modifier = Modifier.padding(top = 8.dp),
             )
 
@@ -149,20 +160,6 @@ fun SettingsScreen(
                 onStep = viewModel::stepRingSeconds,
             )
 
-            // Dynamic colour needs an API 31+ device; hidden rather than shown-as-dead elsewhere.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-                SettingsRow(
-                    title = stringResource(R.string.settings_wallpaper_colors_title),
-                    supporting = stringResource(R.string.settings_wallpaper_colors_supporting),
-                    trailing = {
-                        Switch(
-                            checked = settings.useWallpaperColors,
-                            onCheckedChange = viewModel::setUseWallpaperColors,
-                        )
-                    },
-                )
-            }
-
             if (!notificationsAllowed) {
                 Surface(
                     color = MaterialTheme.colorScheme.errorContainer,
@@ -187,6 +184,16 @@ fun SettingsScreen(
                     }
                 }
             }
+
+            GgymSectionLabel(
+                text = stringResource(R.string.settings_section_language),
+                modifier = Modifier.padding(top = 8.dp),
+            )
+
+            LanguageCard(
+                language = state.language,
+                onSelect = viewModel::setLanguage,
+            )
 
             Spacer(Modifier.height(24.dp))
         }
@@ -422,11 +429,11 @@ private fun alertSoundSupporting(context: Context, sound: AlertSound, enabled: B
 }
 
 /**
- * The language the app is shown in.
+ * The language the app is shown in, in its own section so it is not read as part of the theme.
  *
- * The same three-pill shape as the theme above it, and for the same reason: three options do not
- * need a second screen. *System* is the first pill because it is the default, and because it is
- * also the way back from a choice the user has stopped wanting.
+ * The same three-pill shape as the theme, and for the same reason: three options do not need a
+ * second screen. *System* is the first pill because it is the default, and because it is also the
+ * way back from a choice the user has stopped wanting.
  */
 @Composable
 private fun LanguageCard(

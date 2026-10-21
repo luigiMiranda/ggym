@@ -29,6 +29,7 @@
     <plurals name="calendar_day_workouts">
         <item quantity="one">%1$d allenamento</item>
         <item quantity="other">%1$d allenamenti</item>
+        <item quantity="many">%1$d allenamenti</item>
     </plurals>
 
     <!-- History -->
@@ -60,10 +61,12 @@
     <plurals name="stats_workout_days">
         <item quantity="one">%1$d giorno di allenamento</item>
         <item quantity="other">%1$d giorni di allenamento</item>
+        <item quantity="many">%1$d giorni di allenamento</item>
     </plurals>
     <plurals name="stats_months">
         <item quantity="one">%1$d mese</item>
         <item quantity="other">%1$d mesi</item>
+        <item quantity="many">%1$d mesi</item>
     </plurals>
 
     <string name="stats_body_weight_label">Peso corporeo</string>
@@ -90,6 +93,7 @@
     <plurals name="stats_progression_sessions">
         <item quantity="one">%1$d sessione</item>
         <item quantity="other">%1$d sessioni</item>
+        <item quantity="many">%1$d sessioni</item>
     </plurals>
 
     <string name="stats_log_label">Registro del peso corporeo</string>
@@ -116,13 +120,14 @@
     <string name="settings_theme_light">Chiaro</string>
     <string name="settings_theme_system">Sistema</string>
     <string name="settings_theme_dark">Scuro</string>
-    <string name="settings_language_title">Lingua</string>
+    <string name="settings_language_title">Lingua dell\'app</string>
     <string name="settings_language_system">Sistema</string>
     <string name="settings_language_english">English</string>
     <string name="settings_language_italian">Italiano</string>
     <string name="settings_wallpaper_colors_title">Colori dello sfondo</string>
     <string name="settings_wallpaper_colors_supporting">Usa i colori dello sfondo invece di quelli di GGym. Disattivato per impostazione predefinita.</string>
-    <string name="settings_section_workout">Allenamento</string>
+    <string name="settings_section_rest_timer">Timer e notifiche</string>
+    <string name="settings_section_language">Lingua</string>
     <string name="settings_rest_timer_title">Timer di recupero</string>
     <string name="settings_rest_timer_supporting">Avvia un conto alla rovescia quando completi una serie e ti avvisa quando il recupero è finito. Disattivato: le serie completate vengono registrate e non succede altro.</string>
     <string name="settings_alert_sound_title">Suono di avviso</string>
@@ -182,14 +187,17 @@
     <plurals name="routine_day_count">
         <item quantity="one">%1$d giorno</item>
         <item quantity="other">%1$d giorni</item>
+        <item quantity="many">%1$d giorni</item>
     </plurals>
     <plurals name="routine_exercise_count">
         <item quantity="one">%1$d esercizio</item>
         <item quantity="other">%1$d esercizi</item>
+        <item quantity="many">%1$d esercizi</item>
     </plurals>
     <plurals name="routine_set_count">
         <item quantity="one">%1$d serie</item>
         <item quantity="other">%1$d serie</item>
+        <item quantity="many">%1$d serie</item>
     </plurals>
 
     <!-- Training days -->
@@ -212,10 +220,12 @@
     <plurals name="day_start_exercises">
         <item quantity="one">%1$d esercizio</item>
         <item quantity="other">%1$d esercizi</item>
+        <item quantity="many">%1$d esercizi</item>
     </plurals>
     <plurals name="day_start_sets">
         <item quantity="one">%1$d serie</item>
         <item quantity="other">%1$d serie</item>
+        <item quantity="many">%1$d serie</item>
     </plurals>
     <string name="day_start_shape">%1$s · %2$s</string>
     <string name="day_conflict_title">Un allenamento è già in corso</string>
@@ -280,12 +290,14 @@
     <plurals name="workout_sets">
         <item quantity="one">%1$d serie</item>
         <item quantity="other">%1$d serie</item>
+        <item quantity="many">%1$d serie</item>
     </plurals>
     <string name="workout_overview_sets">%1$d / %2$s</string>
     <string name="workout_progress">%1$d di %2$s</string>
     <plurals name="workout_exercises_skipped">
         <item quantity="one">%1$d esercizio saltato</item>
         <item quantity="other">%1$d esercizi saltati</item>
+        <item quantity="many">%1$d esercizi saltati</item>
     </plurals>
     <string name="workout_finish">Termina allenamento</string>
     <string name="workout_finish_short">Termina</string>

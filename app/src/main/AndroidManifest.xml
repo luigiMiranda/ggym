@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
     <!--
       100% offline: no network permission is declared anywhere in this app, so nothing here can
@@ -27,6 +28,11 @@
       device transfer both excluded). Lint flags the pair as redundant, but deliberately keeping
       both is what makes "no cloud, ever" true across the whole supported range.
     -->
+    <!--
+      `tools:targetApi="33"`: `localeConfig` is read from API 33 up and silently ignored below it,
+      so it is correct on minSdk 26 — lint's UnusedAttribute reads the minSdk alone and cannot see
+      the version gate.
+    -->
     <application
         android:name=".GgymApplication"
         android:allowBackup="false"
@@ -36,7 +42,8 @@
         android:localeConfig="@xml/locales_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:theme="@style/Theme.GGym">
+        android:theme="@style/Theme.GGym"
+        tools:targetApi="33">
 
         <activity
             android:name=".MainActivity"

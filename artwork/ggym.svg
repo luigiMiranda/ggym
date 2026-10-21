@@ -19,11 +19,13 @@
       <stop offset="100%" stop-color="#99CC00" />
     </linearGradient>
 
-    <!-- Gradiente Metallico per i 2 dischi esterni del manubrio -->
+    <!-- Gradiente Metallico per i 2 dischi esterni del manubrio.
+         Acciaio chiaro, non piu' il metallo scuro che spariva sul fondo OLED: i dischi devono
+         leggersi come parte del marchio, non come un'ombra. -->
     <linearGradient id="plateGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-      <stop offset="0%" stop-color="#4A4B53" />
-      <stop offset="50%" stop-color="#2A2B30" />
-      <stop offset="100%" stop-color="#18181C" />
+      <stop offset="0%" stop-color="#949AA6" />
+      <stop offset="50%" stop-color="#6E737D" />
+      <stop offset="100%" stop-color="#545962" />
     </linearGradient>
 
     <!-- Bagliore (Glow) verde/giallo attorno alle G -->
@@ -38,12 +40,12 @@
 
   <!-- 2. DISCHI LATERALI DEL MANUBRIO (Centrati verticalmente a Y=512) -->
   <!-- Lato Sinistro -->
-  <rect x="62" y="398" width="38" height="228" rx="16" fill="url(#plateGrad)" stroke="#5A5B64" stroke-opacity="0.4" stroke-width="2" />
-  <rect x="114" y="328" width="48" height="368" rx="22" fill="url(#plateGrad)" stroke="#5A5B64" stroke-opacity="0.5" stroke-width="2" />
+  <rect x="62" y="398" width="38" height="228" rx="16" fill="url(#plateGrad)" stroke="#C9CFDB" stroke-opacity="0.4" stroke-width="2" />
+  <rect x="114" y="328" width="48" height="368" rx="22" fill="url(#plateGrad)" stroke="#C9CFDB" stroke-opacity="0.5" stroke-width="2" />
 
   <!-- Lato Destro -->
-  <rect x="862" y="328" width="48" height="368" rx="22" fill="url(#plateGrad)" stroke="#5A5B64" stroke-opacity="0.5" stroke-width="2" />
-  <rect x="924" y="398" width="38" height="228" rx="16" fill="url(#plateGrad)" stroke="#5A5B64" stroke-opacity="0.4" stroke-width="2" />
+  <rect x="862" y="328" width="48" height="368" rx="22" fill="url(#plateGrad)" stroke="#C9CFDB" stroke-opacity="0.5" stroke-width="2" />
+  <rect x="924" y="398" width="38" height="228" rx="16" fill="url(#plateGrad)" stroke="#C9CFDB" stroke-opacity="0.4" stroke-width="2" />
 
   <!-- 3. MANUBRIO GRANDE "G - G" (Perfettamente centrato in verticale, senza scritta sotto) -->
   <g filter="url(#neonGlow)">

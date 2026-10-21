@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  Three intentional patterns that lint cannot model, suppressed here (with reasons) rather than
-  left as permanent noise in every build log.
+  Intentional patterns that lint cannot model, suppressed here (with reasons) rather than left as
+  permanent noise in every build log.
 -->
 <lint>
     <!--
@@ -27,4 +27,12 @@
       not a gate. A version moves when a decision-log row moves it.
     -->
     <issue id="NewerVersionAvailable" severity="ignore" />
+
+    <!--
+      The app switches its own language at runtime (`withAppLanguage` + `createConfigurationContext`)
+      without Play Core. That is deliberate: GGym is 100% offline and ships as a single signed APK
+      with every translation bundled, so there are no language splits to download and no installer
+      to ask. The detector assumes a Play-delivered App Bundle.
+    -->
+    <issue id="AppBundleLocaleChanges" severity="ignore" />
 </lint>

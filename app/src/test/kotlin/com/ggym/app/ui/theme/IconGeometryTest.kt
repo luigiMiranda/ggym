@@ -5,6 +5,7 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import androidx.test.core.app.ApplicationProvider
 import com.ggym.app.R
+import kotlin.math.pow
 import kotlin.math.sqrt
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -27,6 +28,9 @@ import org.robolectric.annotation.GraphicsMode
  * The test renders the real vector drawables under Robolectric NATIVE graphics and measures the
  * farthest opaque pixel from the canvas centre, so the next person to "make the logo bigger" gets a
  * red test rather than a clipped icon on someone's launcher.
+ *
+ * It also measures the plates' contrast against the background they sit on: the mark was whole but
+ * invisible at the original dark-metal gradient, which is the other half of "more visible".
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -46,6 +50,54 @@ class IconGeometryTest {
     @Test
     fun `the monochrome mark stays inside the same circle`() {
         assertFitsInSafeZone(R.drawable.ic_launcher_monochrome)
+    }
+
+    /**
+     * The plates must read as metal, not as a shadow. M6.5 made them whole; this pins that they are
+     * also **legible** on the near-black background, so a later tidy-up cannot dim the steel back
+     * to the `#4A4B53 -> #18181C` it started as (which sat near 1.3:1 where it faded out).
+     */
+    @Test
+    fun `the barbell plates read against the icon background`() {
+        val foreground = render(R.drawable.ic_launcher_foreground)
+        val background = render(R.drawable.ic_launcher_background)
+
+        // The outer-left plate's bounding box in canvas pixels: SVG x 62..100, y 398..626 at 4x.
+        var darkest = Double.MAX_VALUE
+        var sampled = 0
+        for (x in 88..99) {
+            for (y in 184..248) {
+                val plate = foreground.getPixel(x, y)
+                // Fully opaque only: rounded corners and antialiased edges are not the plate's fill.
+                if (plate ushr 24 < 250) continue
+                sampled++
+                darkest = minOf(darkest, contrastRatio(plate, background.getPixel(x, y)))
+            }
+        }
+
+        assertTrue("the plate region sampled no fully-opaque pixels — the box is wrong", sampled >= 100)
+        assertTrue(
+            "the darkest plate pixel is only " + "%.2f".format(darkest) +
+                ":1 against the icon background — the plates read as a shadow rather than metal",
+            darkest >= 2.0,
+        )
+    }
+
+    /** WCAG relative-luminance contrast, the measure the brand palette is chosen by too. */
+    private fun contrastRatio(a: Int, b: Int): Double {
+        val la = relativeLuminance(a)
+        val lb = relativeLuminance(b)
+        return (maxOf(la, lb) + 0.05) / (minOf(la, lb) + 0.05)
+    }
+
+    private fun relativeLuminance(color: Int): Double {
+        fun channel(value: Int): Double {
+            val s = value / 255.0
+            return if (s <= 0.03928) s / 12.92 else ((s + 0.055) / 1.055).pow(2.4)
+        }
+        return 0.2126 * channel((color shr 16) and 0xFF) +
+            0.7152 * channel((color shr 8) and 0xFF) +
+            0.0722 * channel(color and 0xFF)
     }
 
     /**

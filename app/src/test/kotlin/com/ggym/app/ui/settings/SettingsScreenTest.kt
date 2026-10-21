@@ -13,6 +13,7 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.core.app.ApplicationProvider
@@ -109,7 +110,8 @@ class SettingsScreenTest {
         // The three pills are there, and the default is to follow the device.
         compose.onNodeWithTag(LANGUAGE_SYSTEM_TAG).assertExists()
         compose.onNodeWithTag(LANGUAGE_ENGLISH_TAG).assertExists()
-        compose.onNodeWithTag(LANGUAGE_ITALIAN_TAG).performClick()
+        // The Language section is the last one on the page, so the pills are scrolled to first.
+        compose.onNodeWithTag(LANGUAGE_ITALIAN_TAG).performScrollTo().performClick()
 
         compose.waitUntil(TIMEOUT_MILLIS) {
             runBlocking { languagePreferences.language.first() } == AppLanguage.Italian
@@ -179,6 +181,24 @@ class SettingsScreenTest {
         // At the end of the range the button is gone rather than silently doing nothing.
         compose.onNodeWithContentDescription(context.getString(R.string.settings_ringing_more))
             .assertIsNotEnabled()
+    }
+
+    /**
+     * The page is grouped the way a phone's own settings are: appearance, the rest timer with its
+     * notifications, and language kept apart. The labels are the contract a user navigates by.
+     */
+    @Test
+    fun `the settings are grouped into appearance, rest timer and language sections`() {
+        show()
+        waitForTheScreen()
+
+        listOf(
+            R.string.settings_section_appearance,
+            R.string.settings_section_rest_timer,
+            R.string.settings_section_language,
+        ).forEach { label ->
+            compose.onNodeWithText(context.getString(label).uppercase()).assertExists()
+        }
     }
 
     /** The two cards stay on screen but keep their hands off the preference while nothing rings. */
