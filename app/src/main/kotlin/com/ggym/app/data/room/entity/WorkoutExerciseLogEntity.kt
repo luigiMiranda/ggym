@@ -19,6 +19,11 @@ import com.ggym.app.domain.model.Exercise
  * starts: a slot edited on another screen must not change the rest of a set completed ten minutes
  * ago, and a resumed draft needs no lookup into the routine. The default is the dictionary's own
  * default rest time, which is what the pre-draft rows meant.
+ *
+ * `targetReps` is the written target snapshotted with it, for the same reason: the workout must
+ * keep showing the plan it started with even after the slot is edited, and the target is free text
+ * ("8-10", "AMRAP") that the sets' integer reps cannot reconstruct. The blank default is what a
+ * row written before the column existed means — a workout with no target to show.
  */
 @Entity(
     tableName = "workout_exercise_log",
@@ -46,4 +51,5 @@ internal data class WorkoutExerciseLogEntity(
     val wasCompleted: Boolean,
     val orderIndex: Int,
     @ColumnInfo(defaultValue = "90") val restSeconds: Int = Exercise.DEFAULT_REST_SECONDS,
+    @ColumnInfo(defaultValue = "") val targetReps: String = "",
 )

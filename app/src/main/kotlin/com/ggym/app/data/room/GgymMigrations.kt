@@ -64,5 +64,24 @@ internal object GgymMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3)
+    /**
+     * v3 → v4: a workout that started from a plan keeps the plan's target reps, so the screen can
+     * show the target next to the actual as the user enters it.
+     *
+     * The target is not derivable from what was already stored: each set snapshots the first number
+     * in the target (`"8-10"` means eight) as an `Int`, so `Target 4 × 8-10` would come back as `4`
+     * and `AMRAP` as `0`. It has to be snapshotted like `restSeconds` beside it, and for the same
+     * reason — the target the workout started with must not move when the plan is edited.
+     *
+     * The blank default is what every existing row means: a workout with no target to show, which
+     * the screen renders with the copy it used before. `ALTER TABLE … ADD COLUMN` again; no row is
+     * rewritten and a fresh install creates the same DDL from the entity's own default.
+     */
+    private val MIGRATION_3_4 = object : Migration(3, 4) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE workout_exercise_log ADD COLUMN targetReps TEXT NOT NULL DEFAULT ''")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
 }

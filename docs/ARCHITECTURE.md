@@ -147,8 +147,8 @@ routine_day              a day inside a routine, ordered
 planned_exercise         an exercise slot in a day: target sets/reps, rest, order, its own weight
 workout_session          one workout — finished, or in progress while `isDraft` is set — with date,
                          routine/day name snapshots, duration and (for a draft) its start time
-workout_exercise_log     one exercise inside a session: name snapshot, completed flag, order, the
-                         rest time snapshotted for its sets
+workout_exercise_log     one exercise inside a session: name snapshot, completed flag, order, and the
+                         rest time and target reps snapshotted for its sets
 workout_set_log          one performed set: set number, weight, reps, completed flag
 body_weight_log          a body-weight measurement with its date
 ```
@@ -177,11 +177,14 @@ migrations are written explicitly and verified against the schema that shipped. 
 fallbacks are not used: they would silently delete a user's training history. Both migrations so
 far are `ALTER TABLE` additions that leave every existing row as it was and are exercised by
 tests that build the older database from its committed snapshot, seed it, and open it with the
-current build: `v1 → v2` adds `planned_exercise.weightKg`, and `v2 → v3` adds
+current build: `v1 → v2` adds `planned_exercise.weightKg`; `v2 → v3` adds
 `workout_session.isDraft` / `workout_session.startedAtMillis` and
 `workout_exercise_log.restSeconds` — the columns that let a workout exist while it is still being
-performed. `v1` and `v2` rows read back as finished workouts with no start time and the default
-rest time, which is exactly what they were.
+performed; and `v3 → v4` adds `workout_exercise_log.targetReps`, the written target snapshotted so
+the workout can show what the plan asks next to the actual being entered (the sets' own integer reps
+only hold the target's first number, so `8-10` would come back as `8`). `v1` and `v2` rows read back
+as finished workouts with no start time, the default rest time and a blank target — exactly what
+they were.
 
 **Workouts in progress.** A workout under way is a *draft* session: written the moment it starts,
 updated set by set, and invisible to every history read (`observeSessionsInRange`,
@@ -335,7 +338,7 @@ with one array per table. Every row carries its primary key, so a restore reprod
 exactly — including the identity of rows — and children are nested inside their parent instead of
 referencing it, so a file cannot contradict itself. A field the current version does not know, or
 a version it does not support, is refused rather than ignored. The format version is its own
-number, not the database's: the reader accepts every format the app has ever written (1 through 3
+number, not the database's: the reader accepts every format the app has ever written (1 through 4
 today), so a backup file outlives the build that produced it. A file may hold at most one workout
 in progress; two of them is a contradiction, and the validator says so before anything is written.
 

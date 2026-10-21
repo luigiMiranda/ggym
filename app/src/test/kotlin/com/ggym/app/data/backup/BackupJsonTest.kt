@@ -2,6 +2,7 @@ package com.ggym.app.data.backup
 
 import com.ggym.app.testing.version1BackupJson
 import com.ggym.app.testing.version2BackupJson
+import com.ggym.app.testing.version3BackupJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -127,6 +128,21 @@ class BackupJsonTest {
         assertEquals(1_759_500_000_000, decoded.startedAtMillis)
     }
 
+    @Test
+    fun `a format 3 document is read with its draft fields and a blank target`() {
+        val file = BackupJsonFormat.decodeFromString(BackupFile.serializer(), version3BackupJson())
+
+        assertEquals(3, file.schemaVersion)
+        assertEquals("format 3 could describe a workout in progress", false, file.sessions.single().isDraft)
+        assertNull("and finished workouts carried no start time", file.sessions.single().startedAtMillis)
+        assertEquals("the rest time was snapshotted by then", 120, file.sessions.single().exercises.single().restSeconds)
+        assertEquals(
+            "but the target was not: there is nothing to show, and the blank says so",
+            "",
+            file.sessions.single().exercises.single().targetReps,
+        )
+    }
+
     /**
      * A file written before format 3 describes finished workouts that never recorded a start time,
      * and exercises whose rest time was not snapshotted yet.
@@ -140,6 +156,29 @@ class BackupJsonTest {
             90,
             session.exercises.single().restSeconds,
         )
+        assertEquals(
+            "no workout had a target to show before format 4",
+            "",
+            session.exercises.single().targetReps,
+        )
+    }
+
+    @Test
+    fun `a workout's target reps are written and read back`() {
+        val draft = sampleFile().sessions.single().copy(
+            id = 2,
+            isDraft = true,
+            startedAtMillis = 1_759_500_000_000,
+            exercises = listOf(
+                sampleFile().sessions.single().exercises.single().copy(targetReps = "AMRAP"),
+            ),
+        )
+
+        val json = BackupJsonFormat.encodeToString(BackupFile.serializer(), sampleFile().copy(sessions = listOf(draft)))
+        val decoded = BackupJsonFormat.decodeFromString(BackupFile.serializer(), json).sessions.single()
+
+        assertTrue("the target is written, not implied\n$json", json.contains("\"targetReps\": \"AMRAP\""))
+        assertEquals("the free text is kept as typed", "AMRAP", decoded.exercises.single().targetReps)
     }
 
     @Test

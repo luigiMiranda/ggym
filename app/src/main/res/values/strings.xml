@@ -332,6 +332,8 @@
     <string name="workout_missing_message">It was finished or discarded, here or somewhere else. Start another one from a training day.</string>
     <string name="workout_back_to_workouts">Back to workouts</string>
     <string name="workout_exercise_of">Exercise %1$d of %2$d</string>
+    <string name="workout_target_line">Target %1$s · %2$s</string>
+    <string name="workout_reps_target">· Target %1$s</string>
     <string name="workout_complete_set">Complete set</string>
     <string name="workout_next_exercise">Next exercise</string>
     <string name="workout_add_set">+ Add set</string>

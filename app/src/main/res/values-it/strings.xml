@@ -329,6 +329,8 @@
     <string name="workout_missing_message">È stato terminato o scartato, qui o altrove. Iniziane un altro da un giorno di allenamento.</string>
     <string name="workout_back_to_workouts">Torna alle schede</string>
     <string name="workout_exercise_of">Esercizio %1$d di %2$d</string>
+    <string name="workout_target_line">Obiettivo %1$s · %2$s</string>
+    <string name="workout_reps_target">· Obiettivo %1$s</string>
     <string name="workout_complete_set">Completa serie</string>
     <string name="workout_next_exercise">Esercizio successivo</string>
     <string name="workout_add_set">+ Aggiungi serie</string>

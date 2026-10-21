@@ -29,7 +29,10 @@ import com.ggym.app.testing.RecordedCommand
 import com.ggym.app.testing.RepositoryTest
 import com.ggym.app.testing.TestData
 import com.ggym.app.testing.givenExerciseNamed
+import com.ggym.app.testing.givenExerciseLog
 import com.ggym.app.testing.givenPlannedDay
+import com.ggym.app.testing.givenSession
+import com.ggym.app.testing.givenSet
 import com.ggym.app.ui.theme.GgymTheme
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.first
@@ -261,6 +264,38 @@ class ActiveWorkoutScreenTest : RepositoryTest() {
         assertEquals(1, runBlocking { historyRepository.observeSessionsInRange(TestData.date(month = 6, day = 15), TestData.date(month = 6, day = 15)).first() }.size)
     }
 
+    @Test
+    fun `the focused hero shows the planned target beside the actual`() {
+        runBlocking { seed() }
+        show()
+
+        waitForText("Bench Press")
+        compose.onNodeWithText("Bench Press").performClick()
+        waitForText("EXERCISE 1 OF 2")
+
+        // The hero's subtitle is the preview's own line — what the plan asks — which the built
+        // screen had dropped in favour of just the set count.
+        compose.onNodeWithText("Target 4 × 8-10 · 120 s rest").assertExists()
+        // And the control the user is looking at says it without taking over the actual.
+        compose.onNodeWithText("REPS · TARGET 8-10").assertExists()
+        // The actual is still the bare number on the stepper.
+        compose.onNodeWithText("8").assertExists()
+    }
+
+    @Test
+    fun `a workout with no target keeps the line the screen always showed`() {
+        runBlocking { seedAnOldDraft() }
+        show()
+
+        waitForText("Bench Press")
+        compose.onNodeWithText("Bench Press").performClick()
+        waitForText("EXERCISE 1 OF 1")
+
+        // Nothing to print: an old draft shows the shape it always did, not an empty target.
+        compose.onNodeWithText("1 set · 120 s rest").assertExists()
+        compose.onNodeWithText("REPS").assertExists()
+    }
+
     private fun show(captureBack: (OnBackPressedDispatcher) -> Unit = {}) {
         val factory = viewModelFactory {
             initializer {
@@ -301,6 +336,27 @@ class ActiveWorkoutScreenTest : RepositoryTest() {
             PlannedSlot(exerciseId = fly, sets = 3, reps = "12", restSeconds = 60),
         )
         sessionId = (active.start(dayId) as StartWorkoutResult.Started).sessionId
+    }
+
+    /**
+     * A draft as an older build wrote it: no `targetReps` column, so the log arrives with the
+     * blank the migration gives it. Built straight from the fixtures because the split that made
+     * the column impossible to have written by the current code is the point of the test.
+     */
+    private suspend fun seedAnOldDraft() {
+        clock = TestData.timestamp(TestData.date(month = 6, day = 15)) + 8 * 60 * 60 * 1000
+        sessionId = database.givenSession(
+            date = TestData.date(month = 6, day = 15),
+            isDraft = true,
+            startedAtMillis = clock,
+        )
+        val log = database.givenExerciseLog(
+            sessionId = sessionId,
+            exerciseNameSnapshot = "Bench Press",
+            restSeconds = 120,
+            targetReps = "",
+        )
+        database.givenSet(workoutExerciseLogId = log, setNumber = 1, weight = 80.0, reps = 8, isCompleted = false)
     }
 
 

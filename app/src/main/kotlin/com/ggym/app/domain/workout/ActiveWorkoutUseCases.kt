@@ -14,9 +14,9 @@ import java.time.ZoneId
  * The workout that is running: starting it, working through it, ending it.
  *
  * A workout is not a screen's state — it is a *draft session* in the database. [start] materializes
- * a training day into one: the routine and day name snapshots, each exercise's name and rest time,
- * and one row per planned set, pre-filled with the day's resolved working weight and the reps its
- * target asks for. From then on the draft is the only thing the workout consults: the routine can
+ * a training day into one: the routine and day name snapshots, each exercise's name, rest time and
+ * written target reps, and one row per planned set, pre-filled with the day's resolved working
+ * weight and the reps its target asks for. From then on the draft is the only thing the workout consults: the routine can
  * be renamed, edited or deleted and the workout in progress does not move, and a process death
  * costs nothing, because [WorkoutHistoryRepository.observeDraft] puts the user back where they were.
  *
@@ -52,8 +52,8 @@ class ActiveWorkoutUseCases(
      * Turns a training day into a workout in progress and returns its id.
      *
      * The day's slots decide the draft's shape once and for all: each becomes one exercise log with
-     * the exercise's name, the slot's rest time and its target sets, each set pre-filled with the
-     * weight the day screen shows for that slot ([WorkingWeightUseCases.resolveAll]: the slot's own,
+     * the exercise's name, the slot's rest time, its written target reps and its target sets, each
+     * set pre-filled with the weight the day screen shows for that slot ([WorkingWeightUseCases.resolveAll]: the slot's own,
      * the exercise's default, else what was last performed) and the first number in the written
      * target (`"8-10"` means eight). A slot with no weight at all starts at `0.0`, which the workout
      * screen renders as an empty field.
@@ -95,6 +95,7 @@ class ActiveWorkoutUseCases(
                     wasCompleted = false,
                     orderIndex = index,
                     restSeconds = slot.restSeconds,
+                    targetReps = slot.targetReps,
                     sets = prefills(
                         count = slot.targetSets,
                         weightKg = resolved[slot.id] ?: 0.0,

@@ -350,6 +350,7 @@ class ActiveWorkoutViewModel(
             totalSets = sets.size,
             workingWeightKg = upcoming?.weightKg?.takeIf { it > 0.0 },
             restSeconds = log.restSeconds,
+            targetReps = log.targetReps,
             sets = sets,
         )
     }
@@ -398,6 +399,7 @@ class ActiveWorkoutViewModel(
             exerciseLogId = card.exerciseLogId,
             exerciseName = card.exerciseName,
             restSeconds = card.restSeconds,
+            targetReps = card.targetReps,
             sets = displayedSets,
             hero = WeightHeroState(
                 selectedSetId = selected?.id,

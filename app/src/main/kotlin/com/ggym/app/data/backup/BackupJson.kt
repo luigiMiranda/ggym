@@ -8,11 +8,11 @@ import kotlinx.serialization.json.Json
  * The backup format this build writes.
  *
  * The format has its own version, separate from the database schema version, because the two
- * questions are different: a file must stay readable across app updates (1, 2 and 3 each added
+ * questions are different: a file must stay readable across app updates (1, 2, 3 and 4 each added
  * only fields whose absence meant what the older build did), while the database is migrated in
  * place.
  */
-internal const val BACKUP_FORMAT_VERSION = 3
+internal const val BACKUP_FORMAT_VERSION = 4
 
 /**
  * The oldest format this build still reads, so that a file written before the per-slot weight
@@ -44,6 +44,8 @@ internal const val OLDEST_READABLE_BACKUP_FORMAT_VERSION = 1
  *   drafts existed describes finished workouts that never recorded a start time.
  * - [BackupWorkoutExerciseLog.restSeconds] (format 3): the rest time was not snapshotted yet, so
  *   the dictionary's own default is what those rows meant.
+ * - [BackupWorkoutExerciseLog.targetReps] (format 4): the target was not snapshotted yet, and a
+ *   blank target is exactly "this workout has no target to show".
  */
 @Serializable
 internal data class BackupFile(
@@ -116,6 +118,11 @@ internal data class BackupWorkoutExerciseLog(
     val orderIndex: Int,
     /** The rest time between this exercise's sets, snapshotted when the workout started. */
     val restSeconds: Int = Exercise.DEFAULT_REST_SECONDS,
+    /**
+     * The written target reps snapshotted with it ("8-10", "AMRAP"); blank on a workout that has
+     * no target to show — everything written before format 4.
+     */
+    val targetReps: String = "",
     val sets: List<BackupWorkoutSetLog>,
 )
 

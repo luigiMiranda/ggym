@@ -118,6 +118,7 @@ internal object TestData {
         wasCompleted: Boolean = true,
         orderIndex: Int = 0,
         restSeconds: Int = 90,
+        targetReps: String = "",
         sets: List<WorkoutSetLog> = emptyList(),
     ): WorkoutExerciseLog = WorkoutExerciseLog(
         id = id,
@@ -127,6 +128,7 @@ internal object TestData {
         wasCompleted = wasCompleted,
         orderIndex = orderIndex,
         restSeconds = restSeconds,
+        targetReps = targetReps,
         sets = sets,
     )
 
@@ -229,6 +231,7 @@ internal suspend fun GgymDatabase.givenExerciseLog(
     wasCompleted: Boolean = true,
     orderIndex: Int = 0,
     restSeconds: Int = 90,
+    targetReps: String = "",
 ): Long = workoutHistoryDao().insertExerciseLog(
     WorkoutExerciseLogEntity(
         sessionId = sessionId,
@@ -237,6 +240,7 @@ internal suspend fun GgymDatabase.givenExerciseLog(
         wasCompleted = wasCompleted,
         orderIndex = orderIndex,
         restSeconds = restSeconds,
+        targetReps = targetReps,
     ),
 )
 

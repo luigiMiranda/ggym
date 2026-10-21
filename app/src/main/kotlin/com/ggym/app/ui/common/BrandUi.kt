@@ -38,8 +38,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.ggym.app.R
@@ -244,6 +247,12 @@ fun GgymStepper(
     decreaseLabel: String = "",
     increaseLabel: String = "",
     valueColor: Color = Color.Unspecified,
+    /**
+     * A second half of the label, printed after a space in the brand accent: the workout's reps
+     * stepper uses it to say `REPS · TARGET 8-10` without moving the actual off its own control.
+     * Blank (the default) leaves the label to the caller.
+     */
+    labelAccent: String = "",
 ) {
     Column(
         modifier = modifier
@@ -253,7 +262,15 @@ fun GgymStepper(
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            text = label.uppercase(),
+            text = buildAnnotatedString {
+                append(label.uppercase())
+                if (labelAccent.isNotBlank()) {
+                    append(' ')
+                    withStyle(SpanStyle(color = MaterialTheme.colorScheme.primary)) {
+                        append(labelAccent.uppercase())
+                    }
+                }
+            },
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 10.5.sp,
                 letterSpacing = 1.2.sp,

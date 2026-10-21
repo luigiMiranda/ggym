@@ -73,6 +73,7 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
         assertEquals(listOf("Bench Press", "Cable Fly"), draft.exercises.map { it.exerciseNameSnapshot })
         assertEquals(listOf(bench, fly), draft.exercises.map { it.exerciseId })
         assertEquals("the rest time rides along, so a resume needs no lookup", listOf(120, 60), draft.exercises.map { it.restSeconds })
+        assertEquals("and so does the written target, which the plan can no longer supply", listOf("8-10", "12"), draft.exercises.map { it.targetReps })
         assertEquals(listOf(0, 1), draft.exercises.map { it.orderIndex })
         assertTrue("nothing has been performed yet", draft.exercises.none { it.wasCompleted })
 
@@ -87,6 +88,18 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
         assertEquals(3, flySets.size)
         assertEquals("nothing is known about the fly, so the field starts empty", listOf(0.0, 0.0, 0.0), flySets.map { it.weight })
         assertEquals(listOf(12, 12, 12), flySets.map { it.reps })
+    }
+
+    @Test
+    fun `a target that is a word is snapshotted as typed, and prefills no reps`() = runTest {
+        val pullUp = exercise("Pull Up")
+        val dayId = plannedDay(Slot(exerciseId = pullUp, sets = 2, reps = "AMRAP", restSeconds = 120))
+
+        started(dayId)
+
+        val log = draft().exercises.single()
+        assertEquals("the word is the target, not a number parsed out of it", "AMRAP", log.targetReps)
+        assertEquals("and it prefills no reps, which is the price of free text", listOf(0, 0), log.sets.map { it.reps })
     }
 
     @Test
@@ -159,6 +172,11 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
         assertEquals(2, draft.exercises.size)
         assertEquals("the whole plan is in the draft, routine or no routine", 4, draft.exercises[0].sets.size)
         assertEquals(listOf(120, 60), draft.exercises.map { it.restSeconds })
+        assertEquals(
+            "the target was frozen with it — the slot it came from is gone",
+            listOf("8-10", "12"),
+            draft.exercises.map { it.targetReps },
+        )
     }
 
     @Test
@@ -420,6 +438,8 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
         val savedFly = session.exercises[1]
         assertFalse("an exercise nobody touched is saved as skipped", savedFly.wasCompleted)
         assertTrue("with no sets at all", savedFly.sets.isEmpty())
+        assertEquals("the target survives the finish, so history can show what was planned", "8-10", savedBench.targetReps)
+        assertEquals("including for an exercise that was skipped", "12", savedFly.targetReps)
 
         assertEquals("exactly one workout exists", 1, database.countRows("workout_session"))
         assertEquals("skipped exercises are kept, so the workout's shape is not lost", 2, database.countRows("workout_exercise_log"))

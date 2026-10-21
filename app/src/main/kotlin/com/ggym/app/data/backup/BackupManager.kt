@@ -217,6 +217,7 @@ internal class BackupManager(
                         wasCompleted = log.wasCompleted,
                         orderIndex = log.orderIndex,
                         restSeconds = log.restSeconds,
+                        targetReps = log.targetReps,
                     ),
                 )
                 log.sets.forEach { set ->
@@ -295,6 +296,7 @@ private fun WorkoutExerciseLogWithSets.toBackup(): BackupWorkoutExerciseLog = Ba
     wasCompleted = log.wasCompleted,
     orderIndex = log.orderIndex,
     restSeconds = log.restSeconds,
+    targetReps = log.targetReps,
     sets = sets.sortedWith(compareBy({ it.setNumber }, { it.id })).map { it.toBackup() },
 )
 

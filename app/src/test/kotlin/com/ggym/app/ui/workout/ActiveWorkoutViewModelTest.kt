@@ -142,6 +142,7 @@ class ActiveWorkoutViewModelTest : ViewModelTest() {
 
             assertEquals("Exercise 1 of 1", 0, focused.index)
             assertEquals("Bench Press", focused.exerciseName)
+            assertEquals("the target the workout started with rides on the focused exercise", "8-10", focused.targetReps)
             assertEquals(3, focused.sets.size)
             assertEquals("the hero starts on the first set", firstSet.id, focused.hero.selectedSetId)
             assertEquals("80", focused.hero.weightText)

@@ -26,7 +26,8 @@ import org.robolectric.annotation.Config
  * nullability or default fails these tests too.
  *
  * Every version a user could be on gets its own test: v1 is someone who installed the first build
- * and never updated, v2 someone who has been training since the routine editor shipped.
+ * and never updated, v2 someone who has been training since the routine editor shipped, v3 someone
+ * who was mid-workout when the target column arrived.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [37])
@@ -35,7 +36,7 @@ class GgymMigrationsTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
 
     @Test
-    fun `a version 1 database migrates to version 3 keeping every row, with no slot weight yet`() = runTest {
+    fun `a version 1 database migrates to version 4 keeping every row, with no slot weight yet`() = runTest {
         val name = "ggym-migration-v1-${System.nanoTime()}.db"
         createDatabase(name, version = 1, seed = ::seedVersion1Rows)
 
@@ -62,7 +63,7 @@ class GgymMigrationsTest {
             assertEquals("its sets survived", 82.5, session.exercises.single().sets.single().weight, 0.0)
             assertEquals(82.4, database.bodyWeightDao().getAll().single().weightKg, 0.0)
 
-            assertDefaultsOfTheNewColumns(session.session.isDraft, session.session.startedAtMillis, session.exercises.single().log.restSeconds)
+            assertDefaultsOfTheNewColumns(session.session.isDraft, session.session.startedAtMillis, session.exercises.single().log.restSeconds, session.exercises.single().log.targetReps)
 
             // The new columns are writable, and writing them leaves the global records alone.
             database.plannedExerciseDao().update(slot.copy(weightKg = 80.0))
@@ -82,7 +83,7 @@ class GgymMigrationsTest {
     }
 
     @Test
-    fun `a version 2 database migrates to version 3 with its slot weight and history intact`() = runTest {
+    fun `a version 2 database migrates to version 4 with its slot weight and history intact`() = runTest {
         val name = "ggym-migration-v2-${System.nanoTime()}.db"
         createDatabase(name, version = 2, seed = ::seedVersion2Rows)
 
@@ -105,6 +106,7 @@ class GgymMigrationsTest {
                 isDraft = stored.session.isDraft,
                 startedAtMillis = stored.session.startedAtMillis,
                 restSeconds = stored.exercises.single().log.restSeconds,
+                targetReps = stored.exercises.single().log.targetReps,
             )
 
             // The new columns are writable: a workout in progress can be written to a migrated
@@ -137,11 +139,61 @@ class GgymMigrationsTest {
         }
     }
 
+    @Test
+    fun `a version 3 database migrates to version 4 with its workout in progress and blank targets`() = runTest {
+        val name = "ggym-migration-v3-${System.nanoTime()}.db"
+        createDatabase(name, version = 3, seed = ::seedVersion3Rows)
+
+        val database = createGgymDatabase(context, name)
+        try {
+            assertEquals(SCHEMA_VERSION, database.openHelper.readableDatabase.version)
+
+            // The workout in progress is a v3 fact, and it is what v4 must not disturb.
+            val draft = database.workoutHistoryDao().observeDraft().first()
+            assertNotNull("the workout in progress survived", draft)
+            assertEquals(1_759_500_000_000, draft!!.session.startedAtMillis)
+            assertEquals("the snapshotted rest time survived", 120, draft.exercises.single().log.restSeconds)
+            assertEquals(
+                "a v3 workout has no target to show, and the blank says exactly that",
+                "",
+                draft.exercises.single().log.targetReps,
+            )
+
+            // The finished workout is untouched by the migration, targets included.
+            val finished = database.workoutHistoryDao().getAllSessions()
+                .single { it.session.id != draft.session.id }
+            assertEquals("Push A", finished.session.dayNameSnapshot)
+            assertEquals(82.5, finished.exercises.single().sets.single().weight, 0.0)
+            assertEquals("the old row's blank target means what it says", "", finished.exercises.single().log.targetReps)
+
+            // The new column is writable: a workout started on a migrated database carries its
+            // target, which is the whole point of v4.
+            database.workoutHistoryDao().insertExerciseLog(
+                draft.exercises.single().log.copy(id = 0, sessionId = draft.session.id, targetReps = "8-10"),
+            )
+
+            assertEquals(
+                listOf("", "8-10"),
+                database.workoutHistoryDao().observeDraft().first()!!.exercises
+                    .sortedBy { it.log.id }
+                    .map { it.log.targetReps },
+            )
+        } finally {
+            database.close()
+        }
+    }
+
     /** What an existing row must mean after v3: not a draft, no start time, the default rest time. */
-    private fun assertDefaultsOfTheNewColumns(isDraft: Boolean, startedAtMillis: Long?, restSeconds: Int) {
+    private fun assertDefaultsOfTheNewColumns(
+        isDraft: Boolean,
+        startedAtMillis: Long?,
+        restSeconds: Int,
+        targetReps: String,
+    ) {
         assertEquals("nothing was a draft before drafts existed", false, isDraft)
         assertNull("no old session recorded when it started", startedAtMillis)
         assertEquals("the rest time those rows meant", 90, restSeconds)
+        assertEquals("no workout had a target to show before the column existed", "", targetReps)
     }
 
     /**
@@ -196,5 +248,21 @@ class GgymMigrationsTest {
     private fun seedVersion2Rows(db: SupportSQLiteDatabase) {
         seedVersion1Rows(db)
         db.execSQL("UPDATE planned_exercise SET weightKg = 80.0 WHERE id = 1")
+    }
+
+    /**
+     * The same database as a v3 user has it: a workout in progress, with the rest time snapshotted
+     * per exercise, and no target column yet.
+     */
+    private fun seedVersion3Rows(db: SupportSQLiteDatabase) {
+        seedVersion2Rows(db)
+        db.execSQL(
+            "INSERT INTO workout_session (dateTimestamp, routineNameSnapshot, dayNameSnapshot, durationSeconds, isDraft, startedAtMillis) " +
+                "VALUES (1759000000000, 'Push Day', 'Push A', 0, 1, 1759500000000)",
+        )
+        db.execSQL(
+            "INSERT INTO workout_exercise_log (sessionId, exerciseId, exerciseNameSnapshot, wasCompleted, orderIndex, restSeconds) " +
+                "VALUES (2, 1, 'Bench Press', 0, 0, 120)",
+        )
     }
 }

@@ -39,6 +39,7 @@ internal object WorkoutMapper {
         wasCompleted = row.log.wasCompleted,
         orderIndex = row.log.orderIndex,
         restSeconds = row.log.restSeconds,
+        targetReps = row.log.targetReps,
         sets = row.sets
             .sortedWith(compareBy({ it.setNumber }, { it.id }))
             .map { toDomain(it) },
@@ -71,6 +72,7 @@ internal object WorkoutMapper {
         wasCompleted = log.wasCompleted,
         orderIndex = log.orderIndex,
         restSeconds = log.restSeconds,
+        targetReps = log.targetReps,
     )
 
     fun toEntity(set: WorkoutSetLog): WorkoutSetLogEntity = WorkoutSetLogEntity(

@@ -49,6 +49,12 @@ data class WorkoutExerciseLog(
      * editing or deleting the routine mid-workout cannot change it.
      */
     val restSeconds: Int = Exercise.DEFAULT_REST_SECONDS,
+    /**
+     * The written target reps snapshotted at the same moment, shown next to the actual being
+     * entered. Blank means the workout has no target to show — history written before the column
+     * existed, or a slot that was somehow planned without one.
+     */
+    val targetReps: String = "",
     val sets: List<WorkoutSetLog> = emptyList(),
 )
 

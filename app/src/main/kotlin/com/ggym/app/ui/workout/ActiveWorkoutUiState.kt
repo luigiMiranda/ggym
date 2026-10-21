@@ -15,6 +15,8 @@ data class WorkoutExerciseCard(
     val totalSets: Int,
     val workingWeightKg: Double?,
     val restSeconds: Int,
+    /** The written target reps the workout started with; blank means there is no target to show. */
+    val targetReps: String,
     val sets: List<WorkoutSetRow>,
 ) {
     /** At least one set has been performed: the card earns its tonal treatment. */
@@ -78,6 +80,8 @@ data class FocusedExercise(
     val exerciseLogId: Long,
     val exerciseName: String,
     val restSeconds: Int,
+    /** The plan's target reps, shown on the hero and beside the reps stepper; blank when unknown. */
+    val targetReps: String,
     val sets: List<WorkoutSetRow>,
     val hero: WeightHeroState,
     val action: FocusedAction,

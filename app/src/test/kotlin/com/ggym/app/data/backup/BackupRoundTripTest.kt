@@ -18,6 +18,7 @@ import com.ggym.app.testing.countRows
 import com.ggym.app.testing.createTestDatabase
 import com.ggym.app.testing.version1BackupJson
 import com.ggym.app.testing.version2BackupJson
+import com.ggym.app.testing.version3BackupJson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -281,7 +282,25 @@ class BackupRoundTripTest {
         assertEquals("nothing was in progress in format 2", false, restored.sessions.single().isDraft)
         assertNull("and nothing recorded a start time that could be invented", restored.sessions.single().startedAtMillis)
         assertEquals("the rest time arrives as the default those rows meant", 90, restored.sessions.single().exercises.single().restSeconds)
+        assertEquals(
+            "and no target, because format 2 never wrote one",
+            "",
+            restored.sessions.single().exercises.single().targetReps,
+        )
         assertNull("and no workout is resumed by a file that never had one", restored.draft)
+    }
+
+    @Test
+    fun `a format 3 document is restored with its snapshotted rest time but a blank target`() = runTest {
+        populate()
+
+        val result = backupManager.importJson(version3BackupJson())
+
+        assertEquals(ImportResult.Restored(BackupCounts(exercises = 1, routines = 1, sessions = 1, bodyWeights = 1)), result)
+        val restored = snapshot()
+        val log = restored.sessions.single().exercises.single()
+        assertEquals("the rest time was snapshotted by format 3", 120, log.restSeconds)
+        assertEquals("the target was not: the column arrives blank, not invented", "", log.targetReps)
     }
 
     @Test
@@ -435,6 +454,7 @@ class BackupRoundTripTest {
                         exerciseId = bench.id,
                         exerciseNameSnapshot = "Bench Press",
                         orderIndex = 0,
+                        targetReps = "8-10",
                         sets = listOf(
                             TestData.setLog(setNumber = 1, weight = 82.5, reps = 8),
                             TestData.setLog(setNumber = 2, weight = 85.0, reps = 6),
@@ -479,6 +499,7 @@ class BackupRoundTripTest {
                         exerciseId = bench.id,
                         exerciseNameSnapshot = "Bench Press",
                         restSeconds = 120,
+                        targetReps = "AMRAP",
                         sets = listOf(
                             TestData.setLog(setNumber = 1, weight = 80.0, reps = 8),
                             TestData.setLog(setNumber = 2, weight = 80.0, reps = 8, isCompleted = false),

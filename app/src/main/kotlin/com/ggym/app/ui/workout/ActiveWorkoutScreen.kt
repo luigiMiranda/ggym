@@ -490,11 +490,7 @@ private fun ExercisePage(
                 modifier = Modifier.padding(top = 6.dp),
             )
             Text(
-                text = stringResource(
-                    R.string.day_start_shape,
-                    sets,
-                    stringResource(R.string.slot_rest, focused.restSeconds),
-                ),
+                text = heroTargetLine(focused, sets),
                 style = MaterialTheme.typography.bodySmall,
                 color = GgymHeroColors.Muted,
                 modifier = Modifier.padding(top = 2.dp),
@@ -510,6 +506,11 @@ private fun ExercisePage(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             GgymStepper(
                 label = stringResource(R.string.slot_field_reps),
+                labelAccent = if (focused.targetReps.isBlank()) {
+                    ""
+                } else {
+                    stringResource(R.string.workout_reps_target, focused.targetReps)
+                },
                 value = focused.hero.reps.toString(),
                 onDecrease = { onStepReps(-1) },
                 onIncrease = { onStepReps(1) },
@@ -600,6 +601,7 @@ private fun WorkoutExerciseCard.asPage(index: Int, locale: Locale): FocusedExerc
         exerciseLogId = exerciseLogId,
         exerciseName = exerciseName,
         restSeconds = restSeconds,
+        targetReps = targetReps,
         sets = sets,
         hero = WeightHeroState(
             selectedSetId = set?.id,
@@ -610,6 +612,26 @@ private fun WorkoutExerciseCard.asPage(index: Int, locale: Locale): FocusedExerc
         ),
         action = if (sets.isEmpty()) FocusedAction.AddSet else FocusedAction.CompleteSet,
     )
+}
+
+/**
+ * The hero's subtitle: the plan's target when the workout carries one — `Target 4 × 8-10 · rest
+ * 90s`, the M0 preview's own line — and the shape it always showed when it does not. A blank
+ * target is old history, or a slot planned without one; printing an empty target after `×` would
+ * be worse than the copy the screen used before.
+ */
+@Composable
+private fun heroTargetLine(focused: FocusedExercise, sets: String): String {
+    val rest = stringResource(R.string.slot_rest, focused.restSeconds)
+    return if (focused.targetReps.isBlank()) {
+        stringResource(R.string.day_start_shape, sets, rest)
+    } else {
+        stringResource(
+            R.string.workout_target_line,
+            stringResource(R.string.slot_target, focused.sets.size, focused.targetReps),
+            rest,
+        )
+    }
 }
 
 /** What the bottom action does, shared by the bar above it and the screen's own callbacks. */
