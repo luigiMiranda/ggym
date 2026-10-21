@@ -21,7 +21,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.DriveFileRenameOutline
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.outlined.FitnessCenter
@@ -36,9 +35,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,13 +54,12 @@ import com.ggym.app.ui.common.GgymFab
 import com.ggym.app.ui.common.GgymPill
 import com.ggym.app.ui.common.GgymScreenHeader
 import com.ggym.app.ui.common.KgFormat
-import com.ggym.app.ui.common.NameInputDialog
 import com.ggym.app.ui.common.PillTone
 import com.ggym.app.ui.common.ReorderableColumn
 import com.ggym.app.ui.common.RowMenu
 import com.ggym.app.ui.common.RowMenuAction
 import com.ggym.app.ui.common.activeLocale
-import com.ggym.app.ui.exercises.SlotEditorSheet
+import com.ggym.app.ui.exercises.ExerciseFormSheet
 import com.ggym.app.ui.theme.GgymHeroColors
 
 /**
@@ -77,14 +72,12 @@ import com.ggym.app.ui.theme.GgymHeroColors
 @Composable
 fun DayDetailScreen(
     viewModelFactory: ViewModelProvider.Factory,
-    slotEditorViewModelFactory: (Long) -> ViewModelProvider.Factory,
     onBack: () -> Unit,
     onAddExercise: () -> Unit,
     onOpenWorkout: (Long) -> Unit,
     viewModel: DayDetailViewModel = viewModel(factory = viewModelFactory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    var editedSlotId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.effects.collect { effect ->
@@ -158,8 +151,7 @@ fun DayDetailScreen(
                             slot = slot,
                             modifier = handle,
                             isDragging = isDragging,
-                            onEdit = { editedSlotId = slot.id },
-                            onRename = { viewModel.startRenameExercise(slot) },
+                            onEdit = { viewModel.openForm(slot) },
                             onDelete = { viewModel.askDeleteSlot(slot) },
                         )
                     }
@@ -211,24 +203,20 @@ fun DayDetailScreen(
         )
     }
 
-    // Renaming is the dictionary's name, not the slot's: a collision is the database's answer, so
-    // the refusal comes back here and the dialog stays open with the typed text.
-    state.renameDialog?.let { dialog ->
-        NameInputDialog(
-            title = stringResource(R.string.exercise_rename_title),
-            label = stringResource(R.string.exercise_rename_label),
-            initialName = dialog.initialName,
-            onSave = viewModel::saveExerciseName,
-            onDismiss = viewModel::dismissRenameExercise,
-            error = if (dialog.nameTaken) stringResource(R.string.exercise_rename_taken) else null,
-        )
-    }
-
-    editedSlotId?.let { slotId ->
-        SlotEditorSheet(
-            plannedExerciseId = slotId,
-            viewModelFactory = slotEditorViewModelFactory,
-            onDismiss = { editedSlotId = null },
+    // One action for the name and the numbers: they are two rows, but one thought. A collision is
+    // the database's answer, so the refusal comes back into the open form with the typed text.
+    state.form?.let { form ->
+        ExerciseFormSheet(
+            form = form,
+            onNameChange = viewModel::setFormName,
+            onStepSets = viewModel::stepFormSets,
+            onRepsChange = viewModel::setFormReps,
+            onStepRest = viewModel::stepFormRest,
+            onWeightChange = viewModel::setFormWeight,
+            onStepWeight = viewModel::stepFormWeight,
+            onSave = viewModel::saveForm,
+            onDismiss = viewModel::dismissForm,
+            onRemove = viewModel::removeFormSlot,
         )
     }
 }
@@ -292,7 +280,6 @@ private fun SlotRow(
     modifier: Modifier,
     isDragging: Boolean,
     onEdit: () -> Unit,
-    onRename: () -> Unit,
     onDelete: () -> Unit,
 ) {
     val locale = activeLocale()
@@ -352,11 +339,6 @@ private fun SlotRow(
             }
             RowMenu(
                 actions = listOf(
-                    RowMenuAction(
-                        label = stringResource(R.string.exercise_rename_title),
-                        icon = Icons.Filled.DriveFileRenameOutline,
-                        onClick = onRename,
-                    ),
                     RowMenuAction(stringResource(R.string.action_edit), Icons.Filled.Edit, onClick = onEdit),
                     RowMenuAction(
                         label = stringResource(R.string.slot_remove),

@@ -2,14 +2,28 @@ package com.ggym.app.ui.workouts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ggym.app.domain.exercise.ExerciseFormUseCases
+import com.ggym.app.domain.exercise.UpdateSlotResult
+import com.ggym.app.domain.model.PlannedExercise
 import com.ggym.app.domain.repository.ExerciseRepository
-import com.ggym.app.domain.repository.RenameExerciseResult
 import com.ggym.app.domain.repository.RoutineRepository
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
 import com.ggym.app.domain.workout.ActiveWorkoutUseCases
 import com.ggym.app.domain.workout.RestTimerUseCases
 import com.ggym.app.domain.workout.StartWorkoutResult
 import com.ggym.app.domain.workout.WorkingWeightUseCases
+import com.ggym.app.ui.common.KgFormat
+import com.ggym.app.ui.exercises.ExerciseFormError
+import com.ggym.app.ui.exercises.ExerciseFormMode
+import com.ggym.app.ui.exercises.ExerciseFormState
+import com.ggym.app.ui.exercises.ExerciseFormValidation
+import com.ggym.app.ui.exercises.validate
+import com.ggym.app.ui.exercises.withName
+import com.ggym.app.ui.exercises.withReps
+import com.ggym.app.ui.exercises.withRestStep
+import com.ggym.app.ui.exercises.withSetsStep
+import com.ggym.app.ui.exercises.withWeight
+import com.ggym.app.ui.exercises.withWeightStep
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -21,6 +35,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 /**
  * The exercises of one training day.
@@ -38,6 +53,9 @@ class DayDetailViewModel(
     private val history: WorkoutHistoryRepository,
     private val workout: ActiveWorkoutUseCases,
     private val restTimer: RestTimerUseCases,
+    private val formUseCases: ExerciseFormUseCases,
+    /** The locale the weight field is shown and re-parsed in; injected so tests are stable. */
+    private val locale: Locale = Locale.getDefault(),
 ) : ViewModel() {
 
     private val pendingDelete = MutableStateFlow<SlotRow?>(null)
@@ -45,8 +63,8 @@ class DayDetailViewModel(
     /** The running workout that blocks a start, while the resume-or-discard question is open. */
     private val startConflict = MutableStateFlow<StartConflict?>(null)
 
-    /** The exercise-rename dialog, and the collision it may be showing. */
-    private val renameDialog = MutableStateFlow<ExerciseRenameDialog?>(null)
+    /** The exercise form, while it is open: the name and the day's numbers, edited together. */
+    private val form = MutableStateFlow<ExerciseFormState?>(null)
 
     private val opened = MutableSharedFlow<DayDetailEffect>(extraBufferCapacity = 1)
 
@@ -58,8 +76,8 @@ class DayDetailViewModel(
         exercises.observeAll(),
         pendingDelete,
         startConflict,
-        renameDialog,
-    ) { routine, dictionary, pendingDelete, startConflict, renameDialog ->
+        form,
+    ) { routine, dictionary, pendingDelete, startConflict, form ->
         val day = routine?.days?.firstOrNull { it.id == routineDayId }
         if (day == null) {
             return@combine DayDetailUiState(isLoading = false, isMissing = true)
@@ -86,7 +104,7 @@ class DayDetailViewModel(
             },
             pendingDelete = pendingDelete,
             startConflict = startConflict,
-            renameDialog = renameDialog,
+            form = form,
         )
     }.stateIn(
         scope = viewModelScope,
@@ -145,36 +163,111 @@ class DayDetailViewModel(
         }
     }
 
-    /** Opens the rename dialog for the dictionary entry this slot plans. */
-    fun startRenameExercise(slot: SlotRow) {
-        renameDialog.value = ExerciseRenameDialog(exerciseId = slot.exerciseId, initialName = slot.exerciseName)
+    /**
+     * Opens the form for one slot.
+     *
+     * The row has already resolved the weight ([WorkingWeightUseCases]), so the form opens with the
+     * same number the user was just looking at rather than reading the database a second time — the
+     * two can therefore never disagree. `weightTouched` starts false: an inherited number shown in
+     * the field is there to be seen, not to be written back unless the user changes it.
+     */
+    fun openForm(slot: SlotRow) {
+        form.value = ExerciseFormState(
+            mode = ExerciseFormMode.EditSlot,
+            plannedExerciseId = slot.id,
+            name = slot.exerciseName,
+            sets = slot.targetSets,
+            reps = slot.targetReps,
+            restSeconds = slot.restSeconds,
+            weight = slot.weightKg?.let { KgFormat.formatNumber(it, locale) }.orEmpty(),
+            isOwnWeight = slot.hasOwnWeight,
+        )
     }
 
-    fun dismissRenameExercise() {
-        renameDialog.value = null
+    fun dismissForm() {
+        form.value = null
     }
+
+    fun setFormName(text: String) = editForm { it.withName(text) }
+
+    fun stepFormSets(delta: Int) = editForm { it.withSetsStep(delta) }
+
+    fun setFormReps(text: String) = editForm { it.withReps(text) }
+
+    fun stepFormRest(deltaSeconds: Int) = editForm { it.withRestStep(deltaSeconds) }
+
+    fun setFormWeight(text: String) = editForm { it.withWeight(text) }
+
+    fun stepFormWeight(deltaKg: Double) = editForm { it.withWeightStep(deltaKg, locale) }
 
     /**
-     * Renames the dictionary entry. The write is the repository's — it, not the screen, judges the
-     * `NOCASE` collision, because only the database can answer it without a race.
+     * Writes the exercise's name and the slot's numbers in one action.
      *
-     * A name another entry already holds is the one answer the dialog has to explain: it stays
-     * open, the typed text stays where the user left it, and the field says what happened. Every
-     * other outcome dismisses the dialog, because there is nothing left to ask.
+     * The slot is re-read here rather than trusted from the form: the form only owns the five fields
+     * it shows, and the rest of the slot (its order, its exercise) belongs to the day. A name another
+     * entry holds is the one refusal the form has to explain — it stays open with the typed text and
+     * nothing is written, not even the numbers.
      */
-    fun saveExerciseName(name: String) {
-        val dialog = renameDialog.value ?: return
-        if (name.isBlank()) return
+    fun saveForm() {
+        val current = form.value ?: return
+        val plannedExerciseId = current.plannedExerciseId ?: return
 
-        viewModelScope.launch {
-            when (exercises.renameExercise(dialog.exerciseId, name)) {
-                RenameExerciseResult.NameTaken -> renameDialog.update { it?.copy(nameTaken = true) }
-                is RenameExerciseResult.Renamed,
-                RenameExerciseResult.Unchanged,
-                RenameExerciseResult.NotFound,
-                -> renameDialog.value = null
+        when (val validation = current.validate()) {
+            is ExerciseFormValidation.Invalid ->
+                form.value = current.copy(error = validation.error)
+
+            is ExerciseFormValidation.Valid -> viewModelScope.launch {
+                val slot = findSlot(plannedExerciseId)
+                if (slot == null) {
+                    // The slot is gone (the day was deleted, or another screen removed it): there is
+                    // nothing to write, and pretending otherwise would re-create it as an orphan.
+                    form.value = null
+                    return@launch
+                }
+
+                // An inherited weight the user never touched is left inherited, so the day keeps
+                // following the exercise instead of pinning the number it happened to show.
+                val weightKg = if (current.weightTouched || current.isOwnWeight) validation.weightKg else null
+
+                when (
+                    formUseCases.updateSlot(
+                        plannedExercise = slot,
+                        name = validation.name,
+                        sets = validation.sets,
+                        reps = validation.reps,
+                        restSeconds = validation.restSeconds,
+                        weightKg = weightKg,
+                    )
+                ) {
+                    UpdateSlotResult.Saved -> form.value = null
+                    UpdateSlotResult.NameTaken ->
+                        form.update { it?.copy(error = ExerciseFormError.NameTaken) }
+                    UpdateSlotResult.NotFound -> form.value = null
+                }
             }
         }
+    }
+
+    /** The sheet's "Remove from day": the same write as the row menu, from inside the form. */
+    fun removeFormSlot() {
+        val plannedExerciseId = form.value?.plannedExerciseId ?: return
+
+        viewModelScope.launch {
+            routines.deletePlannedExercise(plannedExerciseId)
+            form.value = null
+        }
+    }
+
+    /** The slot as the database has it right now, or `null` once it is gone. */
+    private suspend fun findSlot(plannedExerciseId: Long): PlannedExercise? =
+        routines.observeRoutine(routineId).first()
+            ?.days
+            ?.flatMap { day -> day.plannedExercises }
+            ?.firstOrNull { slot -> slot.id == plannedExerciseId }
+
+    /** One field edit, applied only while the form is open. */
+    private fun editForm(transform: (ExerciseFormState) -> ExerciseFormState) {
+        form.value = form.value?.let(transform)
     }
 
     /**

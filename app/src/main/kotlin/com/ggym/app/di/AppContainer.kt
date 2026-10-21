@@ -23,6 +23,7 @@ import com.ggym.app.domain.repository.RestTimerStore
 import com.ggym.app.domain.repository.RoutineRepository
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
 import com.ggym.app.domain.repository.WorkoutPreferences
+import com.ggym.app.domain.exercise.ExerciseFormUseCases
 import com.ggym.app.domain.workout.ActiveWorkoutUseCases
 import com.ggym.app.domain.workout.RestTimerUseCases
 import com.ggym.app.domain.stats.BodyWeightUseCases
@@ -35,7 +36,6 @@ import com.ggym.app.service.ServiceRestTimerCommands
 import com.ggym.app.ui.calendar.CalendarViewModel
 import com.ggym.app.ui.exercises.ExercisePickerViewModel
 import com.ggym.app.ui.history.HistoryDetailViewModel
-import com.ggym.app.ui.exercises.SlotEditorViewModel
 import com.ggym.app.ui.settings.SettingsViewModel
 import com.ggym.app.ui.stats.StatsViewModel
 import com.ggym.app.ui.workout.ActiveWorkoutViewModel
@@ -122,6 +122,12 @@ class AppContainer(context: Context) {
         history = workoutHistoryRepository,
     )
 
+    /** The exercise form's two writes: create a dictionary entry and plan it, or rewrite both rows. */
+    private val exerciseFormUseCases = ExerciseFormUseCases(
+        routines = routineRepository,
+        exercises = exerciseRepository,
+    )
+
     /** The workout that is running: starting one, working through it, ending it. */
     val activeWorkoutUseCases = ActiveWorkoutUseCases(
         routines = routineRepository,
@@ -173,22 +179,18 @@ class AppContainer(context: Context) {
                 history = workoutHistoryRepository,
                 workout = activeWorkoutUseCases,
                 restTimer = restTimerUseCases,
+                formUseCases = exerciseFormUseCases,
             )
         }
     }
 
     fun exercisePickerViewModelFactory(routineDayId: Long): ViewModelProvider.Factory = viewModelFactory {
-        initializer { ExercisePickerViewModel(routineDayId, routineRepository, exerciseRepository) }
-    }
-
-    fun slotEditorViewModelFactory(routineId: Long, plannedExerciseId: Long): ViewModelProvider.Factory = viewModelFactory {
         initializer {
-            SlotEditorViewModel(
-                routineId = routineId,
-                plannedExerciseId = plannedExerciseId,
+            ExercisePickerViewModel(
+                routineDayId = routineDayId,
                 routines = routineRepository,
                 exercises = exerciseRepository,
-                weights = workingWeightUseCases,
+                formUseCases = exerciseFormUseCases,
             )
         }
     }

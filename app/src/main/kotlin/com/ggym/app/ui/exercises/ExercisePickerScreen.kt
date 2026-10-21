@@ -125,9 +125,9 @@ fun ExercisePickerScreen(
                         if (state.canCreate) {
                             PickerRow(
                                 name = stringResource(R.string.picker_create, state.query.trim()),
-                                detail = null,
+                                detail = stringResource(R.string.picker_create_detail),
                                 icon = Icons.Filled.Add,
-                                onClick = viewModel::createAndAdd,
+                                onClick = viewModel::openCreateForm,
                             )
                         }
                         state.results.forEachIndexed { index, exercise ->
@@ -166,6 +166,20 @@ fun ExercisePickerScreen(
 
             Spacer(Modifier.padding(bottom = 24.dp))
         }
+    }
+
+    state.form?.let { form ->
+        ExerciseFormSheet(
+            form = form,
+            onNameChange = viewModel::setFormName,
+            onStepSets = viewModel::stepFormSets,
+            onRepsChange = viewModel::setFormReps,
+            onStepRest = viewModel::stepFormRest,
+            onWeightChange = viewModel::setFormWeight,
+            onStepWeight = viewModel::stepFormWeight,
+            onSave = viewModel::saveForm,
+            onDismiss = viewModel::dismissForm,
+        )
     }
 
     state.pendingDelete?.let { exercise ->

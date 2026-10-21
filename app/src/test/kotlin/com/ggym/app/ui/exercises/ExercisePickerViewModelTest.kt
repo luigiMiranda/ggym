@@ -1,6 +1,7 @@
 package com.ggym.app.ui.exercises
 
 import app.cash.turbine.test
+import com.ggym.app.domain.exercise.ExerciseFormUseCases
 import com.ggym.app.domain.model.Exercise
 import com.ggym.app.testing.ViewModelTest
 import com.ggym.app.testing.awaitState
@@ -30,6 +31,7 @@ class ExercisePickerViewModelTest : ViewModelTest() {
         routineDayId = dayId,
         routines = routineRepository,
         exercises = exerciseRepository,
+        formUseCases = ExerciseFormUseCases(routineRepository, exerciseRepository),
     )
 
     private suspend fun givenDayWithBench() {
@@ -90,7 +92,7 @@ class ExercisePickerViewModelTest : ViewModelTest() {
     }
 
     @Test
-    fun `a new name can be created, and creating it plans it in this day`() = runTest {
+    fun `a new name is configured in the form, and saving it plans it in this day`() = runTest {
         givenDayWithBench()
         val vm = viewModel()
         val added = backgroundScope.async(UnconfinedTestDispatcher(testScheduler)) { vm.effects.first() }
@@ -101,24 +103,92 @@ class ExercisePickerViewModelTest : ViewModelTest() {
             val state = awaitState { it.canCreate }
             assertEquals("the typed text is what the create row shows", "Cable Fly", state.query)
 
-            vm.createAndAdd()
+            vm.openCreateForm()
+
+            val form = awaitState { it.form != null }.form!!
+            assertEquals("the name carries into the form so a typo can be fixed", "Cable Fly", form.name)
+            assertEquals(ExerciseFormDefaults.SETS, form.sets)
+            assertEquals(ExerciseFormDefaults.REPS, form.reps)
+            assertEquals(ExerciseFormMode.Create, form.mode)
+            assertEquals("a new exercise may have no weight at all", "", form.weight)
+
+            // The user sets the numbers the form exists for, then saves.
+            vm.stepFormSets(1)
+            vm.setFormReps("12")
+            vm.stepFormWeight(2.5)
+            vm.saveForm()
 
             awaitState { it.results.any { exercise -> exercise.name == "Cable Fly" } }
             assertEquals(ExercisePickerEffect.Added, added.await())
 
             val dictionary = exerciseRepository.observeAll().first()
             assertEquals(listOf("Bench Press", "Cable Fly"), dictionary.map { it.name })
-            val planned = routineRepository.observeRoutine(routineId).first()!!.days.single().plannedExercises
             assertEquals(
-                "the existing slot is untouched and the new one starts from the shared defaults",
-                listOf(4, NewSlotDefaults.TARGET_SETS),
-                planned.map { it.targetSets },
+                "the starting weight is the exercise's base weight, not the day's",
+                2.5,
+                dictionary.single { it.name == "Cable Fly" }.currentWorkingWeight,
             )
-            assertEquals(listOf("8-10", NewSlotDefaults.TARGET_REPS), planned.map { it.targetReps })
+
+            val planned = routineRepository.observeRoutine(routineId).first()!!.days.single().plannedExercises
+            assertEquals("the existing slot is untouched", 4, planned.first().targetSets)
+            assertEquals("and the new one is planned at what the form said", 4, planned.last().targetSets)
+            assertEquals("12", planned.last().targetReps)
             assertEquals(
                 "each kind of exercise keeps its own rest time",
                 listOf(150, Exercise.DEFAULT_REST_SECONDS),
                 planned.map { it.restSeconds },
+            )
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a create form that is dismissed writes nothing`() = runTest {
+        givenDayWithBench()
+        val vm = viewModel()
+
+        vm.uiState.test {
+            awaitState { !it.isLoading }
+            vm.updateQuery("Cable Fly")
+            awaitState { it.canCreate }
+            vm.openCreateForm()
+            awaitState { it.form != null }
+
+            vm.dismissForm()
+            awaitState { it.form == null }
+
+            assertEquals(
+                "closing the form leaves the dictionary exactly as it was",
+                listOf("Bench Press"),
+                exerciseRepository.observeAll().first().map { it.name },
+            )
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a blank form is refused and nothing is written`() = runTest {
+        givenDayWithBench()
+        val vm = viewModel()
+
+        vm.uiState.test {
+            awaitState { !it.isLoading }
+            vm.updateQuery("Cable Fly")
+            awaitState { it.canCreate }
+            vm.openCreateForm()
+            awaitState { it.form != null }
+
+            vm.setFormName("   ")
+            vm.saveForm()
+
+            val state = awaitState { it.form?.error != null }
+            assertEquals(ExerciseFormError.NameBlank, state.form!!.error)
+            assertEquals(
+                "a refused form does not reach the dictionary",
+                listOf("Bench Press"),
+                exerciseRepository.observeAll().first().map { it.name },
             )
 
             cancelAndIgnoreRemainingEvents()

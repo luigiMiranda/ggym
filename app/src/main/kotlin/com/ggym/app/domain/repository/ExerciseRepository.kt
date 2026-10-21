@@ -30,8 +30,17 @@ interface ExerciseRepository {
      * This is the write path behind "type a name, reuse it forever": an existing entry wins over
      * the arguments, so reusing "Bench Press" can never reset the weight it carries. The name is
      * trimmed, and matching ignores case.
+     *
+     * [currentWorkingWeight] is written **only when the row is created** — it is the exercise's
+     * starting weight, and an entry that already exists keeps the number its own workouts put
+     * there. Passing it for an existing name is a silent no-op, exactly like
+     * [defaultRestSeconds].
      */
-    suspend fun findOrCreate(name: String, defaultRestSeconds: Int = Exercise.DEFAULT_REST_SECONDS): Exercise
+    suspend fun findOrCreate(
+        name: String,
+        defaultRestSeconds: Int = Exercise.DEFAULT_REST_SECONDS,
+        currentWorkingWeight: Double? = null,
+    ): Exercise
 
     /** Inserts [exercise] or updates it by id; returns the stored copy, with its id filled in. */
     suspend fun save(exercise: Exercise): Exercise

@@ -6,13 +6,17 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.core.app.ApplicationProvider
 import com.ggym.app.R
+import com.ggym.app.domain.exercise.ExerciseFormUseCases
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.workout.ActiveWorkoutUseCases
 import com.ggym.app.domain.workout.RestTimerUseCases
@@ -26,7 +30,6 @@ import com.ggym.app.testing.RepositoryTest
 import com.ggym.app.testing.TestData
 import com.ggym.app.testing.givenExerciseNamed
 import com.ggym.app.testing.givenPlannedDay
-import com.ggym.app.ui.exercises.SlotEditorSheet
 import com.ggym.app.ui.theme.GgymTheme
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -40,17 +43,16 @@ import java.util.Locale
 
 /**
  * "Start workout" on the training day, driven as a user drives it: the button, the resume-or-discard
- * question when a workout already runs, and the disabled state of a day with nothing planned.
+ * question when a workout already runs, the disabled state of a day with nothing planned, and the two
+ * ways into a slot (the row body and its menu) — both of which now open the one exercise form.
  *
  * SDK 36 for the same reason as the other Compose suites: the framework's Espresso reflection.
  *
  * **One limitation, found here**: a text field inside a `Dialog` window never reports idle under
- * Robolectric — `NameInputDialog` (an `AlertDialog` with an `OutlinedTextField`) fails every
- * `waitForIdle` with `AppNotIdleException`, while the same field inside a `ModalBottomSheet`
- * (`SlotEditorSheetTest`) and an `AlertDialog` with no field (`ConfirmDeleteDialog`) both idle. So
- * the renamed-exercise *form* is exercised by `DayDetailViewModelTest` and
- * `RoomExerciseRepositoryTest`, and by the device gate; this class pins the entry point that opens
- * it.
+ * Robolectric — the old `NameInputDialog` (an `AlertDialog` with an `OutlinedTextField`) failed every
+ * `waitForIdle` with `AppNotIdleException`, while the same field inside a `ModalBottomSheet` idles.
+ * That is one reason the exercise form is a sheet rather than a dialog: this class can drive the name
+ * field and its collision message, where the dialog's path had to be left to the ViewModel tests.
  */
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [36], qualifiers = "w411dp-h891dp")
@@ -96,6 +98,8 @@ class DayDetailScreenTest : RepositoryTest() {
                     history = historyRepository,
                     workout = active,
                     restTimer = timer,
+                    formUseCases = ExerciseFormUseCases(routineRepository, exerciseRepository),
+                    locale = Locale.ENGLISH,
                 )
             }
         }
@@ -104,7 +108,6 @@ class DayDetailScreenTest : RepositoryTest() {
             GgymTheme {
                 DayDetailScreen(
                     viewModelFactory = factory,
-                    slotEditorViewModelFactory = { _ -> error("the slot editor is not part of this flow") },
                     onBack = {},
                     onAddExercise = {},
                     onOpenWorkout = { opened += it },
@@ -176,23 +179,45 @@ class DayDetailScreenTest : RepositoryTest() {
     }
 
     @Test
-    fun `a slot's row menu offers renaming the exercise beside editing the slot`() {
+    fun `a slot's row menu offers one edit and the removal`() {
         givenPushDay()
         show()
         waitForText("Bench Press")
 
         compose.onAllNodesWithContentDescription(context.getString(R.string.action_more))[0].performClick()
 
-        // The name on the row has its own verb, and it is not the same verb as editing the slot's
-        // sets: one moves the dictionary entry, the other this day's numbers.
-        compose.onNodeWithText(context.getString(R.string.exercise_rename_title)).assertExists()
+        // One verb for the name and the numbers: they are two rows, but one thought, and the rename
+        // has moved into the form. The removal stays separate because it means something else.
         compose.onNodeWithText(context.getString(R.string.action_edit)).assertExists()
         compose.onNodeWithText(context.getString(R.string.slot_remove)).assertExists()
+    }
 
-        // Opening and dismissing the rename form is deliberately *not* driven here: a text field
-        // inside a dialog window never reports idle under Robolectric (see the class KDoc), so the
-        // form's own flow — prefill, the `NOCASE` refusal, the rename landing — is
-        // `DayDetailViewModelTest`'s and `RoomExerciseRepositoryTest`'s, and the device gate's.
+    /**
+     * The form is a `ModalBottomSheet`, whose text fields *do* report idle under Robolectric (unlike
+     * a `Dialog` window's — see the class KDoc), so the collision path the old rename dialog could
+     * never be tested on is reachable here.
+     */
+    @Test
+    fun `editing a slot opens the form on that row, and a name another entry holds is refused in place`() {
+        givenPushDay()
+        show()
+        waitForText("Bench Press")
+
+        compose.onNodeWithText("Bench Press").performClick()
+        waitForText(context.getString(R.string.form_title_edit))
+
+        compose.onNodeWithText("8-10").assertExists()
+        compose.onNodeWithText("120s").assertExists()
+
+        // “Cable Fly” is already in the dictionary, so saving this form must write nothing at all.
+        // The name is the one field whose *value* is also the row's, so the field is picked by its
+        // text action rather than by its text alone.
+        compose.onNode(hasSetTextAction() and hasText("Bench Press")).performTextReplacement("Cable Fly")
+        compose.onNodeWithText(context.getString(R.string.action_save)).performClick()
+
+        waitForText(context.getString(R.string.exercise_rename_taken))
+        compose.onNodeWithText(context.getString(R.string.exercise_rename_taken)).assertExists()
+        compose.onNodeWithText(context.getString(R.string.form_title_edit)).assertExists()
     }
 
     @Test

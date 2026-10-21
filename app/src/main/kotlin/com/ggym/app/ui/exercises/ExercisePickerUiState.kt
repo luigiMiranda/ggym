@@ -31,6 +31,8 @@ data class ExercisePickerUiState(
     val pendingDelete: ExerciseRow? = null,
     /** Set when a delete was refused: the routines that still plan the exercise. */
     val blockedDeleteRoutines: List<String> = emptyList(),
+    /** The create form, while it is open; `null` means the list is all there is. */
+    val form: ExerciseFormState? = null,
 )
 
 /** One-shot outcomes of the picker. */
@@ -38,10 +40,4 @@ sealed interface ExercisePickerEffect {
 
     /** The exercise is now planned in the day the picker was opened for; the caller goes back. */
     data object Added : ExercisePickerEffect
-}
-
-/** Defaults for a slot created from the picker; the sheet is where they get edited. */
-object NewSlotDefaults {
-    const val TARGET_SETS = 3
-    const val TARGET_REPS = "10"
 }

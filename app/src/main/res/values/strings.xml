@@ -158,7 +158,6 @@
 
     <!-- Units and numbers -->
     <string name="unit_kg">kg</string>
-    <string name="unit_seconds">s</string>
     <string name="weight_kg">%1$s kg</string>
     <string name="weight_unknown">—</string>
     <string name="weight_decrease">Decrease the weight by 2.5 kg</string>
@@ -244,14 +243,26 @@
     <string name="slot_error_rest">Rest cannot be negative.</string>
     <string name="slot_error_weight">Enter a weight like 82.5, or leave it blank.</string>
 
+    <!-- Exercise form (create a new exercise, or edit one day's slot) -->
+    <string name="form_title_create">New exercise</string>
+    <string name="form_title_edit">Edit exercise</string>
+    <string name="form_add_to_day">Add to day</string>
+    <string name="form_sets_decrease">One set fewer</string>
+    <string name="form_sets_increase">One set more</string>
+    <string name="form_rest_decrease">15 seconds less</string>
+    <string name="form_rest_increase">15 seconds more</string>
+    <string name="form_error_name">Give the exercise a name.</string>
+    <string name="form_weight_base_hint">The exercise\'s base weight. A logged set replaces it.</string>
+    <string name="form_weight_slot_hint">This day only. Blank follows the exercise\'s weight.</string>
+
     <!-- Exercise picker -->
     <string name="picker_title">Add exercise</string>
     <string name="picker_suggested">Suggested</string>
     <string name="picker_detail">%1$s · %2$s</string>
     <string name="picker_search_label">Search or type a new name</string>
     <string name="picker_create">Create “%1$s”</string>
+    <string name="picker_create_detail">Set sets, reps and weight first</string>
     <string name="picker_empty">No exercise matches. Type a name to create it.</string>
-    <string name="exercise_rename_title">Rename exercise</string>
     <string name="exercise_rename_label">Exercise name</string>
     <string name="exercise_rename_taken">An exercise with this name already exists.</string>
     <string name="exercise_delete_title">Delete exercise?</string>

@@ -46,7 +46,11 @@ internal class RoomExerciseRepository(
     override suspend fun findById(exerciseId: Long): Exercise? =
         dao.getById(exerciseId)?.let(ExerciseMapper::toDomain)
 
-    override suspend fun findOrCreate(name: String, defaultRestSeconds: Int): Exercise {
+    override suspend fun findOrCreate(
+        name: String,
+        defaultRestSeconds: Int,
+        currentWorkingWeight: Double?,
+    ): Exercise {
         val trimmed = name.trim()
         require(trimmed.isNotEmpty()) { "an exercise needs a name" }
 
@@ -54,7 +58,7 @@ internal class RoomExerciseRepository(
         dao.insertIgnoringNameConflicts(
             ExerciseEntity(
                 name = trimmed,
-                currentWorkingWeight = null,
+                currentWorkingWeight = currentWorkingWeight,
                 defaultRestSeconds = defaultRestSeconds,
             ),
         )

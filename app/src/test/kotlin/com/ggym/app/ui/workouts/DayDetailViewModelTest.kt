@@ -1,6 +1,7 @@
 package com.ggym.app.ui.workouts
 
 import app.cash.turbine.test
+import com.ggym.app.domain.exercise.ExerciseFormUseCases
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.workout.ActiveWorkoutUseCases
 import com.ggym.app.domain.workout.RestTimerUseCases
@@ -13,6 +14,8 @@ import com.ggym.app.testing.TestData
 import com.ggym.app.testing.ViewModelTest
 import com.ggym.app.testing.awaitState
 import com.ggym.app.testing.givenExercise
+import com.ggym.app.ui.exercises.ExerciseFormError
+import com.ggym.app.ui.exercises.ExerciseFormMode
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -20,6 +23,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.Locale
 
 /**
  * The day list: the weight each row shows, and the order the user arranged.
@@ -68,6 +72,8 @@ class DayDetailViewModelTest : ViewModelTest() {
         history = historyRepository,
         workout = activeWorkout,
         restTimer = timer,
+        formUseCases = ExerciseFormUseCases(routineRepository, exerciseRepository),
+        locale = Locale.ENGLISH,
     )
 
     @Test
@@ -211,59 +217,183 @@ class DayDetailViewModelTest : ViewModelTest() {
     }
 
     @Test
-    fun `the rename dialog opens with the exercise's current name`() = runTest {
+    fun `opening a slot's form fills it from the row the user is looking at`() = runTest {
         givenStartableDay()
         val vm = viewModel()
 
         vm.uiState.test {
             val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
+            val row = loaded.slots.single()
 
-            vm.startRenameExercise(loaded.slots.single())
+            vm.openForm(row)
 
-            val dialog = awaitState { it.renameDialog != null }.renameDialog!!
-            assertEquals("it renames the entry the slot plans", loaded.slots.single().exerciseId, dialog.exerciseId)
-            assertEquals("and it starts from the name the user is looking at", "Bench Press", dialog.initialName)
-            assertEquals("no refusal is being shown yet", false, dialog.nameTaken)
+            val form = awaitState { it.form != null }.form!!
+            assertEquals(ExerciseFormMode.EditSlot, form.mode)
+            assertEquals("the form edits the row it was opened for", row.id, form.plannedExerciseId)
+            assertEquals("and starts from the name on screen", "Bench Press", form.name)
+            assertEquals(4, form.sets)
+            assertEquals("8-10", form.reps)
+            assertEquals(120, form.restSeconds)
+            assertEquals("no weight of its own, so the field is blank", "", form.weight)
+            assertEquals(false, form.isOwnWeight)
+            assertEquals("and the user has not been in the field", false, form.weightTouched)
 
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `renaming a slot's exercise changes the dictionary and closes the dialog`() = runTest {
+    fun `saving the form writes the exercise's name and the day's numbers in one action`() = runTest {
         givenStartableDay()
         val vm = viewModel()
 
         vm.uiState.test {
             val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
-            vm.startRenameExercise(loaded.slots.single())
+            vm.openForm(loaded.slots.single())
+            awaitState { it.form != null }
 
-            vm.saveExerciseName("Barbell Bench Press")
+            vm.setFormName("Barbell Bench Press")
+            vm.stepFormSets(1)
+            vm.setFormReps("5")
+            vm.stepFormRest(-30)
+            vm.setFormWeight("85")
+            vm.saveForm()
 
-            awaitState { it.renameDialog == null && it.slots.single().exerciseName == "Barbell Bench Press" }
+            // The two writes land in two tables, so the state that satisfies "both are saved" is the
+            // one that already carries the new numbers — waiting only for the name would race the
+            // routine flow and read the slot as it was before the save.
+            val saved = awaitState {
+                it.form == null &&
+                    it.slots.single().exerciseName == "Barbell Bench Press" &&
+                    it.slots.single().targetSets == 5
+            }
             assertNotNull("the dictionary moved", exerciseRepository.findByName("Barbell Bench Press"))
             assertNull("and the old name is gone", exerciseRepository.findByName("Bench Press"))
 
+            val slot = saved.slots.single()
+            assertEquals("the sets came from the stepper", 5, slot.targetSets)
+            assertEquals("5", slot.targetReps)
+            assertEquals("and the rest from its own", 90, slot.restSeconds)
+            assertEquals(85.0, slot.weightKg)
+            assertEquals("the day's own number is no longer inherited", true, slot.hasOwnWeight)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    /**
+     * The bug this milestone exists for, in the form's own terms: the number an inherited slot shows
+     * is there to be read, not to be written back. Pinning it would freeze the day at whatever it
+     * happened to display, and the next logged set would never show up.
+     */
+    @Test
+    fun `saving without touching an inherited weight leaves the slot inheriting it`() = runTest {
+        val bench = exerciseRepository.findOrCreate("Bench Press")
+        exerciseRepository.updateCurrentWorkingWeight(bench.id, 87.5)
+        routineId = routineRepository.createRoutine("Push Day")
+        dayId = routineRepository.addDay(routineId, "Push A")
+        routineRepository.addPlannedExercise(dayId, bench.id, 4, "8-10", 120, weightKg = null)
+        val vm = viewModel()
+
+        vm.uiState.test {
+            val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
+            assertEquals("the row shows the exercise's number", 87.5, loaded.slots.single().weightKg)
+
+            vm.openForm(loaded.slots.single())
+            val form = awaitState { it.form != null }.form!!
+            assertEquals("and the form opens with it in the field", "87.5", form.weight)
+
+            vm.setFormReps("6")
+            vm.saveForm()
+
+            val saved = awaitState { it.form == null && it.slots.single().targetReps == "6" }
+            assertEquals("the slot still has no weight of its own", false, saved.slots.single().hasOwnWeight)
+            assertNull(
+                "so a logged set is still free to move it",
+                routineRepository.observeRoutine(routineId).first()!!.days.single().plannedExercises.single().weightKg,
+            )
+
             cancelAndIgnoreRemainingEvents()
         }
     }
 
     @Test
-    fun `a rename that collides with another exercise is explained and the dialog stays open`() = runTest {
+    fun `a name another exercise holds keeps the form open and writes nothing`() = runTest {
         givenStartableDay()
         exerciseRepository.findOrCreate("Cable Fly")
         val vm = viewModel()
 
         vm.uiState.test {
             val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
-            vm.startRenameExercise(loaded.slots.single())
+            vm.openForm(loaded.slots.single())
+            awaitState { it.form != null }
 
-            vm.saveExerciseName("cable fly")
+            vm.setFormName("cable fly")
+            vm.stepFormSets(2)
+            vm.saveForm()
 
-            val refused = awaitState { it.renameDialog?.nameTaken == true }
+            val refused = awaitState { it.form?.error == ExerciseFormError.NameTaken }
             assertEquals("the row keeps the name it had", "Bench Press", refused.slots.single().exerciseName)
             assertNotNull("the entry it collided with is untouched", exerciseRepository.findByName("Cable Fly"))
-            assertNotNull("and so is the one it tried to rename", exerciseRepository.findByName("Bench Press"))
+            assertNotNull("and so is the one being edited", exerciseRepository.findByName("Bench Press"))
+            assertEquals(
+                "not even the sets were written",
+                4,
+                refused.slots.single().targetSets,
+            )
+            assertEquals("and the typed name is still there to fix", "cable fly", refused.form!!.name)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the form's own controls move its numbers and clear the last error`() = runTest {
+        givenStartableDay()
+        val vm = viewModel()
+
+        vm.uiState.test {
+            val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
+            vm.openForm(loaded.slots.single())
+            awaitState { it.form != null }
+
+            // A refused save leaves the message on screen; the next edit is what takes it away.
+            vm.setFormReps(" ")
+            vm.saveForm()
+            awaitState { it.form?.error == ExerciseFormError.RepsBlank }
+
+            vm.stepFormSets(1)
+            val stepped = awaitState { it.form?.sets == 5 }.form!!
+            assertEquals("an edit clears the message about the old value", null, stepped.error)
+
+            vm.stepFormRest(15)
+            assertEquals(135, awaitState { it.form?.restSeconds == 135 }.form!!.restSeconds)
+
+            // The two floors: one set, and no such thing as a negative rest.
+            repeat(6) { vm.stepFormSets(-1) }
+            assertEquals(1, awaitState { it.form?.sets == 1 }.form!!.sets)
+
+            repeat(20) { vm.stepFormRest(-15) }
+            assertEquals(0, awaitState { it.form?.restSeconds == 0 }.form!!.restSeconds)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `removing from inside the form deletes the slot and closes it`() = runTest {
+        givenStartableDay()
+        val vm = viewModel()
+
+        vm.uiState.test {
+            val loaded = awaitState { !it.isLoading && it.slots.size == 1 }
+            vm.openForm(loaded.slots.single())
+            awaitState { it.form != null }
+
+            vm.removeFormSlot()
+
+            val emptied = awaitState { it.form == null && it.slots.isEmpty() }
+            assertTrue(emptied.slots.isEmpty())
 
             cancelAndIgnoreRemainingEvents()
         }

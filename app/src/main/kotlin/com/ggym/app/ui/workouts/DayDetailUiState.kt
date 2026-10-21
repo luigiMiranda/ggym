@@ -1,5 +1,7 @@
 package com.ggym.app.ui.workouts
 
+import com.ggym.app.ui.exercises.ExerciseFormState
+
 /**
  * One exercise slot as the day list shows it.
  *
@@ -31,8 +33,11 @@ data class DayDetailUiState(
     val pendingDelete: SlotRow? = null,
     /** Set while the resume-or-discard question about a running workout is open. */
     val startConflict: StartConflict? = null,
-    /** Set while the exercise-rename dialog is open. */
-    val renameDialog: ExerciseRenameDialog? = null,
+    /**
+     * The exercise form, while it is open: one sheet that writes the dictionary name *and* this
+     * day's numbers. `null` means the list is all there is.
+     */
+    val form: ExerciseFormState? = null,
 ) {
     /** The shape of the day, for the "Start workout" container: "5 exercises · 14 sets". */
     val plannedSetCount: Int get() = slots.sumOf { it.targetSets }
@@ -43,17 +48,6 @@ data class StartConflict(
     val sessionId: Long,
     val runningDayName: String,
     val runningRoutineName: String,
-)
-
-/**
- * The exercise-rename dialog: which dictionary entry, what it is called now, and whether the last
- * attempt collided with another entry's name. The typed text lives in the dialog itself, so a
- * refusal never loses it.
- */
-data class ExerciseRenameDialog(
-    val exerciseId: Long,
-    val initialName: String,
-    val nameTaken: Boolean = false,
 )
 
 /** What the day screen must do after a start, resume or discard. */

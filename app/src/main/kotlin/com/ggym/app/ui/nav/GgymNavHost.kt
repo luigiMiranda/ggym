@@ -157,11 +157,6 @@ fun GgymNavHost(
                     viewModelFactory = remember(routineId, dayId) {
                         container.dayDetailViewModelFactory(routineId, dayId)
                     },
-                    slotEditorViewModelFactory = remember(routineId) {
-                        { plannedExerciseId: Long ->
-                            container.slotEditorViewModelFactory(routineId, plannedExerciseId)
-                        }
-                    },
                     onBack = { navController.popBackStack() },
                     onAddExercise = { navController.navigate(Routes.exercisePicker(dayId)) },
                     onOpenWorkout = { sessionId -> navController.navigate(Routes.workout(sessionId)) },
