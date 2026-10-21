@@ -104,10 +104,11 @@ ui/common/    EmptyState, dialogs, the row overflow menu, weight formatting and 
 Two conventions are worth stating because they are easy to get wrong: **routes carry ids, never
 state** (`routine/{routineId}`, `day/{routineId}/{dayId}`), so a back stack restored after process
 death re-reads the current data instead of showing a stale copy; and **the bottom bar belongs to the
-tabs**, so the routine tree is a drill-down with its own back path rather than a fifth tab. A
-running workout is the one exception that keeps the bar: it sits on the Workouts tab's stack, so
-showing the bar keeps Home and Settings reachable without ending it — the workout lives in the
-database and in the rest timer's service, not on the screen.
+tabs**, so the routine tree is a drill-down with its own back path rather than a fifth tab. The bar
+is on screen **everywhere**: `Destination.owningTab(route)` lights the tab a drill-down lives under
+(routine / day / picker / workout → Workouts, history → Calendar), so Home and Settings stay one tap
+away from any depth, and a running workout survives the trip because it lives in the database and in
+the rest timer's service rather than on the screen.
 
 ## 4. State, threading and dependency injection
 

@@ -1,6 +1,7 @@
 package com.ggym.app.ui.nav
 
 import android.app.Application
+import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -138,6 +139,27 @@ class GgymNavHostTest {
             running.id,
             runBlocking { container.workoutHistoryRepository.observeDraft().first() }!!.id,
         )
+    }
+
+    @Test
+    fun `the bar stays through the routine tree with its own tab lit`() {
+        seed()
+        show()
+
+        waitForText("Push Day")
+        compose.onNodeWithText("Push Day").performClick()
+
+        // A routine's day list is a drill-down of the Workouts tab, not a fifth destination: the bar
+        // stays on screen and Workouts stays lit.
+        waitForText("Push A")
+        compose.onNodeWithText(context.getString(R.string.nav_workouts)).assertIsSelected()
+        compose.onNodeWithText(context.getString(R.string.nav_calendar)).assertExists()
+
+        // And one level deeper, on one day's exercises.
+        compose.onNodeWithText("Push A").performClick()
+        waitForText(context.getString(R.string.day_start_label))
+        compose.onNodeWithText(context.getString(R.string.nav_workouts)).assertIsSelected()
+        compose.onNodeWithText(context.getString(R.string.nav_settings)).assertExists()
     }
 
     @Test

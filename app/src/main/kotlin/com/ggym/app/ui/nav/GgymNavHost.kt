@@ -41,12 +41,12 @@ import com.ggym.app.ui.workouts.WorkoutsScreen
 /**
  * The app shell: one activity, the four tabs, and the routine tree behind the Workouts tab.
  *
- * The bottom bar belongs to the tabs. The routine tree keeps its own back path and hides the bar;
- * a **running workout shows it**, with Workouts selected, because the workout is pushed onto that
- * tab's stack and its exit returns there — and because the other tabs (Settings included) have to
- * stay reachable while it runs. Leaving the workout this way does not end it: the draft in the
- * database and the rest timer's service are what keep it alive, not the screen. Each tab keeps its
- * own back stack and scroll position, so returning to Workouts puts the user where they were.
+ * The bottom bar belongs to the tabs and is **always on screen**. A drill-down — the routine tree,
+ * a day's exercises, the picker, a past workout, a running workout — lights the tab it lives under
+ * (`Destination.owningTab`), so Home and Settings stay one tap away from any depth. Leaving a
+ * running workout this way does not end it: the draft in the database and the rest timer's service
+ * are what keep it alive, not the screen. Each tab keeps its own back stack and scroll position, so
+ * returning to Workouts puts the user where they were.
  */
 @Composable
 fun GgymNavHost(
@@ -59,11 +59,11 @@ fun GgymNavHost(
     navController: NavHostController = rememberNavController(),
 ) {
     val backStackEntry by navController.currentBackStackEntryAsState()
-    val route = backStackEntry?.destination?.route
-    // A workout belongs to the Workouts tab: it sits on that tab's stack and its exit returns there,
-    // so the bar stays put and the four tabs remain one tap away while it runs. The routine tree is
-    // a drill-down with its own back path, so it still hides the bar.
-    val tab = Destination.fromRoute(route) ?: Destination.Workouts.takeIf { route == Routes.WORKOUT }
+    // Which tab is lit. The bar itself is always on screen: the routine tree, the picker, a past
+    // workout and a running workout are all drill-downs that belong to a tab, so hiding the bar in
+    // them would take the four tabs away exactly when the user wants them. `owningTab` answers
+    // "whose drill-down is this", and a route it does not know simply lights nothing.
+    val tab = Destination.owningTab(backStackEntry?.destination?.route)
 
     // The notification's tap target: the workout that is running, if there still is one. A
     // notification for a workout that has since ended opens the app where it was, not nowhere.
@@ -76,31 +76,29 @@ fun GgymNavHost(
     Scaffold(
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
-            if (tab != null) {
-                NavigationBar {
-                    Destination.entries.forEach { destination ->
-                        val selected = destination == tab
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = { navController.navigateToTab(destination) },
-                            icon = {
-                                Icon(
-                                    imageVector = if (selected) {
-                                        destination.selectedIcon
-                                    } else {
-                                        destination.unselectedIcon
-                                    },
-                                    contentDescription = null,
-                                )
-                            },
-                            label = { Text(stringResource(destination.labelRes)) },
-                            colors = NavigationBarItemDefaults.colors(
-                                indicatorColor = MaterialTheme.colorScheme.primary,
-                                selectedIconColor = MaterialTheme.colorScheme.onPrimary,
-                                selectedTextColor = MaterialTheme.colorScheme.primary,
-                            ),
-                        )
-                    }
+            NavigationBar {
+                Destination.entries.forEach { destination ->
+                    val selected = destination == tab
+                    NavigationBarItem(
+                        selected = selected,
+                        onClick = { navController.navigateToTab(destination) },
+                        icon = {
+                            Icon(
+                                imageVector = if (selected) {
+                                    destination.selectedIcon
+                                } else {
+                                    destination.unselectedIcon
+                                },
+                                contentDescription = null,
+                            )
+                        },
+                        label = { Text(stringResource(destination.labelRes)) },
+                        colors = NavigationBarItemDefaults.colors(
+                            indicatorColor = MaterialTheme.colorScheme.primary,
+                            selectedIconColor = MaterialTheme.colorScheme.onPrimary,
+                            selectedTextColor = MaterialTheme.colorScheme.primary,
+                        ),
+                    )
                 }
             }
         },

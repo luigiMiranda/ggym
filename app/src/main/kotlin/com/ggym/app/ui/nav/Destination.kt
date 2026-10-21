@@ -51,6 +51,25 @@ enum class Destination(
     companion object {
         val start = Workouts
 
+        /** The tab a plain tab route selects, or `null` for a route that is not a tab. */
         fun fromRoute(route: String?): Destination? = entries.firstOrNull { it.route == route }
+
+        /**
+         * The tab a route lives *under*, so a drill-down keeps its tab lit and the bar never leaves
+         * the screen.
+         *
+         * The routine tree, the exercise picker and a running workout are all reached from the
+         * Workouts tab and their exit returns there; a past workout is opened from the calendar.
+         * Anything unrecognised selects nothing rather than guessing.
+         */
+        fun owningTab(route: String?): Destination? = when (route) {
+            Workouts.route -> Workouts
+            Calendar.route -> Calendar
+            Stats.route -> Stats
+            Settings.route -> Settings
+            Routes.ROUTINE, Routes.DAY, Routes.EXERCISE_PICKER, Routes.WORKOUT -> Workouts
+            Routes.HISTORY -> Calendar
+            else -> null
+        }
     }
 }
