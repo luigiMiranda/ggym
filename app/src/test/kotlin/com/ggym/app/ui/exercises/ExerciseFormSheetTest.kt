@@ -13,6 +13,7 @@ import androidx.test.core.app.ApplicationProvider
 import com.ggym.app.R
 import com.ggym.app.ui.theme.GgymTheme
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -275,6 +276,27 @@ class ExerciseFormSheetTest {
 
         compose.onNodeWithText("Bench Press").assertExists()
         assertEquals(false, dismissed)
+    }
+
+    /**
+     * A create save closes the sheet first and writes after, so the day behind is never seen
+     * updating under an open form. The write answer still has to arrive — the host's save runs, and
+     * a failure (a name collision on an edit) would come back into the still-open form.
+     */
+    @Test
+    fun `a create save closes the sheet and still reports through`() {
+        var saved = false
+        show(
+            state(mode = ExerciseFormMode.Create, name = "Cable Fly"),
+            onSave = { saved = true },
+            onRemove = null,
+        )
+
+        waitForText(string(R.string.form_title_create))
+        compose.onNodeWithText(string(R.string.form_add_to_day)).performClick()
+
+        compose.waitUntil(TIMEOUT_MILLIS) { saved }
+        assertTrue(saved)
     }
 
     /**

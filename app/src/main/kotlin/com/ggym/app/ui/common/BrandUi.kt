@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -35,19 +36,26 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
@@ -247,10 +255,21 @@ fun GgymHeroCard(
  * This is that one shape, so the exercise form cannot show three field styles in one column, and the
  * working weight looks the same here as it does in the body-weight and history editors.
  *
+ * **Every field is the same rectangle.** The label line, the value line and the padding are fixed,
+ * and the value line is the same [ValueRowHeight] whether or not a field carries step buttons. The
+ * only thing that ever changes the height is the supporting line, and that lives *below* the
+ * rectangle — the same place Material puts a field's supporting text — so the box the user types
+ * into never grows an error or a hint into a second size.
+ *
  * Focus and error are a border on the same container rather than a different container, so nothing
  * moves when the field changes state. The value is a plain [BasicTextField] under the container:
  * Material's outlined field puts its label *inside* the border, which is exactly the mismatch this
  * replaces.
+ *
+ * The field owns its text and cursor. Handing the screen's value straight back to the text field on
+ * every composition is what used to replay the value one frame late — the character just typed
+ * flickered out and the cursor jumped back. Keystrokes push up; the screen's value is adopted only
+ * when it actually changes (a stepper, another item's numbers, a validation fix-up).
  */
 @Composable
 fun GgymField(
@@ -266,6 +285,12 @@ fun GgymField(
     onIncrease: (() -> Unit)? = null,
     decreaseLabel: String = "",
     increaseLabel: String = "",
+    /**
+     * What this field accepts. A pasted character the filter drops never reaches the screen and is
+     * never shown: the container would otherwise keep a character the state refused. Identity by
+     * default, so a free-text field (a name, reps, a weight) is untouched.
+     */
+    inputFilter: (String) -> String = { it },
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val focused by interactionSource.collectIsFocusedAsState()
@@ -281,59 +306,92 @@ fun GgymField(
         fontFeatureSettings = "tnum",
     )
 
-    Column(
-        modifier = modifier
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .border(width = 2.dp, color = borderColor, shape = shape)
-            .padding(horizontal = 14.dp, vertical = 9.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Text(
-            text = label.uppercase(),
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 10.5.sp,
-                letterSpacing = 1.2.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            BasicTextField(
-                value = value,
-                onValueChange = onValueChange,
-                singleLine = true,
-                textStyle = valueStyle.copy(color = MaterialTheme.colorScheme.onSurface),
-                keyboardOptions = keyboardOptions,
-                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-                interactionSource = interactionSource,
-                modifier = Modifier.weight(1f),
+    var textFieldValue by remember {
+        mutableStateOf(TextFieldValue(value, selection = TextRange(value.length)))
+    }
+    // A value that changed while this field was not being typed in (another item opened, a stepper
+    // moved) is adopted at once, so the old text is never shown for a frame.
+    if (!focused && value != textFieldValue.text) {
+        textFieldValue = TextFieldValue(value, selection = TextRange(value.length))
+    }
+    // A stepper tapped while the field still has focus changes the screen's value without going
+    // through the text field, so adopt it once the screen has had a frame to settle.
+    LaunchedEffect(value) {
+        withFrameNanos { }
+        if (value != textFieldValue.text) {
+            textFieldValue = TextFieldValue(value, selection = TextRange(value.length))
+        }
+    }
+
+    Column(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag(GgymFieldBoxTag)
+                .clip(shape)
+                .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                .border(width = 2.dp, color = borderColor, shape = shape)
+                .padding(horizontal = 14.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = label.uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.5.sp,
+                    letterSpacing = 1.2.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            if (suffix != null) {
-                Text(
-                    text = suffix,
-                    style = valueStyle,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp),
+            Row(
+                modifier = Modifier.height(ValueRowHeight),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                BasicTextField(
+                    value = textFieldValue,
+                    onValueChange = { new ->
+                        val previousText = textFieldValue.text
+                        val accepted = inputFilter(new.text)
+                        textFieldValue = if (accepted == new.text) {
+                            new
+                        } else {
+                            new.copy(text = accepted, selection = TextRange(accepted.length))
+                        }
+                        if (accepted != previousText) onValueChange(accepted)
+                    },
+                    singleLine = true,
+                    textStyle = valueStyle.copy(color = MaterialTheme.colorScheme.onSurface),
+                    keyboardOptions = keyboardOptions,
+                    cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                    interactionSource = interactionSource,
+                    modifier = Modifier.weight(1f),
                 )
-            }
-            if (onDecrease != null || onIncrease != null) {
-                Row(
-                    modifier = Modifier.padding(start = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    StepSquare(
-                        icon = Icons.Filled.Remove,
-                        contentDescription = decreaseLabel,
-                        enabled = onDecrease != null,
-                        onClick = { onDecrease?.invoke() },
+                if (suffix != null) {
+                    Text(
+                        text = suffix,
+                        style = valueStyle,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp),
                     )
-                    StepSquare(
-                        icon = Icons.Filled.Add,
-                        contentDescription = increaseLabel,
-                        enabled = onIncrease != null,
-                        onClick = { onIncrease?.invoke() },
-                    )
+                }
+                if (onDecrease != null || onIncrease != null) {
+                    Row(
+                        modifier = Modifier.padding(start = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        StepSquare(
+                            icon = Icons.Filled.Remove,
+                            contentDescription = decreaseLabel,
+                            enabled = onDecrease != null,
+                            onClick = { onDecrease?.invoke() },
+                        )
+                        StepSquare(
+                            icon = Icons.Filled.Add,
+                            contentDescription = increaseLabel,
+                            enabled = onIncrease != null,
+                            onClick = { onIncrease?.invoke() },
+                        )
+                    }
                 }
             }
         }
@@ -346,10 +404,17 @@ fun GgymField(
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant
                 },
+                modifier = Modifier.padding(start = 4.dp, top = 4.dp),
             )
         }
     }
 }
+
+/** The fixed height of a field's value line: the step buttons are 36dp, so the line is too. */
+private val ValueRowHeight = 36.dp
+
+/** The tag every [GgymField] box carries; the tests use it to hold every box to one height. */
+const val GgymFieldBoxTag = "ggym-field-box"
 
 /**
  * A label/value card with two square buttons, the preview's one form control.

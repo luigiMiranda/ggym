@@ -7,8 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -17,6 +20,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -29,6 +33,7 @@ import com.ggym.app.domain.workout.RestTimerUseCases
 import com.ggym.app.ui.common.GgymField
 import com.ggym.app.ui.common.GgymPrimaryButton
 import com.ggym.app.ui.common.WeightField
+import kotlinx.coroutines.launch
 
 /**
  * The exercise form: a name and the numbers that go with it, in one place.
@@ -65,10 +70,35 @@ fun ExerciseFormSheet(
     plannedIn: List<PlannedInRow> = emptyList(),
     onOpenPlan: ((PlannedInRow) -> Unit)? = null,
 ) {
+    // Hidden start plus Expanded-only values is the "no half-opened sheet" shape: this form is
+    // several fields, and a partially expanded sheet would show only some of them.
+    val sheetState = rememberBottomSheetState(
+        initialValue = SheetValue.Hidden,
+        enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
+    )
     // Which fields a mode has. The two create modes and the slot differ in whether a training day's
     // plan is part of the form: sets and reps are the day's, so the dictionary form does not show
     // them at all (a base sets/reps would be a second inheritance rule).
     val hasSlotFields = form.mode == ExerciseFormMode.Create || form.mode == ExerciseFormMode.EditSlot
+
+    val scope = rememberCoroutineScope()
+    // Saving from a create mode slides the sheet down first, then writes: there is no write-time
+    // refusal on that path (a name the dictionary already holds is not an error — the entry wins),
+    // so the day behind is never seen updating under an open form and the form never rides out the
+    // pop. An edit can still be refused (a name collision), so it writes first and closes only when
+    // the write accepts; the refusal then lands in the still-open form, where the user can read it.
+    val save: () -> Unit = {
+        val mayCloseFirst =
+            (form.mode == ExerciseFormMode.Create || form.mode == ExerciseFormMode.CreateDictionary) &&
+                form.validate() is ExerciseFormValidation.Valid
+        if (mayCloseFirst) {
+            scope.launch { sheetState.hide() }.invokeOnCompletion {
+                if (!sheetState.isVisible) onSave()
+            }
+        } else {
+            onSave()
+        }
+    }
 
     // Each error belongs to the field that caused it: a taken name must not be explained under the
     // weight field, where it would read as a complaint about the number.
@@ -82,16 +112,19 @@ fun ExerciseFormSheet(
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        // Hidden start plus Expanded-only values is the "no half-opened sheet" shape: this form is
-        // five fields, and a partially expanded sheet would show three of them.
-        sheetState = rememberBottomSheetState(
-            initialValue = SheetValue.Hidden,
-            enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded),
-        ),
+        sheetState = sheetState,
         shape = MaterialTheme.shapes.extraLarge,
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp).padding(bottom = 32.dp),
+            // The keyboard is part of the sheet's height: `imePadding` lifts the content above it,
+            // and the scroll lets the weight field (the last one) be brought into view. Without
+            // one of the two the keyboard covers the form and the number being typed is invisible.
+            modifier = Modifier
+                .fillMaxWidth()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
@@ -125,6 +158,7 @@ fun ExerciseFormSheet(
                         onIncrease = { onStepSets(1) },
                         decreaseLabel = stringResource(R.string.form_sets_decrease),
                         increaseLabel = stringResource(R.string.form_sets_increase),
+                        inputFilter = { it.digitsOnly() },
                         modifier = Modifier.weight(1f),
                     )
                     GgymField(
@@ -151,6 +185,7 @@ fun ExerciseFormSheet(
                 onIncrease = { onStepRest(RestTimerUseCases.STEP_SECONDS) },
                 decreaseLabel = stringResource(R.string.form_rest_decrease),
                 increaseLabel = stringResource(R.string.form_rest_increase),
+                inputFilter = { it.digitsOnly() },
                 modifier = Modifier.fillMaxWidth(),
             )
 
@@ -192,7 +227,7 @@ fun ExerciseFormSheet(
                         ExerciseFormMode.CreateDictionary -> stringResource(R.string.library_add)
                         ExerciseFormMode.EditSlot, ExerciseFormMode.EditDictionary -> stringResource(R.string.action_save)
                     },
-                    onClick = onSave,
+                    onClick = save,
                 )
             }
         }

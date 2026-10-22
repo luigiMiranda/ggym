@@ -191,7 +191,7 @@ fun ExerciseFormState.withRest(text: String): ExerciseFormState =
  * a paste; dropping it keeps the field's text parseable without turning an accidental letter into
  * an error the user has to find.
  */
-private fun String.digitsOnly(): String = filter { it in '0'..'9' }
+internal fun String.digitsOnly(): String = filter { it in '0'..'9' }
 
 fun ExerciseFormState.withWeight(text: String): ExerciseFormState =
     copy(weight = text, weightTouched = true).withoutError()
