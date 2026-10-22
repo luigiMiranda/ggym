@@ -38,8 +38,14 @@ v1 is feature-complete and shipped:
 - ✅ History: a monthly calendar with a dot per workout, day inspection, edit and delete
 - ✅ Stats: body-weight log and trend, workout attendance, and per-exercise progression charts
   (drawn on a custom `Canvas`, no charting dependency)
+- ✅ Written targets: a plan like `8-10` is kept as written rather than flattened to a number — it is
+  snapshotted into the workout and shown on the hero and next to the reps you enter
+- ✅ Exercise library: every exercise in the dictionary with what it loads, how long it rests and
+  where it is used, editable in place, with a tap through to its progression
+- ✅ Weight progression: finishing a set moves the day's slot that produced the workout as well as
+  the dictionary default, so a deliberate per-day difference survives
 - ✅ Localized in **English and Italian**, with an in-app language switch (or follow the system)
-- ✅ 527 JVM/Robolectric tests and a clean lint run (`./gradlew :app:testDebugUnitTest :app:lintDebug`)
+- ✅ 614 JVM/Robolectric tests and a clean lint run (`./gradlew :app:testDebugUnitTest :app:lintDebug`)
 
 Not yet in v1:
 
