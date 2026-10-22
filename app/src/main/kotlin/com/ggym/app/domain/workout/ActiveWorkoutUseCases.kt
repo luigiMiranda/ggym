@@ -26,8 +26,9 @@ import java.time.ZoneId
  *   [StartWorkoutResult.AlreadyRunning] instead of quietly creating a second draft; the screen asks
  *   whether to resume the running workout or discard it.
  * - **Completion is the moment a number becomes real.** [completeSet] writes the set and hands its
- *   weight to [WorkingWeightUseCases.recordCompletedSet], which makes it the exercise's working
- *   weight for the next workout. The planned slot is not written: the plan is the plan.
+ *   weight to [WorkingWeightUseCases.recordCompletedSetWeight], which makes it the exercise's
+ *   working weight *and* the planned weight of the slot the workout came from. Only the trained
+ *   day moves, so a deliberate per-day difference survives.
  * - **A set with no number of its own follows the workout.** The weight a set carried before it was
  *   completed is the group default for the exercise that day; completing a lighter or heavier set
  *   replaces it in the sets the user has not given a number yet, so 80 → 85 kg is one edit instead
@@ -96,6 +97,9 @@ class ActiveWorkoutUseCases(
                     orderIndex = index,
                     restSeconds = slot.restSeconds,
                     targetReps = slot.targetReps,
+                    // The breadcrumb a completion follows back to *this day's* weight: stamped
+                    // here, where slot.id is in hand, and `null` for a workout with no slot.
+                    plannedExerciseId = slot.id,
                     sets = prefills(
                         count = slot.targetSets,
                         weightKg = resolved[slot.id] ?: 0.0,
@@ -113,14 +117,15 @@ class ActiveWorkoutUseCases(
      * three things a completion means:
      *
      * 1. the set is written as completed;
-     * 2. the exercise's working weight becomes [weightKg] when it is greater than `0.0`
-     *    ([WorkingWeightUseCases.recordCompletedSet]);
+     * 2. the exercise's working weight becomes [weightKg] when it is greater than `0.0`, and so
+     *    does the planned weight of the slot this log was built from
+     *    ([WorkingWeightUseCases.recordCompletedSetWeight]);
      * 3. the exercise's *uncompleted* sets that still carry the weight this set had take the new one,
      *    so a change applies to the sets the user is about to do as well.
      *
-     * Nothing else moves: not the planned slot, not another exercise, not a set the user gave a
-     * number of its own. A set whose id belongs to no running workout is left alone, which is what
-     * a tap that arrives after the workout ended has to be.
+     * Nothing else moves: not another exercise, not a set the user gave a number of its own, and not
+     * a different day's slot of the same exercise. A set whose id belongs to no running workout is
+     * left alone, which is what a tap that arrives after the workout ended has to be.
      *
      * Completing an already-completed set rewrites its numbers — the correction the history screen
      * will offer — and lets the sets behind it follow the new weight.
@@ -145,7 +150,7 @@ class ActiveWorkoutUseCases(
         }
 
         history.updateSets(listOf(completed) + filled)
-        weights.recordCompletedSet(log.exerciseId, weightKg)
+        weights.recordCompletedSetWeight(log.exerciseId, log.plannedExerciseId, weightKg)
     }
 
     /**
@@ -210,7 +215,8 @@ class ActiveWorkoutUseCases(
      * A set that was never completed is left alone ([UncompleteSetResult.NotCompleted]), as is one
      * that belongs to no running workout ([UncompleteSetResult.NotFound]): a tap that arrives after
      * the workout ended has to be a no-op. The planned slot is untouched, like every other workout
-     * write.
+     * write made here — except that un-completing does not *revert* the slot a completion moved,
+     * for the same reason it does not revert the dictionary (nothing remembers the old value).
      *
      * Stopping the rest the completion started is the *screen's* half of the rule — the timer is
      * the screen's concern in exactly the way `startForSet` already is — because the domain does not

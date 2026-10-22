@@ -83,5 +83,24 @@ internal object GgymMigrations {
         }
     }
 
-    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+    /**
+     * v4 → v5: a workout records the routine slot it was materialized from, so a completion can
+     * move the weight of the day that actually trained the exercise.
+     *
+     * The pointer is nullable and has no default in SQL beyond SQLite's own `NULL`: a row written
+     * before the column existed has no slot to point at, which is exactly what `NULL` means here,
+     * and a front-loaded, no-FK column means the migration rewrites no data. A draft restored from
+     * a format-1–4 backup gets the same `null`, and its completions simply write the dictionary
+     * only, as they did before this version.
+     *
+     * `ALTER TABLE … ADD COLUMN` again; no row is rewritten and a fresh install creates the same DDL
+     * from the entity's own `null` default.
+     */
+    private val MIGRATION_4_5 = object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("ALTER TABLE workout_exercise_log ADD COLUMN plannedExerciseId INTEGER")
+        }
+    }
+
+    val ALL: Array<Migration> = arrayOf(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
 }

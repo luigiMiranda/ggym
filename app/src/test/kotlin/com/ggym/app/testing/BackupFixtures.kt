@@ -250,3 +250,90 @@ internal fun version1BackupJson(): String = """
       ]
     }
 """.trimIndent()
+
+/**
+ * A backup document exactly as **format 4** wrote it: the target reps were snapshotted (format 4's
+ * whole reason) but the log carried no pointer back to the routine slot, which is what format 5
+ * added.
+ *
+ * Hand-written for the same reason as the others: no current writer can produce it any more, and a
+ * test that rebuilt the old format with today's writer would prove nothing about the reader.
+ */
+internal fun version4BackupJson(): String = """
+    {
+      "schemaVersion": 4,
+      "exportedAt": 1760000000000,
+      "appVersion": "0.1.0",
+      "exercises": [
+        {
+          "id": 1,
+          "name": "Bench Press",
+          "currentWorkingWeight": 87.5,
+          "defaultRestSeconds": 90
+        }
+      ],
+      "routines": [
+        {
+          "id": 1,
+          "name": "Push Day",
+          "createdAt": 1750000000000,
+          "days": [
+            {
+              "id": 1,
+              "dayName": "Push A",
+              "orderIndex": 0,
+              "exercises": [
+                {
+                  "id": 1,
+                  "exerciseId": 1,
+                  "targetSets": 4,
+                  "targetReps": "8-10",
+                  "restSeconds": 120,
+                  "orderIndex": 0,
+                  "weightKg": 80.0
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "sessions": [
+        {
+          "id": 1,
+          "dateTimestamp": 1759000000000,
+          "routineNameSnapshot": "Push Day",
+          "dayNameSnapshot": "Push A",
+          "durationSeconds": 3120,
+          "isDraft": false,
+          "startedAtMillis": null,
+          "exercises": [
+            {
+              "id": 1,
+              "exerciseId": 1,
+              "exerciseNameSnapshot": "Bench Press",
+              "wasCompleted": true,
+              "orderIndex": 0,
+              "restSeconds": 120,
+              "targetReps": "8-10",
+              "sets": [
+                {
+                  "id": 1,
+                  "setNumber": 1,
+                  "weight": 82.5,
+                  "reps": 10,
+                  "isCompleted": true
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "bodyWeights": [
+        {
+          "id": 1,
+          "dateTimestamp": 1759000000000,
+          "weightKg": 82.4
+        }
+      ]
+    }
+""".trimIndent()

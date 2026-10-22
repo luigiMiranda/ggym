@@ -174,17 +174,19 @@ a past workout, and a workout already in progress, keep the name they started wi
 
 **Migrations.** `exportSchema` is on and the schema JSON is committed under `app/schemas/`, so
 migrations are written explicitly and verified against the schema that shipped. Destructive
-fallbacks are not used: they would silently delete a user's training history. Both migrations so
-far are `ALTER TABLE` additions that leave every existing row as it was and are exercised by
-tests that build the older database from its committed snapshot, seed it, and open it with the
+fallbacks are not used: they would silently delete a user's training history. Every migration so
+far is an `ALTER TABLE` addition that leaves each existing row as it was, and each is exercised by
+a test that builds the older database from its committed snapshot, seeds it, and opens it with the
 current build: `v1 → v2` adds `planned_exercise.weightKg`; `v2 → v3` adds
 `workout_session.isDraft` / `workout_session.startedAtMillis` and
 `workout_exercise_log.restSeconds` — the columns that let a workout exist while it is still being
-performed; and `v3 → v4` adds `workout_exercise_log.targetReps`, the written target snapshotted so
+performed; `v3 → v4` adds `workout_exercise_log.targetReps`, the written target snapshotted so
 the workout can show what the plan asks next to the actual being entered (the sets' own integer reps
-only hold the target's first number, so `8-10` would come back as `8`). `v1` and `v2` rows read back
-as finished workouts with no start time, the default rest time and a blank target — exactly what
-they were.
+only hold the target's first number, so `8-10` would come back as `8`); and `v4 → v5` adds
+`workout_exercise_log.plannedExerciseId`, the soft pointer from a workout's exercise log back to the
+routine slot it came from, so a completion can move the trained day's weight as well as the
+dictionary's. Older rows read back with the meaning they had: finished workouts with no start time,
+the default rest time, a blank target and no slot pointer — exactly what they were.
 
 **Workouts in progress.** A workout under way is a *draft* session: written the moment it starts,
 updated set by set, and invisible to every history read (`observeSessionsInRange`,
@@ -198,16 +200,23 @@ the only place that state lives: it is a property of the stored session, not of 
 finish. Starting *materializes* the training day into the draft: the routine and day names, each
 exercise's name and rest time, and one pre-filled set per planned set, with the weight
 `WorkingWeightUseCases` resolves for that slot and the first number its written target carries
-(`"8-10"` starts at eight). From then on the routine is never consulted again, so editing or
-deleting it cannot move a workout in progress. Completing a set writes the set, hands its weight to
-`WorkingWeightUseCases.recordCompletedSet` — which makes it the exercise's working weight when it is
-greater than zero, because a bodyweight set must not erase a real number — and replaces the group
-default in the exercise's uncompleted sets, the ones still carrying the weight the completed set had
-before, so one edit moves the sets the user is about to do and a set they typed into keeps its own
-number. Only uncompleted sets can be removed, and a completed one can be **taken back**: un-completing
-clears the flag and nothing else — the set keeps its numbers, the exercise's working weight is not
-reverted (neither the dictionary nor the draft remembers what it was) and the filled sets are not
-un-filled. The dictionary is a "load next time" hint, not a log; the workout is what happened.
+(`"8-10"` starts at eight). Each exercise log also records the *slot it came from*
+(`plannedExerciseId`, a soft pointer with no foreign key — it is a breadcrumb, not a relationship),
+which is what lets a completion find that day's weight again. From then on the routine is never
+consulted again, so editing or deleting it cannot move a workout in progress. Completing a set
+writes the set, hands its weight to `WorkingWeightUseCases.recordCompletedSetWeight` — which makes
+it the exercise's working weight *and* the planned weight of the slot the workout was built from
+when it is greater than zero, because a bodyweight set must not erase a real number — and replaces
+the group default in the exercise's uncompleted sets, the ones still carrying the weight the
+completed set had before, so one edit moves the sets the user is about to do and a set they typed
+into keeps its own number. Writing the slot supersedes M3's "the plan is the plan": only the day
+that was actually trained moves, so a deliberate per-day difference survives (Push A trained to
+85 kg, Push B still planned at 70 kg), and a log with no pointer (history written before v5, a
+draft restored from an older backup) simply updates the dictionary as it always did. Only
+uncompleted sets can be removed, and a completed one can be **taken back**: un-completing a
+set clears the flag and nothing else — the set keeps its numbers, and neither the exercise's working
+weight nor the slot's is reverted (nothing remembers what they were); the filled sets are not
+un-filled either. The dictionary is a "load next time" hint, not a log; the workout is what happened.
 Finishing writes the completed sets as a fresh session
 (duration = finish − start, sets renumbered from position), drops the prefills nobody performed,
 marks an exercise with no completed set as skipped and deletes the draft in one transaction;
@@ -272,7 +281,10 @@ a day that already has a row updates it, and moving an edit onto an occupied day
 duplicating. The range filters (1M, 3M, 6M, 1Y, All) are anchored to today, not to the latest
 weigh-in, so "the last three months" does not silently stretch when the user stops weighing. The sheet
 defaults to today, opens the platform date picker, and disables Save for a value outside the same
-`BodyWeightLimits` the repository enforces.
+`BodyWeightLimits` the repository enforces. The route takes an optional `exerciseId` query
+argument so another screen can open the chart already on one exercise; a tab declared with an
+argument reports its route *pattern* rather than the plain route, which is why the bottom bar
+matches tabs on the base route (everything before the `?`) instead of the whole string.
 
 **The rest timer.** A rest is a *deadline* kept in its own DataStore file: `RestTimerState`
 (`endsAtMillis`, `totalSeconds`, `exerciseLogId`, `exerciseName`) as wall-clock epoch millis,
@@ -338,7 +350,7 @@ with one array per table. Every row carries its primary key, so a restore reprod
 exactly — including the identity of rows — and children are nested inside their parent instead of
 referencing it, so a file cannot contradict itself. A field the current version does not know, or
 a version it does not support, is refused rather than ignored. The format version is its own
-number, not the database's: the reader accepts every format the app has ever written (1 through 4
+number, not the database's: the reader accepts every format the app has ever written (1 through 5
 today), so a backup file outlives the build that produced it. A file may hold at most one workout
 in progress; two of them is a contradiction, and the validator says so before anything is written.
 

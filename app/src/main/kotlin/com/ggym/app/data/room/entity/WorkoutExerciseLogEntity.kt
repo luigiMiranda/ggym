@@ -24,6 +24,14 @@ import com.ggym.app.domain.model.Exercise
  * keep showing the plan it started with even after the slot is edited, and the target is free text
  * ("8-10", "AMRAP") that the sets' integer reps cannot reconstruct. The blank default is what a
  * row written before the column existed means — a workout with no target to show.
+ *
+ * `plannedExerciseId` is the slot this log was materialized from, so a completion can move *that
+ * day's* weight as well as the dictionary's. It is a **soft** pointer on purpose — no foreign key:
+ * it is a breadcrumb read while a draft runs, and an FK would add an import-ordering constraint
+ * (and a cascade decision) for a value that only ever needs to be read once. `null` is a workout
+ * with no slot behind it: history written before the column existed, a restored draft from an
+ * older backup, or a slot that was deleted while the workout ran. Declared last, so the v4 → v5
+ * migration's `ALTER TABLE` and a fresh install put the column in the same place.
  */
 @Entity(
     tableName = "workout_exercise_log",
@@ -52,4 +60,5 @@ internal data class WorkoutExerciseLogEntity(
     val orderIndex: Int,
     @ColumnInfo(defaultValue = "90") val restSeconds: Int = Exercise.DEFAULT_REST_SECONDS,
     @ColumnInfo(defaultValue = "") val targetReps: String = "",
+    val plannedExerciseId: Long? = null,
 )

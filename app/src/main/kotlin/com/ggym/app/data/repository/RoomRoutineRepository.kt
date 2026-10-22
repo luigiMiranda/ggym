@@ -97,6 +97,10 @@ internal class RoomRoutineRepository(
         plannedExerciseDao.update(RoutineMapper.toEntity(plannedExercise))
     }
 
+    override suspend fun updatePlannedExerciseWeight(plannedExerciseId: Long, weightKg: Double) {
+        plannedExerciseDao.updateWeight(plannedExerciseId, weightKg)
+    }
+
     override suspend fun deletePlannedExercise(plannedExerciseId: Long) {
         plannedExerciseDao.deleteById(plannedExerciseId)
     }

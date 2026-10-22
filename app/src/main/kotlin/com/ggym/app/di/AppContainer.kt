@@ -144,12 +144,19 @@ class AppContainer(context: Context) {
         initializer { HistoryDetailViewModel(sessionId, workoutHistoryRepository) }
     }
 
-    val statsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+    /**
+     * The Stats tab, optionally opened on one exercise's progression. The id is null for the tab's
+     * own entry and for the sentinel the route's default carries; the factory is remembered per id
+     * at the call site so a deep link gets its own screen while plain `stats` keeps the first
+     * exercise selected.
+     */
+    fun statsViewModelFactory(initialExerciseId: Long? = null): ViewModelProvider.Factory = viewModelFactory {
         initializer {
             StatsViewModel(
                 history = workoutHistoryRepository,
                 exercises = exerciseRepository,
                 bodyWeights = bodyWeightUseCases,
+                initialExerciseId = initialExerciseId,
             )
         }
     }

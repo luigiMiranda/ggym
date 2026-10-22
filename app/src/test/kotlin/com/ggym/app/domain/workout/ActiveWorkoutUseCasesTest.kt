@@ -75,6 +75,11 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
         assertEquals("the rest time rides along, so a resume needs no lookup", listOf(120, 60), draft.exercises.map { it.restSeconds })
         assertEquals("and so does the written target, which the plan can no longer supply", listOf("8-10", "12"), draft.exercises.map { it.targetReps })
         assertEquals(listOf(0, 1), draft.exercises.map { it.orderIndex })
+        assertEquals(
+            "each log points back at the slot it was built from, so a completion can move that day",
+            slotsOf(dayId).map { it.id },
+            draft.exercises.map { it.plannedExerciseId },
+        )
         assertTrue("nothing has been performed yet", draft.exercises.none { it.wasCompleted })
 
         val benchSets = draft.exercises[0].sets
@@ -206,11 +211,70 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
         )
         assertNull("a draft is not history yet", historyRepository.latestCompletedSet(bench))
         assertEquals(
-            "the plan stays the plan",
-            80.0,
+            "the trained day's slot follows the number the user actually lifted",
+            82.5,
             slotsOf(dayId).single().weightKg!!,
             0.0,
         )
+    }
+
+    @Test
+    fun `a weight lifted in a workout is what the day plans next time`() = runTest {
+        val bench = exerciseRepository.findOrCreate("Bench Press", currentWorkingWeight = 5.0).id
+        val dayId = plannedDay(Slot(exerciseId = bench, sets = 3, reps = "8-10"))
+        started(dayId)
+
+        useCases.completeSet(draft().exercises[0].sets.first().id, weightKg = 7.0, reps = 8)
+
+        assertEquals("the day now plans what I actually lifted", 7.0, slotsOf(dayId).single().weightKg!!, 0.0)
+        assertEquals(
+            "and the exercise's base moved with it",
+            7.0,
+            exerciseRepository.findById(bench)!!.currentWorkingWeight!!,
+            0.0,
+        )
+    }
+
+    @Test
+    fun `a slot pinned at its own number follows the completion too`() = runTest {
+        val bench = exercise("Bench Press", workingWeight = 5.0)
+        val dayId = plannedDay(Slot(exerciseId = bench, sets = 3, reps = "8-10", weightKg = 5.0))
+        started(dayId)
+
+        useCases.completeSet(draft().exercises[0].sets.first().id, weightKg = 7.0, reps = 8)
+
+        assertEquals("a pinned slot is not a promise to stay at five", 7.0, slotsOf(dayId).single().weightKg!!, 0.0)
+    }
+
+    @Test
+    fun `training one day moves that day's slot and leaves the other day's plan alone`() = runTest {
+        val bench = exercise("Bench Press", workingWeight = 60.0)
+        val routineId = routineRepository.createRoutine("Push Day")
+        val pushA = routineRepository.addDay(routineId, "Push A")
+        val pushB = routineRepository.addDay(routineId, "Push B")
+        routineRepository.addPlannedExercise(pushA, bench, 4, "8-10", 120, weightKg = 80.0)
+        routineRepository.addPlannedExercise(pushB, bench, 5, "5", 180, weightKg = 70.0)
+        started(pushA)
+
+        useCases.completeSet(draft().exercises[0].sets.first().id, weightKg = 85.0, reps = 8)
+
+        assertEquals("Push A follows the training", 85.0, slotsOf(pushA).single().weightKg!!, 0.0)
+        assertEquals("Push B is a different plan and stays where it was", 70.0, slotsOf(pushB).single().weightKg!!, 0.0)
+    }
+
+    @Test
+    fun `a log with no slot pointer writes the dictionary only - a draft restored from an old backup`() = runTest {
+        val bench = exercise("Bench Press", workingWeight = 60.0)
+        val dayId = plannedDay(Slot(exerciseId = bench, sets = 3, reps = "8-10", weightKg = 80.0))
+        started(dayId)
+        // Formats 1-4 carried no pointer, so a draft restored from one arrives with NULL here and
+        // must keep working: the completion updates what it can and guesses nothing.
+        nullThePointer(draft().exercises[0].id)
+
+        useCases.completeSet(draft().exercises[0].sets.first().id, weightKg = 85.0, reps = 8)
+
+        assertEquals("the dictionary still moves", 85.0, exerciseRepository.findById(bench)!!.currentWorkingWeight!!, 0.0)
+        assertEquals("but the slot is not guessed at", 80.0, slotsOf(dayId).single().weightKg!!, 0.0)
     }
 
     @Test
@@ -371,7 +435,12 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
             exerciseRepository.findById(bench)!!.currentWorkingWeight!!,
             0.0,
         )
-        assertEquals("the plan stays the plan", 80.0, slotsOf(dayId).single().weightKg!!, 0.0)
+        assertEquals(
+            "nor is the slot reverted: the next completion at the right number corrects it",
+            82.5,
+            slotsOf(dayId).single().weightKg!!,
+            0.0,
+        )
     }
 
     @Test
@@ -536,6 +605,18 @@ class ActiveWorkoutUseCasesTest : RepositoryTest() {
         (useCases.start(routineDayId) as StartWorkoutResult.Started).sessionId
 
     private suspend fun draft(): WorkoutSession = historyRepository.observeDraft().first()!!
+
+    /**
+     * Clears the slot pointer of one log, the state a draft restored from a format 1–4 backup has.
+     * There is no repository write for it — the pointer is stamped once, at start — so the test
+     * states the row directly, which is exactly what an old file's import leaves behind.
+     */
+    private fun nullThePointer(workoutExerciseLogId: Long) {
+        database.openHelper.writableDatabase.execSQL(
+            "UPDATE workout_exercise_log SET plannedExerciseId = NULL WHERE id = ?",
+            arrayOf(workoutExerciseLogId),
+        )
+    }
 
     /** The app as a relaunch sees it: everything rebuilt over the same database. */
     private fun relaunched(): Relaunch {

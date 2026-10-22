@@ -1,7 +1,9 @@
 package com.ggym.app.ui.nav
 
 import android.app.Application
+import androidx.compose.ui.test.assertAny
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -10,6 +12,8 @@ import androidx.test.core.app.ApplicationProvider
 import com.ggym.app.R
 import com.ggym.app.di.AppContainer
 import com.ggym.app.ui.theme.GgymTheme
+import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -160,6 +164,31 @@ class GgymNavHostTest {
         waitForText(context.getString(R.string.day_start_label))
         compose.onNodeWithText(context.getString(R.string.nav_workouts)).assertIsSelected()
         compose.onNodeWithText(context.getString(R.string.nav_settings)).assertExists()
+    }
+
+    @Test
+    fun `the stats deep link opens on the exercise it names and keeps the tab lit`() {
+        // Two entries, so "the first one" and "the one the link asked for" are different answers.
+        runBlocking { container.exerciseRepository.findOrCreate("Bench Press") }
+        val fly = runBlocking { container.exerciseRepository.findOrCreate("Cable Fly").id }
+        lateinit var navController: NavHostController
+        compose.setContent {
+            navController = rememberNavController()
+            GgymTheme {
+                GgymNavHost(container = container, navController = navController)
+            }
+        }
+        waitForText(context.getString(R.string.nav_workouts))
+
+        compose.runOnUiThread { navController.navigate(Routes.stats(fly)) }
+
+        // The pill carries "Cable Fly ▾", which is not what the tab opens on; it can only be on
+        // screen because the argument preselected it — and Stats is still the selected tab, which is
+        // what base-route matching in `Destination` exists for.
+        waitForText(context.getString(R.string.stats_exercise_selector, "Cable Fly"))
+        // The Stats *screen* also carries the header "Stats", so the assertion is that one of the
+        // nodes with that label — the bar item — is selected.
+        compose.onAllNodesWithText(context.getString(R.string.nav_stats)).assertAny(isSelected())
     }
 
     @Test

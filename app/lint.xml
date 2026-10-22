@@ -22,11 +22,13 @@
     <!--
       Dependency currency is a reviewed decision, not a build property: material3 is pinned to
       1.5.0-beta01 on purpose, KSP is standalone, and the versions in `libs.versions.toml` were
-      chosen against AGP 9. The detector decides "newer" by querying Maven over the network, so a
-      connected build warns and an offline one does not — a gate that changes with connectivity is
-      not a gate. A version moves when a decision-log row moves it.
+      chosen against AGP 9. Two detector ids perform the same Maven lookup — `NewerVersionAvailable`
+      for a catalog declaration and `GradleDependency` for a coordinate — and either fires only when
+      the build can reach the network, so a connected build warns and an offline one does not: a gate
+      that changes with connectivity is not a gate. A version moves when a decision-log row moves it.
     -->
     <issue id="NewerVersionAvailable" severity="ignore" />
+    <issue id="GradleDependency" severity="ignore" />
 
     <!--
       The app switches its own language at runtime (`withAppLanguage` + `createConfigurationContext`)

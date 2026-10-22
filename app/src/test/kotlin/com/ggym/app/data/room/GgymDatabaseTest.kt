@@ -97,7 +97,7 @@ class GgymDatabaseTest {
     fun `the migration list is the explicit one the database builder was given`() {
         assertEquals(
             "one hand-written step per schema version",
-            listOf(1 to 2, 2 to 3, 3 to 4),
+            listOf(1 to 2, 2 to 3, 3 to 4, 4 to 5),
             GgymMigrations.ALL.map { it.startVersion to it.endVersion },
         )
         assertEquals(

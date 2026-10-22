@@ -57,6 +57,13 @@ interface RoutineRepository {
     /** Updates a slot in place, including its `orderIndex`; use [reorderPlannedExercises] to move several. */
     suspend fun updatePlannedExercise(plannedExercise: PlannedExercise)
 
+    /**
+     * Moves one slot's planned weight, leaving every other field alone. This is the write a
+     * completed set makes on the day that produced it (see `WorkingWeightUseCases`); the slot
+     * editor's own write is [updatePlannedExercise], which rewrites the whole slot.
+     */
+    suspend fun updatePlannedExerciseWeight(plannedExerciseId: Long, weightKg: Double)
+
     suspend fun deletePlannedExercise(plannedExerciseId: Long)
 
     /** Counterpart of [reorderDays], for the exercises inside one day. */

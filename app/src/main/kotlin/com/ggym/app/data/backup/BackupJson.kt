@@ -8,11 +8,11 @@ import kotlinx.serialization.json.Json
  * The backup format this build writes.
  *
  * The format has its own version, separate from the database schema version, because the two
- * questions are different: a file must stay readable across app updates (1, 2, 3 and 4 each added
- * only fields whose absence meant what the older build did), while the database is migrated in
- * place.
+ * questions are different: a file must stay readable across app updates (1, 2, 3, 4 and 5 each
+ * added only fields whose absence meant what the older build did), while the database is migrated
+ * in place.
  */
-internal const val BACKUP_FORMAT_VERSION = 4
+internal const val BACKUP_FORMAT_VERSION = 5
 
 /**
  * The oldest format this build still reads, so that a file written before the per-slot weight
@@ -46,6 +46,9 @@ internal const val OLDEST_READABLE_BACKUP_FORMAT_VERSION = 1
  *   the dictionary's own default is what those rows meant.
  * - [BackupWorkoutExerciseLog.targetReps] (format 4): the target was not snapshotted yet, and a
  *   blank target is exactly "this workout has no target to show".
+ * - [BackupWorkoutExerciseLog.plannedExerciseId] (format 5): the pointer back to the slot was not
+ *   recorded yet, and `null` means exactly "this log has no slot behind it" — the dictionary-only
+ *   behaviour of every format before it.
  */
 @Serializable
 internal data class BackupFile(
@@ -123,6 +126,11 @@ internal data class BackupWorkoutExerciseLog(
      * no target to show — everything written before format 4.
      */
     val targetReps: String = "",
+    /**
+     * The routine slot this log was built from, so a restored workout in progress can still move
+     * that day's weight when a set is completed. `null` on formats 1–4 and on a log with no slot.
+     */
+    val plannedExerciseId: Long? = null,
     val sets: List<BackupWorkoutSetLog>,
 )
 

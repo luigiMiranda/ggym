@@ -3,6 +3,7 @@ package com.ggym.app.data.backup
 import com.ggym.app.testing.version1BackupJson
 import com.ggym.app.testing.version2BackupJson
 import com.ggym.app.testing.version3BackupJson
+import com.ggym.app.testing.version4BackupJson
 import kotlinx.serialization.SerializationException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -35,7 +36,7 @@ class BackupJsonTest {
         assertTrue("pretty printed", json.contains("\n"))
         listOf("schemaVersion", "exportedAt", "appVersion", "exercises", "routines", "sessions", "bodyWeights")
             .forEach { key -> assertTrue("missing $key in\n$json", json.contains("\"$key\"")) }
-        listOf("\"dayName\"", "\"exerciseId\"", "\"targetReps\"", "\"setNumber\"", "\"weightKg\"", "\"isDraft\"", "\"restSeconds\"")
+        listOf("\"dayName\"", "\"exerciseId\"", "\"targetReps\"", "\"plannedExerciseId\"", "\"setNumber\"", "\"weightKg\"", "\"isDraft\"", "\"restSeconds\"")
             .forEach { key -> assertTrue("missing $key in\n$json", json.contains(key)) }
     }
 
@@ -164,6 +165,19 @@ class BackupJsonTest {
     }
 
     @Test
+    fun `a format 4 document is read with its target but no slot pointer`() {
+        val file = BackupJsonFormat.decodeFromString(BackupFile.serializer(), version4BackupJson())
+
+        assertEquals(4, file.schemaVersion)
+        assertEquals("the target is what format 4 was for", "8-10", file.sessions.single().exercises.single().targetReps)
+        assertEquals("and its rest time", 120, file.sessions.single().exercises.single().restSeconds)
+        assertNull(
+            "but the slot pointer did not exist then, and null means exactly 'no slot behind it'",
+            file.sessions.single().exercises.single().plannedExerciseId,
+        )
+    }
+
+    @Test
     fun `a workout's target reps are written and read back`() {
         val draft = sampleFile().sessions.single().copy(
             id = 2,
@@ -179,6 +193,32 @@ class BackupJsonTest {
 
         assertTrue("the target is written, not implied\n$json", json.contains("\"targetReps\": \"AMRAP\""))
         assertEquals("the free text is kept as typed", "AMRAP", decoded.exercises.single().targetReps)
+    }
+
+    @Test
+    fun `a workout's slot pointer is written explicitly and read back`() {
+        val draft = sampleFile().sessions.single().copy(
+            id = 2,
+            isDraft = true,
+            startedAtMillis = 1_759_500_000_000,
+            exercises = listOf(
+                sampleFile().sessions.single().exercises.single().copy(plannedExerciseId = 7),
+            ),
+        )
+
+        val json = BackupJsonFormat.encodeToString(BackupFile.serializer(), sampleFile().copy(sessions = listOf(draft)))
+        val decoded = BackupJsonFormat.decodeFromString(BackupFile.serializer(), json).sessions.single()
+
+        assertTrue("the pointer is written, not implied\n$json", json.contains("\"plannedExerciseId\": 7"))
+        assertEquals("and points at the same slot on the way back", 7L, decoded.exercises.single().plannedExerciseId)
+    }
+
+    @Test
+    fun `a workout with no slot behind it writes an explicit null pointer`() {
+        val json = BackupJsonFormat.encodeToString(BackupFile.serializer(), sampleFile())
+
+        assertTrue("expected an explicit null, got\n$json", json.contains("\"plannedExerciseId\": null"))
+        assertNull(BackupJsonFormat.decodeFromString(BackupFile.serializer(), json).sessions.single().exercises.single().plannedExerciseId)
     }
 
     @Test

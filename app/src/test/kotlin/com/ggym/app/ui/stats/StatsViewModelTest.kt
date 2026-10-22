@@ -61,6 +61,52 @@ class StatsViewModelTest : ViewModelTest() {
     }
 
     @Test
+    fun `the chart opens on the exercise a deep link names`() = runTest {
+        exerciseRepository.findOrCreate("Cable Fly")
+        val bench = exerciseRepository.findOrCreate("Bench Press").id
+
+        // The library's Progression action (M12) will build the screen this way.
+        val deepLink = StatsViewModel(
+            history = historyRepository,
+            exercises = exerciseRepository,
+            bodyWeights = useCases,
+            initialExerciseId = bench,
+            todayProvider = { today },
+        )
+
+        deepLink.uiState.test {
+            val state = awaitState { !it.isLoading && it.exercises.size == 2 }
+
+            assertEquals("Bench Press", state.selectedExerciseName)
+            assertEquals(bench, state.selectedExerciseId)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a deep link to an exercise that no longer exists falls back to the first one`() = runTest {
+        exerciseRepository.findOrCreate("Cable Fly")
+        exerciseRepository.findOrCreate("Bench Press")
+
+        val stale = StatsViewModel(
+            history = historyRepository,
+            exercises = exerciseRepository,
+            bodyWeights = useCases,
+            initialExerciseId = 4_242,
+            todayProvider = { today },
+        )
+
+        stale.uiState.test {
+            val state = awaitState { !it.isLoading && it.exercises.size == 2 }
+
+            assertEquals("a deleted exercise must not leave the chart blank", "Bench Press", state.selectedExerciseName)
+
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
     fun `attendance counts distinct days over the twelve-month window`() = runTest {
         saveWorkout(TestData.date(2026, 10, 14))
         saveWorkout(TestData.date(2026, 10, 14)) // a second workout, not a second trained day

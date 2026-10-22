@@ -133,7 +133,7 @@ class WorkingWeightUseCasesTest : RepositoryTest() {
     fun `a completed set becomes the exercise's working weight`() = runTest {
         val bench = benchWith(workingWeight = 87.5, performed = 85.0)
 
-        useCases.recordCompletedSet(bench, weightKg = 90.0)
+        useCases.recordCompletedSetWeight(bench, plannedExerciseId = null, weightKg = 90.0)
 
         assertEquals(
             "the next workout starts from what was actually lifted",
@@ -150,22 +150,45 @@ class WorkingWeightUseCasesTest : RepositoryTest() {
     }
 
     @Test
-    fun `a completed set writes the dictionary, not the routine slot`() = runTest {
+    fun `a completed set moves the slot that produced it and leaves another day alone`() = runTest {
+        val bench = benchWith(workingWeight = 87.5)
+        val routineId = routineRepository.createRoutine("Push Day")
+        val pushA = routineRepository.addDay(routineId, "Push A")
+        val pushB = routineRepository.addDay(routineId, "Push B")
+        val slotA = routineRepository.addPlannedExercise(pushA, bench, 4, "8-10", 120, weightKg = 80.0)
+        val slotB = routineRepository.addPlannedExercise(pushB, bench, 5, "5", 180, weightKg = 70.0)
+
+        useCases.recordCompletedSetWeight(bench, plannedExerciseId = slotA, weightKg = 90.0)
+
+        assertEquals("the trained day follows the user", 90.0, slotById(slotA).weightKg!!, 0.0)
+        assertEquals("the other day is a different plan and stays one", 70.0, slotById(slotB).weightKg!!, 0.0)
+        assertEquals(
+            "and the global answer moves with it",
+            90.0,
+            exerciseRepository.findById(bench)!!.currentWorkingWeight!!,
+            0.0,
+        )
+    }
+
+    @Test
+    fun `a completion with no slot pointer writes only the dictionary`() = runTest {
         val bench = benchWith(workingWeight = 87.5)
         val routineId = routineRepository.createRoutine("Push Day")
         val slot = slotById(addSlot(bench, routineId, weightKg = 80.0))
 
-        useCases.recordCompletedSet(bench, weightKg = 90.0)
+        useCases.recordCompletedSetWeight(bench, plannedExerciseId = null, weightKg = 90.0)
 
-        assertEquals("the plan stays the plan", 80.0, slotById(slot.id).weightKg!!, 0.0)
         assertEquals(90.0, exerciseRepository.findById(bench)!!.currentWorkingWeight!!, 0.0)
+        assertEquals("without a pointer the slot is not guessed at", 80.0, slotById(slot.id).weightKg!!, 0.0)
     }
 
     @Test
-    fun `a bodyweight set leaves the working weight alone`() = runTest {
+    fun `a bodyweight set moves neither the working weight nor the slot`() = runTest {
         val bench = benchWith(workingWeight = 87.5)
+        val routineId = routineRepository.createRoutine("Push Day")
+        val slot = slotById(addSlot(bench, routineId, weightKg = 80.0))
 
-        useCases.recordCompletedSet(bench, weightKg = 0.0)
+        useCases.recordCompletedSetWeight(bench, plannedExerciseId = slot.id, weightKg = 0.0)
 
         assertEquals(
             "a bodyweight set is not a number to load next time",
@@ -173,13 +196,14 @@ class WorkingWeightUseCasesTest : RepositoryTest() {
             exerciseRepository.findById(bench)!!.currentWorkingWeight!!,
             0.0,
         )
+        assertEquals("and it does not overwrite the day's plan either", 80.0, slotById(slot.id).weightKg!!, 0.0)
     }
 
     @Test
     fun `a completed set of an exercise the dictionary no longer has writes nothing`() = runTest {
         val bench = benchWith(workingWeight = 87.5)
 
-        useCases.recordCompletedSet(exerciseId = null, weightKg = 90.0)
+        useCases.recordCompletedSetWeight(exerciseId = null, plannedExerciseId = null, weightKg = 90.0)
 
         assertEquals("there is nothing to update, and no crash", 87.5, exerciseRepository.findById(bench)!!.currentWorkingWeight!!, 0.0)
     }

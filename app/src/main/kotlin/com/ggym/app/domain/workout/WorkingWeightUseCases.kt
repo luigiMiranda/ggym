@@ -17,15 +17,18 @@ import kotlinx.coroutines.flow.first
  *
  * Two properties this type exists to keep true:
  *
- * - **A slot write is a slot write.** [record] never touches `exercise.currentWorkingWeight` or a
- *   logged set, so the dictionary and the history stay the single global record of the exercise
- *   the user can trust from anywhere in the app.
+ * - **The slot editor never touches the global record.** [record] never touches
+ *   `exercise.currentWorkingWeight` or a logged set, so the dictionary and the history stay the
+ *   single global record of the exercise the user can trust from anywhere in the app.
  * - **History is a fallback for display, never a write.** When nothing is set, the last performed
  *   set is shown; it is not copied into the dictionary or the slot behind the user's back.
  *
- * M3's other half of the rule lives here too: [recordCompletedSet] is what turns a set the user
- * finished into the exercise's new working weight, so both directions of "what do I load?" have
- * exactly one implementation and every screen reads the same answer.
+ * M3's other half of the rule lives here too: [recordCompletedSetWeight] is what turns a set the
+ * user finished into the exercise's new working weight — and, since M10, into the weight of the
+ * *slot that produced the workout*. M3 deliberately forbade the slot write ("the plan is the
+ * plan"); the user's progression is also the plan, so a completion now moves the day it actually
+ * trained and leaves the other days' slots of the same exercise alone. The two writes share one
+ * guard, so a bodyweight completion and a log with no dictionary entry stay no-ops for both halves.
  */
 class WorkingWeightUseCases(
     private val routines: RoutineRepository,
@@ -62,20 +65,25 @@ class WorkingWeightUseCases(
 
     /**
      * The other half of the rule: the weight a set was just completed at becomes the exercise's
-     * working weight, so the next workout starts from what the user actually lifted. This
-     * is the write that makes the number follow the user across routines and days; the planned
-     * slot stays where it is.
+     * working weight *and* the planned weight of the slot the workout was built from, so the
+     * number follows the user both globally and on the day that produced it.
      *
-     * Two deliberate no-ops:
+     * One guard covers both writes: a set completed at `0.0` is bodyweight work, not a number to
+     * load next time, so it must not erase a real one in either place. A `null` [exerciseId] means
+     * the dictionary entry was deleted mid-workout (the name snapshot is all that is left of it)
+     * and a `null` [plannedExerciseId] means the log has no slot behind it — history written before
+     * the pointer existed, or a draft restored from a backup that predates it — so each half is
+     * simply skipped when its target is unknown.
      *
-     * - a set completed at `0.0` is bodyweight work, not a number to load next time, so it must not
-     *   erase a real one;
-     * - a log whose dictionary entry was deleted mid-workout arrives with a `null` [exerciseId] and
-     *   has nothing to write to (the name snapshot is all that is left of it).
+     * Writing the slot is a deliberate change of direction from M3, which kept the plan immutable:
+     * only the slot that was actually trained moves, so a deliberate per-day difference survives
+     * (Push A trained to 85 kg, Push B still planned at 70 kg). A bodyweight or abandoned workout
+     * behaves exactly as it did before.
      */
-    suspend fun recordCompletedSet(exerciseId: Long?, weightKg: Double) {
-        if (exerciseId == null || weightKg <= 0.0) return
-        exercises.updateCurrentWorkingWeight(exerciseId, weightKg)
+    suspend fun recordCompletedSetWeight(exerciseId: Long?, plannedExerciseId: Long?, weightKg: Double) {
+        if (weightKg <= 0.0) return
+        exerciseId?.let { exercises.updateCurrentWorkingWeight(it, weightKg) }
+        plannedExerciseId?.let { routines.updatePlannedExerciseWeight(it, weightKg) }
     }
 
     /**

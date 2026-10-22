@@ -19,6 +19,7 @@ import com.ggym.app.testing.createTestDatabase
 import com.ggym.app.testing.version1BackupJson
 import com.ggym.app.testing.version2BackupJson
 import com.ggym.app.testing.version3BackupJson
+import com.ggym.app.testing.version4BackupJson
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.After
@@ -304,6 +305,46 @@ class BackupRoundTripTest {
     }
 
     @Test
+    fun `a format 4 document is restored with its snapshotted target but no slot pointer`() = runTest {
+        populate()
+
+        val result = backupManager.importJson(version4BackupJson())
+
+        assertEquals(ImportResult.Restored(BackupCounts(exercises = 1, routines = 1, sessions = 1, bodyWeights = 1)), result)
+        val log = snapshot().sessions.single().exercises.single()
+        assertEquals("format 4 snapshotted the target", "8-10", log.targetReps)
+        assertNull(
+            "and knew nothing about the slot the workout came from",
+            log.plannedExerciseId,
+        )
+    }
+
+    @Test
+    fun `the slot a workout in progress came from survives the round trip`() = runTest {
+        populate()
+        val before = snapshot()
+        val pointer = before.draft!!.exercises.single().plannedExerciseId
+        assertNotNull("the fixture must carry a slot pointer — that is what the test is about", pointer)
+
+        val document = readDocument(backupManager.exportJson())
+        assertEquals(
+            "the pointer is in the file, so a restored running workout can still move its day",
+            pointer,
+            document.sessions.single { it.isDraft }.exercises.single().plannedExerciseId,
+        )
+
+        emptyEverything()
+        assertNull("the wipe removes the workout", snapshot().draft)
+        backupManager.importJson(jsonOf(document))
+
+        assertEquals(
+            "and it comes back on the same slot",
+            pointer,
+            snapshot().draft!!.exercises.single().plannedExerciseId,
+        )
+    }
+
+    @Test
     fun `a document from a newer version of the app is refused and changes nothing`() = runTest {
         populate()
         val before = snapshot()
@@ -438,7 +479,7 @@ class BackupRoundTripTest {
         val pushId = routineRepository.createRoutine("Push Day")
         val pushA = routineRepository.addDay(pushId, "Push A")
         val pushB = routineRepository.addDay(pushId, "Push B")
-        routineRepository.addPlannedExercise(pushA, bench.id, targetSets = 4, targetReps = "8-10", restSeconds = 120, weightKg = 80.0)
+        val benchSlot = routineRepository.addPlannedExercise(pushA, bench.id, targetSets = 4, targetReps = "8-10", restSeconds = 120, weightKg = 80.0)
         routineRepository.addPlannedExercise(pushA, fly.id, targetSets = 3, targetReps = "12", restSeconds = 60, weightKg = 20.0)
         routineRepository.addPlannedExercise(pushB, bench.id, targetSets = 5, targetReps = "5", restSeconds = 180, weightKg = 70.0)
         routineRepository.createRoutine("Pull Day")
@@ -455,6 +496,7 @@ class BackupRoundTripTest {
                         exerciseNameSnapshot = "Bench Press",
                         orderIndex = 0,
                         targetReps = "8-10",
+                        plannedExerciseId = benchSlot,
                         sets = listOf(
                             TestData.setLog(setNumber = 1, weight = 82.5, reps = 8),
                             TestData.setLog(setNumber = 2, weight = 85.0, reps = 6),
@@ -500,6 +542,7 @@ class BackupRoundTripTest {
                         exerciseNameSnapshot = "Bench Press",
                         restSeconds = 120,
                         targetReps = "AMRAP",
+                        plannedExerciseId = benchSlot,
                         sets = listOf(
                             TestData.setLog(setNumber = 1, weight = 80.0, reps = 8),
                             TestData.setLog(setNumber = 2, weight = 80.0, reps = 8, isCompleted = false),

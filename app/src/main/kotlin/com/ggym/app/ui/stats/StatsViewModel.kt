@@ -45,6 +45,12 @@ class StatsViewModel(
     private val history: WorkoutHistoryRepository,
     private val exercises: ExerciseRepository,
     private val bodyWeights: BodyWeightUseCases,
+    /**
+     * The exercise to open the progression chart on — the library's **Progression** action (M12)
+     * links here with an id. `null` (the tab's own entry) lets the state fall back to the first
+     * dictionary entry, and a stale id falls back the same way.
+     */
+    initialExerciseId: Long? = null,
     todayProvider: () -> LocalDate = { LocalDate.now() },
 ) : ViewModel() {
 
@@ -52,7 +58,7 @@ class StatsViewModel(
     private val months = CalendarMonths.last(CalendarMonths.ATTENDANCE_MONTHS, today)
 
     private val range = MutableStateFlow(BodyWeightRange.DEFAULT)
-    private val selection = MutableStateFlow<Long?>(null)
+    private val selection = MutableStateFlow(initialExerciseId)
     private val dialogs = MutableStateFlow(Dialogs())
 
     /** The attendance window: finished sessions' dates, counted by distinct day and zero-filled. */

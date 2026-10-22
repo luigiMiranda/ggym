@@ -147,8 +147,24 @@ fun GgymNavHost(
                     onOpenHistory = { sessionId -> navController.navigate(Routes.history(sessionId)) },
                 )
             }
-            composable(Destination.Stats.route) {
-                StatsScreen(viewModelFactory = container.statsViewModelFactory)
+            composable(
+                route = Routes.STATS,
+                arguments = listOf(
+                    navArgument(Routes.EXERCISE_ID) {
+                        type = NavType.LongType
+                        defaultValue = Routes.NO_EXERCISE_ID
+                    },
+                ),
+            ) { entry ->
+                // The route is optional: `stats` (the tab) and `stats?exerciseId=5` (the library's
+                // Progression action) land on the same destination, and only the second has an
+                // exercise to preselect.
+                val exerciseId = entry.arguments
+                    ?.getLong(Routes.EXERCISE_ID)
+                    ?.takeIf { it != Routes.NO_EXERCISE_ID }
+                StatsScreen(
+                    viewModelFactory = remember(exerciseId) { container.statsViewModelFactory(exerciseId) },
+                )
             }
             composable(Destination.Settings.route) {
                 SettingsScreen(viewModelFactory = container.settingsViewModelFactory)

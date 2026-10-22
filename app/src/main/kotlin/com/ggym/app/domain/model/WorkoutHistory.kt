@@ -55,6 +55,12 @@ data class WorkoutExerciseLog(
      * existed, or a slot that was somehow planned without one.
      */
     val targetReps: String = "",
+    /**
+     * The routine slot this log was materialized from, so a completion can move that day's weight
+     * too (`WorkingWeightUseCases`). `null` when there is no slot behind it: history written before
+     * the pointer existed, a restored draft from an older backup, or a slot deleted mid-workout.
+     */
+    val plannedExerciseId: Long? = null,
     val sets: List<WorkoutSetLog> = emptyList(),
 )
 
