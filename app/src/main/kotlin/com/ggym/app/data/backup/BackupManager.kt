@@ -4,6 +4,7 @@ import android.content.ContentResolver
 import android.database.sqlite.SQLiteConstraintException
 import android.database.sqlite.SQLiteException
 import android.net.Uri
+import android.util.Log
 import androidx.room.withTransaction
 import com.ggym.app.data.room.GgymDatabase
 import com.ggym.app.data.room.dao.RoutineDayWithPlannedExercises
@@ -18,6 +19,11 @@ import com.ggym.app.data.room.entity.RoutineEntity
 import com.ggym.app.data.room.entity.WorkoutExerciseLogEntity
 import com.ggym.app.data.room.entity.WorkoutSessionEntity
 import com.ggym.app.data.room.entity.WorkoutSetLogEntity
+import com.ggym.app.domain.repository.BackupExportResult
+import com.ggym.app.domain.repository.BackupFailure
+import com.ggym.app.domain.repository.BackupImportResult
+import com.ggym.app.domain.repository.BackupRepository
+import com.ggym.app.domain.repository.BackupSummary
 import kotlinx.serialization.SerializationException
 import java.io.IOException
 
@@ -38,8 +44,10 @@ import java.io.IOException
  *   untouched. A file written by an older format version is upgraded on the way in: format 1
  *   simply has no per-slot weights, so its slots arrive with none.
  *
- * Failure is always a value here, never an exception: a screen shows the case, and
- * [ImportError.detail] is for the log.
+ * Failure is always a value here, never an exception, and it is always one of
+ * [BackupRepository]'s cases: the provider's and SQLite's own words go to the log through
+ * [report], because a sentence shown to a person has to be translatable and an `IOException`
+ * message is not.
  */
 internal class BackupManager(
     private val database: GgymDatabase,
@@ -47,40 +55,46 @@ internal class BackupManager(
     /** Recorded in the file, and the only reason this is a parameter: tests pin it. */
     private val appVersion: String,
     private val now: () -> Long = System::currentTimeMillis,
-) {
+) : BackupRepository {
 
     /** The document as it would be written, without writing it. */
     suspend fun exportJson(): String = database.withTransaction {
         BackupJsonFormat.encodeToString(BackupFile.serializer(), snapshot())
     }
 
-    /** Writes the snapshot to a document the user picked. Existing content is replaced. */
-    suspend fun exportTo(uri: Uri): ExportResult {
+    /**
+     * Writes the snapshot to a document the user picked. Existing content is replaced.
+     *
+     * `"wt"` is not a detail: the default truncating mode can leave a provider's file with the
+     * tail of a longer previous document, and a backup that is silently half old is worse than one
+     * that fails.
+     */
+    override suspend fun exportTo(document: Uri): BackupExportResult {
         val json = exportJson()
         return try {
-            val stream = contentResolver.openOutputStream(uri, "wt")
-                ?: return ExportResult.Failed("the document could not be opened for writing")
+            val stream = contentResolver.openOutputStream(document, "wt")
+                ?: return report(IOException("the document could not be opened for writing"))
             stream.use { it.write(json.toByteArray(Charsets.UTF_8)) }
-            ExportResult.Written
+            BackupExportResult.Written
         } catch (e: IOException) {
-            ExportResult.Failed(e.message ?: "the document could not be written")
+            report(e)
         } catch (e: SecurityException) {
-            ExportResult.Failed(e.message ?: "writing to the document was refused")
+            report(e)
         }
     }
 
     /** Reads and restores a document the user picked. */
-    suspend fun importFrom(uri: Uri): ImportResult {
+    override suspend fun importFrom(document: Uri): BackupImportResult {
         val json = try {
-            val stream = contentResolver.openInputStream(uri)
-                ?: return ImportResult.Failed(ImportError.Unreadable("the document could not be opened"))
+            val stream = contentResolver.openInputStream(document)
+                ?: return report(ImportError.Unreadable("the document could not be opened"))
             // A backup file is a few hundred kilobytes of text; reading it in one go keeps the
             // parse step (and therefore the error handling) in one place.
             stream.use { it.readBytes().toString(Charsets.UTF_8) }
         } catch (e: IOException) {
-            return ImportResult.Failed(ImportError.Unreadable(e.message ?: "the document could not be read"))
+            return report(ImportError.Unreadable(e.message ?: "the document could not be read"))
         } catch (e: SecurityException) {
-            return ImportResult.Failed(ImportError.Unreadable(e.message ?: "reading the document was refused"))
+            return report(ImportError.Unreadable(e.message ?: "reading the document was refused"))
         }
         return importJson(json)
     }
@@ -89,35 +103,56 @@ internal class BackupManager(
      * Parses [json], validates it and replaces the database contents with it.
      *
      * Nothing is written until both the parse and the validation have passed, and everything that
-     * is written happens in one transaction.
+     * is written happens in one transaction. Taking the document's *text* rather than a [Uri] is
+     * what lets a test drive every refusal without a provider in the way.
      */
-    suspend fun importJson(json: String): ImportResult {
+    suspend fun importJson(json: String): BackupImportResult {
         val file = try {
             BackupJsonFormat.decodeFromString(BackupFile.serializer(), json)
         } catch (e: SerializationException) {
-            return ImportResult.Failed(ImportError.Malformed(e.message ?: "not a GGym backup"))
+            return report(ImportError.Malformed(e.message ?: "not a GGym backup"))
         } catch (e: IllegalArgumentException) {
-            return ImportResult.Failed(ImportError.Malformed(e.message ?: "not a GGym backup"))
+            return report(ImportError.Malformed(e.message ?: "not a GGym backup"))
         }
 
-        BackupValidator.validate(file)?.let { problem -> return ImportResult.Failed(problem) }
+        BackupValidator.validate(file)?.let { problem -> return report(problem) }
 
         return try {
             database.withTransaction { replaceEverythingWith(file) }
-            ImportResult.Restored(
-                BackupCounts(
+            BackupImportResult.Restored(
+                BackupSummary(
                     exercises = file.exercises.size,
                     routines = file.routines.size,
-                    sessions = file.sessions.size,
-                    bodyWeights = file.bodyWeights.size,
+                    // A workout still in progress is a draft, not an entry in history, and the
+                    // calendar will not show it — so counting it here would promise the user a
+                    // workout they cannot go and look at.
+                    workouts = file.sessions.count { !it.isDraft },
+                    weighIns = file.bodyWeights.size,
                 ),
             )
         } catch (e: SQLiteConstraintException) {
             // The validator covers the contradictions it can see; the database has the last word.
-            ImportResult.Failed(ImportError.Inconsistent(e.message ?: "the file contradicts the schema"))
+            report(ImportError.Inconsistent(e.message ?: "the file contradicts the schema"))
         } catch (e: SQLiteException) {
-            ImportResult.Failed(ImportError.RestoreFailed(e.message ?: "the database refused the restore"))
+            report(ImportError.RestoreFailed(e.message ?: "the database refused the restore"))
         }
+    }
+
+    /**
+     * Turns an internal refusal into the screen's case, after writing the real reason to the log.
+     *
+     * Logged rather than shown because the two audiences want different things: a person wants one
+     * translatable sentence, and whoever reads a bug report wants the provider's own words.
+     */
+    private fun report(error: ImportError): BackupImportResult.Failed {
+        Log.w(LOG_TAG, "backup import refused: $error")
+        return BackupImportResult.Failed(error.toDomain())
+    }
+
+    /** The write path's half of [report]: nothing about a failed write is worth a sentence. */
+    private fun report(error: Exception): BackupExportResult {
+        Log.w(LOG_TAG, "backup export failed", error)
+        return BackupExportResult.Failed
     }
 
     private suspend fun snapshot(): BackupFile = BackupFile(
@@ -245,6 +280,11 @@ internal class BackupManager(
                 ),
             )
         }
+    }
+
+    private companion object {
+        /** The log tag a failed import or export reports under; never shown in the app. */
+        const val LOG_TAG = "GGymBackup"
     }
 }
 

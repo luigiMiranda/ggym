@@ -150,6 +150,48 @@
     <string name="settings_notifications_supporting">Il conto alla rovescia funziona comunque nell\'app, ma la notifica e l\'avviso di fine recupero richiedono le notifiche. Consentile nelle impostazioni di sistema per avere entrambe.</string>
     <string name="settings_notifications_open">Apri le impostazioni delle notifiche</string>
 
+    <!-- Impostazioni: la sezione dati — un file JSON fuori, un file dentro -->
+    <string name="settings_section_data">Dati</string>
+    <string name="settings_backup_title">Backup</string>
+    <string name="settings_backup_supporting">Le tue schede, tutta la cronologia e le tue pesate, in un solo file. Le impostazioni non sono incluse.</string>
+    <string name="settings_backup_export">Esporta</string>
+    <string name="settings_backup_import">Importa</string>
+    <string name="settings_backup_exported_title">Backup salvato</string>
+    <string name="settings_backup_exported">Il file è dove l\'hai messo. Tienilo in un posto raggiungibile dal nuovo telefono.</string>
+    <string name="settings_backup_export_failed_title">Backup non salvato</string>
+    <string name="settings_backup_export_failed">GGym non è riuscito a scrivere quel file. Nulla su questo telefono è cambiato.</string>
+    <string name="settings_backup_imported_title">Dati ripristinati</string>
+    <string name="settings_backup_imported">Ripristinati: %1$s, %2$s, %3$s e %4$s.</string>
+    <string name="settings_backup_import_confirm_title">Sostituire tutti i dati?</string>
+    <string name="settings_backup_import_confirm_message">Questo sostituisce tutto ciò che c\'è su questo telefono con il file: schede, tutta la cronologia, le pesate e un eventuale allenamento in corso. Non si può annullare.</string>
+    <string name="settings_backup_import_confirm_action">Sostituisci</string>
+    <string name="settings_backup_import_failed_title">Dati non ripristinati</string>
+    <string name="settings_backup_error_malformed">Quel file non è un backup di GGym. Nulla su questo telefono è cambiato.</string>
+    <string name="settings_backup_error_version">Quel backup è in formato %1$d; questa versione di GGym legge i formati fino al %2$d. Nulla su questo telefono è cambiato.</string>
+    <string name="settings_backup_error_inconsistent">Il file è leggibile ma contiene contraddizioni, quindi GGym l\'ha rifiutato. Nulla su questo telefono è cambiato.</string>
+    <string name="settings_backup_error_unreadable">GGym non è riuscito ad aprire quel file. Potrebbe essere stato spostato, eliminato o non essere più accessibile. Nulla su questo telefono è cambiato.</string>
+    <string name="settings_backup_error_restore">Il file era valido, ma il database l\'ha rifiutato. GGym ha rimesso tutto esattamente come era.</string>
+    <plurals name="settings_backup_routines">
+        <item quantity="one">%1$d scheda</item>
+        <item quantity="many">%1$d schede</item>
+        <item quantity="other">%1$d schede</item>
+    </plurals>
+    <plurals name="settings_backup_workouts">
+        <item quantity="one">%1$d allenamento</item>
+        <item quantity="many">%1$d allenamenti</item>
+        <item quantity="other">%1$d allenamenti</item>
+    </plurals>
+    <plurals name="settings_backup_exercises">
+        <item quantity="one">%1$d esercizio</item>
+        <item quantity="many">%1$d esercizi</item>
+        <item quantity="other">%1$d esercizi</item>
+    </plurals>
+    <plurals name="settings_backup_weigh_ins">
+        <item quantity="one">%1$d pesata</item>
+        <item quantity="many">%1$d pesate</item>
+        <item quantity="other">%1$d pesate</item>
+    </plurals>
+
     <!-- Shared actions -->
     <string name="action_more">Altre azioni</string>
     <string name="action_back">Indietro</string>

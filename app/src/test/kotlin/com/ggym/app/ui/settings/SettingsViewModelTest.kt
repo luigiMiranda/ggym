@@ -6,6 +6,7 @@ import com.ggym.app.data.prefs.ThemeMode
 import com.ggym.app.data.prefs.ThemePreferences
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.workout.RestTimerUseCases
+import com.ggym.app.testing.FakeBackupRepository
 import com.ggym.app.testing.FakeLanguagePreferences
 import com.ggym.app.testing.FakeRestTimerCommands
 import com.ggym.app.testing.FakeThemePreferences
@@ -51,7 +52,13 @@ class SettingsViewModelTest {
     private val languagePreferences = FakeLanguagePreferences()
 
     private val viewModel by lazy {
-        SettingsViewModel(FakeThemePreferences(), languagePreferences, timer, workoutPreferences)
+        SettingsViewModel(
+            FakeThemePreferences(),
+            languagePreferences,
+            timer,
+            workoutPreferences,
+            FakeBackupRepository(),
+        )
     }
 
     @Before

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -31,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.content.IntentCompat
@@ -41,8 +43,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.ggym.app.R
 import com.ggym.app.data.prefs.AppLanguage
 import com.ggym.app.data.prefs.ThemeMode
+import com.ggym.app.domain.repository.BackupFailure
 import com.ggym.app.domain.workout.AlertSound
 import com.ggym.app.domain.workout.RingPolicy
+import com.ggym.app.ui.common.ConfirmDeleteDialog
 import com.ggym.app.ui.common.GgymCardShape
 import com.ggym.app.ui.common.GgymPill
 import com.ggym.app.ui.common.GgymScreenHeader
@@ -51,6 +55,8 @@ import com.ggym.app.ui.common.GgymStepper
 import com.ggym.app.ui.common.PillTone
 import com.ggym.app.ui.common.appNotificationSettingsIntent
 import com.ggym.app.ui.common.rememberNotificationsAllowed
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 /**
  * Settings tab, grouped the way a phone's own settings are: a section label, the cards that
@@ -60,6 +66,8 @@ import com.ggym.app.ui.common.rememberNotificationsAllowed
  * - **Rest timer & notifications** — the master switch, the alert's sound and ring policy, and the
  *   system-notification warning when GGym cannot post notifications.
  * - **Language** — the app's own language, kept apart from the visual settings.
+ * - **Data** — the JSON backup: one file out, one file back. Last because it is the only
+ *   destructive thing on the page and the least often touched.
  */
 @Composable
 fun SettingsScreen(
@@ -71,6 +79,18 @@ fun SettingsScreen(
     val settings = state.theme
     val notificationsAllowed by rememberNotificationsAllowed()
     val context = LocalContext.current
+
+    // Export goes straight out: the picker's answer *is* the confirmation.
+    val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument(JSON_MIME_TYPE)) { document ->
+        document?.let(viewModel::exportTo)
+    }
+
+    // Import does not: the picked file is held until the user has confirmed the replacement. That
+    // pending file lives in the view model, not here, so a rotation mid-dialog keeps both the file
+    // and the question.
+    val pickImport = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { document ->
+        document?.let(viewModel::requestImport)
+    }
 
     Column(
         modifier = modifier
@@ -195,13 +215,67 @@ fun SettingsScreen(
                 onSelect = viewModel::setLanguage,
             )
 
+            GgymSectionLabel(
+                text = stringResource(R.string.settings_section_data),
+                modifier = Modifier.padding(top = 8.dp),
+            )
+
+            BackupCard(
+                busy = state.backupBusy,
+                onExport = { export.launch(backupFileName()) },
+                onImport = { pickImport.launch(BACKUP_READ_MIME_TYPES) },
+            )
+
             Spacer(Modifier.height(24.dp))
         }
+    }
+
+    // A file has been chosen but nothing has happened yet: this is the last moment at which
+    // saying no costs the user nothing.
+    state.pendingImport?.let {
+        ConfirmDeleteDialog(
+            title = stringResource(R.string.settings_backup_import_confirm_title),
+            message = stringResource(R.string.settings_backup_import_confirm_message),
+            confirmLabel = stringResource(R.string.settings_backup_import_confirm_action),
+            onConfirm = viewModel::confirmImport,
+            onDismiss = viewModel::cancelImport,
+        )
+    }
+
+    state.backupOutcome?.let { outcome ->
+        BackupOutcomeDialog(outcome = outcome, onDismiss = viewModel::dismissBackupOutcome)
     }
 }
 
 /** The rest timer's switch, named for the Compose tests that drive it. */
 internal const val REST_TIMER_SWITCH_TAG = "rest_timer_switch"
+
+internal const val BACKUP_EXPORT_TAG = "backup_export"
+internal const val BACKUP_IMPORT_TAG = "backup_import"
+internal const val BACKUP_OUTCOME_TAG = "backup_outcome"
+
+/** The type GGym writes a backup as, and tells a picker to look for. */
+private const val JSON_MIME_TYPE = "application/json"
+
+/**
+ * What the reader is shown when it goes looking for a backup file.
+ *
+ * `text/plain` is in the list because that is what some document providers report a `.json` file
+ * as; leaving it out would hide the user's own backup from the picker on those devices. The file's
+ * contents are validated either way, so a wrong pick costs a sentence, not data.
+ */
+private val BACKUP_READ_MIME_TYPES = arrayOf(JSON_MIME_TYPE, "text/plain")
+
+/**
+ * The name the create-document picker suggests: `ggym-backup-2026-10-23.json`.
+ *
+ * The date is ISO 8601 and not the locale's format. A file name is not read by the app that wrote
+ * it — it is read by a file manager, weeks later, possibly on another phone — so it has to sort: a
+ * directory of `ggym-backup-2026-10-23.json` orders itself by date, while `23/10/2026` orders
+ * itself alphabetically by day of the month.
+ */
+internal fun backupFileName(today: LocalDate = LocalDate.now()): String =
+    "ggym-backup-${DateTimeFormatter.ISO_LOCAL_DATE.format(today)}.json"
 
 internal const val ALERT_SOUND_SYSTEM_TAG = "alert_sound_system"
 internal const val ALERT_SOUND_RINGTONE_TAG = "alert_sound_ringtone"
@@ -281,7 +355,7 @@ private fun AlertSoundCard(
         onSelect(AlertSound.Ringtone(picked.toString()))
     }
 
-    AlertCard(
+    SettingsCard(
         title = stringResource(R.string.settings_alert_sound_title),
         supporting = alertSoundSupporting(context, sound, enabled),
         enabled = enabled,
@@ -324,7 +398,7 @@ private fun RingingCard(
 ) {
     val automatic = policy as? RingPolicy.Automatic
 
-    AlertCard(
+    SettingsCard(
         title = stringResource(R.string.settings_ringing_title),
         supporting = when {
             !enabled -> stringResource(R.string.settings_alert_inactive)
@@ -380,9 +454,9 @@ private fun RingingCard(
     }
 }
 
-/** One alert card: a title, an explanation, and whatever controls the setting has. */
+/** One settings card: a title, an explanation, and whatever controls the setting has. */
 @Composable
-private fun AlertCard(
+private fun SettingsCard(
     title: String,
     supporting: String,
     enabled: Boolean,
@@ -393,8 +467,9 @@ private fun AlertCard(
         shape = GgymCardShape,
         modifier = Modifier
             .fillMaxWidth()
-            // Dimmed rather than hidden: the settings still exist, they just do nothing while the
-            // rest timer is off, and the supporting line says so.
+            // Dimmed rather than hidden: the setting still exists, it just does nothing right now —
+            // the rest timer is off above, or a backup job is running below — and the supporting
+            // line or the state says which.
             .alpha(if (enabled) 1f else INACTIVE_ALPHA),
     ) {
         Column(
@@ -412,6 +487,109 @@ private fun AlertCard(
             content()
         }
     }
+}
+
+/**
+ * The backup: one file out, one file back.
+ *
+ * Two pills and no explanation of the file's shape beyond the card's supporting line — the format
+ * is documented where a user who wants it can open it (the file is readable JSON), and a settings
+ * page is not the place for a spec. Both pills go dead while a job runs, because the second of two
+ * concurrent restores is never what anyone meant.
+ */
+@Composable
+private fun BackupCard(
+    busy: Boolean,
+    onExport: () -> Unit,
+    onImport: () -> Unit,
+) {
+    SettingsCard(
+        title = stringResource(R.string.settings_backup_title),
+        supporting = stringResource(R.string.settings_backup_supporting),
+        enabled = !busy,
+    ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            GgymPill(
+                text = stringResource(R.string.settings_backup_export),
+                tone = PillTone.Lime,
+                onClick = if (busy) null else onExport,
+                modifier = Modifier.testTag(BACKUP_EXPORT_TAG),
+            )
+            GgymPill(
+                text = stringResource(R.string.settings_backup_import),
+                tone = PillTone.Ghost,
+                onClick = if (busy) null else onImport,
+                modifier = Modifier.testTag(BACKUP_IMPORT_TAG),
+            )
+        }
+    }
+}
+
+/**
+ * What became of the last backup job: an acknowledgment, not a question.
+ *
+ * One button, because there is nothing to decide — the work is already done or already refused.
+ * The failure sentences are the specific ones ([BackupFailure] has five cases for exactly this
+ * reason), since "import failed" would leave the user with no idea whether to try another file,
+ * update the app, or stop trying.
+ */
+@Composable
+private fun BackupOutcomeDialog(
+    outcome: BackupOutcome,
+    onDismiss: () -> Unit,
+) {
+    val failed = outcome is BackupOutcome.ExportFailed || outcome is BackupOutcome.ImportFailed
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                when (outcome) {
+                    BackupOutcome.Exported -> stringResource(R.string.settings_backup_exported_title)
+                    BackupOutcome.ExportFailed -> stringResource(R.string.settings_backup_export_failed_title)
+                    is BackupOutcome.Imported -> stringResource(R.string.settings_backup_imported_title)
+                    is BackupOutcome.ImportFailed -> stringResource(R.string.settings_backup_import_failed_title)
+                },
+            )
+        },
+        text = {
+            Text(
+                text = outcome.message(),
+                color = if (failed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.testTag(BACKUP_OUTCOME_TAG),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_ok)) }
+        },
+    )
+}
+
+@Composable
+private fun BackupOutcome.message(): String = when (this) {
+    BackupOutcome.Exported -> stringResource(R.string.settings_backup_exported)
+    BackupOutcome.ExportFailed -> stringResource(R.string.settings_backup_export_failed)
+    is BackupOutcome.Imported -> stringResource(
+        R.string.settings_backup_imported,
+        pluralStringResource(R.plurals.settings_backup_routines, summary.routines, summary.routines),
+        pluralStringResource(R.plurals.settings_backup_workouts, summary.workouts, summary.workouts),
+        pluralStringResource(R.plurals.settings_backup_exercises, summary.exercises, summary.exercises),
+        pluralStringResource(R.plurals.settings_backup_weigh_ins, summary.weighIns, summary.weighIns),
+    )
+
+    is BackupOutcome.ImportFailed -> failure.message()
+}
+
+@Composable
+private fun BackupFailure.message(): String = when (this) {
+    BackupFailure.Malformed -> stringResource(R.string.settings_backup_error_malformed)
+    BackupFailure.Inconsistent -> stringResource(R.string.settings_backup_error_inconsistent)
+    BackupFailure.Unreadable -> stringResource(R.string.settings_backup_error_unreadable)
+    BackupFailure.RestoreFailed -> stringResource(R.string.settings_backup_error_restore)
+    is BackupFailure.UnsupportedVersion -> stringResource(
+        R.string.settings_backup_error_version,
+        found,
+        supported,
+    )
 }
 
 /**

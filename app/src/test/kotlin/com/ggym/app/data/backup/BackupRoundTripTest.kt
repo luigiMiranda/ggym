@@ -13,6 +13,10 @@ import com.ggym.app.domain.model.Exercise
 import com.ggym.app.domain.model.LastCompletedSet
 import com.ggym.app.domain.model.Routine
 import com.ggym.app.domain.model.WorkoutSession
+import com.ggym.app.domain.repository.BackupExportResult
+import com.ggym.app.domain.repository.BackupFailure
+import com.ggym.app.domain.repository.BackupImportResult
+import com.ggym.app.domain.repository.BackupSummary
 import com.ggym.app.testing.TestData
 import com.ggym.app.testing.countRows
 import com.ggym.app.testing.createTestDatabase
@@ -95,7 +99,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(document)
 
-        assertEquals(ImportResult.Restored(BackupCounts(exercises = 3, routines = 2, sessions = 3, bodyWeights = 2)), result)
+        assertEquals(BackupImportResult.Restored(BackupSummary(routines = 2, workouts = 2, exercises = 3, weighIns = 2)), result)
         assertEquals(before, snapshot())
     }
 
@@ -173,7 +177,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(emptyBackupJson())
 
-        assertEquals(ImportResult.Restored(BackupCounts(0, 0, 0, 0)), result)
+        assertEquals(BackupImportResult.Restored(BackupSummary(0, 0, 0, 0)), result)
         assertEquals(GymSnapshot(), snapshot())
         listOf(
             "exercise",
@@ -192,9 +196,9 @@ class BackupRoundTripTest {
         populate()
         val before = snapshot()
 
-        assertTrue(backupManager.importJson("this is not JSON") is ImportResult.Failed)
-        assertTrue(backupManager.importJson("{ }") is ImportResult.Failed)
-        assertTrue(backupManager.importJson("""{"schemaVersion": 1}""") is ImportResult.Failed)
+        assertTrue(backupManager.importJson("this is not JSON") is BackupImportResult.Failed)
+        assertTrue(backupManager.importJson("{ }") is BackupImportResult.Failed)
+        assertTrue(backupManager.importJson("""{"schemaVersion": 1}""") is BackupImportResult.Failed)
 
         assertEquals(before, snapshot())
     }
@@ -237,7 +241,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(version1BackupJson())
 
-        assertEquals(ImportResult.Restored(BackupCounts(exercises = 1, routines = 1, sessions = 1, bodyWeights = 1)), result)
+        assertEquals(BackupImportResult.Restored(BackupSummary(routines = 1, workouts = 1, exercises = 1, weighIns = 1)), result)
         val restored = snapshot()
         val slot = restored.routines.single().days.single().plannedExercises.single()
         assertNull("format 1 had no per-slot weight", slot.weightKg)
@@ -272,7 +276,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(version2BackupJson())
 
-        assertEquals(ImportResult.Restored(BackupCounts(exercises = 1, routines = 1, sessions = 1, bodyWeights = 1)), result)
+        assertEquals(BackupImportResult.Restored(BackupSummary(routines = 1, workouts = 1, exercises = 1, weighIns = 1)), result)
         val restored = snapshot()
         assertEquals(
             "the per-slot weight is what format 2 was for",
@@ -297,7 +301,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(version3BackupJson())
 
-        assertEquals(ImportResult.Restored(BackupCounts(exercises = 1, routines = 1, sessions = 1, bodyWeights = 1)), result)
+        assertEquals(BackupImportResult.Restored(BackupSummary(routines = 1, workouts = 1, exercises = 1, weighIns = 1)), result)
         val restored = snapshot()
         val log = restored.sessions.single().exercises.single()
         assertEquals("the rest time was snapshotted by format 3", 120, log.restSeconds)
@@ -310,7 +314,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(version4BackupJson())
 
-        assertEquals(ImportResult.Restored(BackupCounts(exercises = 1, routines = 1, sessions = 1, bodyWeights = 1)), result)
+        assertEquals(BackupImportResult.Restored(BackupSummary(routines = 1, workouts = 1, exercises = 1, weighIns = 1)), result)
         val log = snapshot().sessions.single().exercises.single()
         assertEquals("format 4 snapshotted the target", "8-10", log.targetReps)
         assertNull(
@@ -354,8 +358,8 @@ class BackupRoundTripTest {
         )
 
         assertEquals(
-            ImportResult.Failed(
-                ImportError.UnsupportedVersion(found = BACKUP_FORMAT_VERSION + 1, supported = BACKUP_FORMAT_VERSION),
+            BackupImportResult.Failed(
+                BackupFailure.UnsupportedVersion(found = BACKUP_FORMAT_VERSION + 1, supported = BACKUP_FORMAT_VERSION),
             ),
             result,
         )
@@ -380,7 +384,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(jsonOf(orphaned))
 
-        assertTrue("expected an inconsistency, got $result", result is ImportResult.Failed && result.error is ImportError.Inconsistent)
+        assertTrue("expected an inconsistency, got $result", result is BackupImportResult.Failed && result.failure is BackupFailure.Inconsistent)
         assertEquals(before, snapshot())
     }
 
@@ -401,7 +405,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importJson(jsonOf(forked))
 
-        assertTrue("expected an inconsistency, got $result", result is ImportResult.Failed && result.error is ImportError.Inconsistent)
+        assertTrue("expected an inconsistency, got $result", result is BackupImportResult.Failed && result.failure is BackupFailure.Inconsistent)
         assertEquals(before, snapshot())
     }
 
@@ -413,7 +417,7 @@ class BackupRoundTripTest {
         val document = readDocument(backupManager.exportJson())
         val impossible = document.copy(bodyWeights = document.bodyWeights.map { it.copy(weightKg = 500.0) })
 
-        assertTrue(backupManager.importJson(jsonOf(impossible)) is ImportResult.Failed)
+        assertTrue(backupManager.importJson(jsonOf(impossible)) is BackupImportResult.Failed)
         assertEquals(before, snapshot())
     }
 
@@ -424,7 +428,7 @@ class BackupRoundTripTest {
         val file = File(tempFolder.root, "ggym-backup.json")
         val uri = Uri.fromFile(file)
 
-        assertEquals(ExportResult.Written, backupManager.exportTo(uri))
+        assertEquals(BackupExportResult.Written, backupManager.exportTo(uri))
         assertTrue("the file is human readable", file.readText().contains("\"schemaVersion\""))
 
         emptyEverything()
@@ -432,7 +436,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importFrom(uri)
 
-        assertTrue("expected a restore, got $result", result is ImportResult.Restored)
+        assertTrue("expected a restore, got $result", result is BackupImportResult.Restored)
         assertEquals(before, snapshot())
     }
 
@@ -442,7 +446,7 @@ class BackupRoundTripTest {
 
         val uri = Uri.fromFile(File(tempFolder.root, "missing-directory/backup.json"))
 
-        assertTrue(backupManager.exportTo(uri) is ExportResult.Failed)
+        assertTrue(backupManager.exportTo(uri) is BackupExportResult.Failed)
     }
 
     @Test
@@ -452,7 +456,7 @@ class BackupRoundTripTest {
 
         val result = backupManager.importFrom(Uri.fromFile(File(tempFolder.root, "not-there.json")))
 
-        assertTrue("expected an unreadable file, got $result", result is ImportResult.Failed && result.error is ImportError.Unreadable)
+        assertTrue("expected an unreadable file, got $result", result is BackupImportResult.Failed && result.failure is BackupFailure.Unreadable)
         assertEquals(before, snapshot())
     }
 
@@ -568,7 +572,7 @@ class BackupRoundTripTest {
 
     /** The "reinstalled app" case: an empty file is a legitimate backup, and a restore replaces. */
     private suspend fun emptyEverything() {
-        assertEquals(ImportResult.Restored(BackupCounts(0, 0, 0, 0)), backupManager.importJson(emptyBackupJson()))
+        assertEquals(BackupImportResult.Restored(BackupSummary(0, 0, 0, 0)), backupManager.importJson(emptyBackupJson()))
     }
 
     private fun emptyBackupJson(): String = jsonOf(

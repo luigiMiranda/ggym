@@ -1,11 +1,16 @@
 package com.ggym.app.data.backup
 
+import com.ggym.app.domain.repository.BackupFailure
+
 /**
- * Why a backup could not be restored.
+ * Why a restore could not happen, as this package sees it.
  *
- * Each case is something the user can be told in one sentence, and [detail] is for the log or a
- * bug report rather than the screen: the screens localize their own message per case, so a
- * human-readable detail string never has to be translated.
+ * Each case carries a [detail] string taken from whatever actually refused — the JSON parser, the
+ * validator, the provider or SQLite. That text is for a bug report and is never shown to a person:
+ * [toDomain] turns the case into the screen's own vocabulary and the manager logs the detail on the
+ * way past, so the message a user reads is a localized sentence while the log keeps the real
+ * reason. Keeping the two apart is why this type exists at all instead of the domain one being used
+ * throughout.
  */
 internal sealed interface ImportError {
 
@@ -31,30 +36,11 @@ internal sealed interface ImportError {
     data class RestoreFailed(val detail: String) : ImportError
 }
 
-/** Outcome of a restore. */
-internal sealed interface ImportResult {
-
-    /** Every table was replaced; [counts] says with how much. */
-    data class Restored(val counts: BackupCounts) : ImportResult
-
-    /** Nothing was written. See [error]. */
-    data class Failed(val error: ImportError) : ImportResult
-}
-
-/** How many rows a restore wrote, per top-level table. */
-internal data class BackupCounts(
-    val exercises: Int,
-    val routines: Int,
-    val sessions: Int,
-    val bodyWeights: Int,
-)
-
-/** Outcome of writing a backup file. */
-internal sealed interface ExportResult {
-
-    /** The file was written in full. */
-    data object Written : ExportResult
-
-    /** The document could not be written — no space, or the provider refused. */
-    data class Failed(val detail: String) : ExportResult
+/** The same failure, in the vocabulary the screen localizes. */
+internal fun ImportError.toDomain(): BackupFailure = when (this) {
+    is ImportError.Malformed -> BackupFailure.Malformed
+    is ImportError.UnsupportedVersion -> BackupFailure.UnsupportedVersion(found, supported)
+    is ImportError.Inconsistent -> BackupFailure.Inconsistent
+    is ImportError.Unreadable -> BackupFailure.Unreadable
+    is ImportError.RestoreFailed -> BackupFailure.RestoreFailed
 }

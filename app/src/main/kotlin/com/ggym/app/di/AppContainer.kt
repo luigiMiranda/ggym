@@ -4,6 +4,8 @@ import android.content.Context
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.ggym.app.BuildConfig
+import com.ggym.app.data.backup.BackupManager
 import com.ggym.app.data.prefs.DataStoreLanguagePreferences
 import com.ggym.app.data.prefs.DataStoreRestTimerStore
 import com.ggym.app.data.prefs.DataStoreThemePreferences
@@ -17,6 +19,7 @@ import com.ggym.app.data.repository.RoomExerciseRepository
 import com.ggym.app.data.repository.RoomHistoryRepository
 import com.ggym.app.data.repository.RoomRoutineRepository
 import com.ggym.app.data.room.createGgymDatabase
+import com.ggym.app.domain.repository.BackupRepository
 import com.ggym.app.domain.repository.BodyWeightRepository
 import com.ggym.app.domain.repository.ExerciseRepository
 import com.ggym.app.domain.repository.RestTimerStore
@@ -111,6 +114,19 @@ class AppContainer(context: Context) {
     val bodyWeightRepository: BodyWeightRepository = RoomBodyWeightRepository(database)
 
     /**
+     * Moving the whole database to a file and back, for the Settings screen's Data section.
+     *
+     * The app version goes into the file's `appVersion` header — the only thing it is for, and the
+     * reason this is built here rather than in the manager: a manager that read `BuildConfig`
+     * itself could not be pinned by a test.
+     */
+    val backupRepository: BackupRepository = BackupManager(
+        database = database,
+        contentResolver = appContext.contentResolver,
+        appVersion = BuildConfig.VERSION_NAME,
+    )
+
+    /**
      * The only writer of a body weight, and the home of the one-measurement-per-day rule. The
      * Stats tab's form is its only caller, and the rule holds for any caller a later screen adds.
      */
@@ -164,7 +180,13 @@ class AppContainer(context: Context) {
 
     val settingsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
         initializer {
-            SettingsViewModel(themePreferences, languagePreferences, restTimerUseCases, workoutPreferences)
+            SettingsViewModel(
+                themePreferences,
+                languagePreferences,
+                restTimerUseCases,
+                workoutPreferences,
+                backupRepository,
+            )
         }
     }
 

@@ -41,6 +41,29 @@ class BackupValidationTest {
         assertNull(BackupValidator.validate(validBackup().copy(schemaVersion = OLDEST_READABLE_BACKUP_FORMAT_VERSION)))
     }
 
+    /**
+     * The window never shrinks.
+     *
+     * Compatibility is the whole promise of a backup file: a user who backed up a phone in 2026 and
+     * restores it in 2028 must not be told their file is too old. Raising the lower bound — the one
+     * edit that would break that promise — fails here by name, and the loop proves the window is
+     * continuous rather than that two constants happen to agree.
+     */
+    @Test
+    fun `every format the app has ever written is still readable`() {
+        assertEquals(
+            "the lower bound is the first format GGym ever wrote; raising it strands old backups",
+            1,
+            OLDEST_READABLE_BACKUP_FORMAT_VERSION,
+        )
+        for (version in OLDEST_READABLE_BACKUP_FORMAT_VERSION..BACKUP_FORMAT_VERSION) {
+            assertNull(
+                "format $version should still be readable",
+                BackupValidator.validate(validBackup().copy(schemaVersion = version)),
+            )
+        }
+    }
+
     @Test
     fun `a version below the oldest readable one is refused`() {
         listOf(0, -1).forEach { version ->

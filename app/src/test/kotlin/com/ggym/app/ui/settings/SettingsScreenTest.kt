@@ -2,6 +2,8 @@ package com.ggym.app.ui.settings
 
 import android.Manifest
 import android.app.Application
+import android.net.Uri
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHasNoClickAction
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.assertIsOff
@@ -18,11 +20,14 @@ import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
 import androidx.test.core.app.ApplicationProvider
 import com.ggym.app.R
+import com.ggym.app.domain.repository.BackupImportResult
+import com.ggym.app.domain.repository.BackupSummary
 import com.ggym.app.domain.repository.RestTimerState
 import com.ggym.app.domain.workout.AlertSound
 import com.ggym.app.domain.workout.RestTimerUseCases
 import com.ggym.app.domain.workout.RingPolicy
 import com.ggym.app.data.prefs.AppLanguage
+import com.ggym.app.testing.FakeBackupRepository
 import com.ggym.app.testing.FakeLanguagePreferences
 import com.ggym.app.testing.FakeRestTimerCommands
 import com.ggym.app.testing.FakeRestTimerStore
@@ -61,21 +66,29 @@ class SettingsScreenTest {
     private val restCommands = FakeRestTimerCommands()
     private val workoutPreferences = FakeWorkoutPreferences()
     private val languagePreferences = FakeLanguagePreferences()
+    private val backups = FakeBackupRepository()
+
+    /**
+     * The screen's state holder, built by the test rather than by the factory so a test can set up
+     * a situation the UI alone cannot reach — a file already picked, waiting on the confirm dialog.
+     */
+    private val viewModel by lazy {
+        SettingsViewModel(
+            themePreferences = FakeThemePreferences(),
+            languagePreferences = languagePreferences,
+            restTimer = RestTimerUseCases(
+                store = restStore,
+                commands = restCommands,
+                preferences = workoutPreferences,
+            ),
+            workoutPreferences = workoutPreferences,
+            backups = backups,
+        )
+    }
 
     private fun show() {
         val factory = viewModelFactory {
-            initializer {
-                SettingsViewModel(
-                    themePreferences = FakeThemePreferences(),
-                    languagePreferences = languagePreferences,
-                    restTimer = RestTimerUseCases(
-                        store = restStore,
-                        commands = restCommands,
-                        preferences = workoutPreferences,
-                    ),
-                    workoutPreferences = workoutPreferences,
-                )
-            }
+            initializer { viewModel }
         }
         compose.setContent {
             GgymTheme {
@@ -188,7 +201,7 @@ class SettingsScreenTest {
      * notifications, and language kept apart. The labels are the contract a user navigates by.
      */
     @Test
-    fun `the settings are grouped into appearance, rest timer and language sections`() {
+    fun `the settings are grouped into appearance, rest timer, language and data sections`() {
         show()
         waitForTheScreen()
 
@@ -196,6 +209,7 @@ class SettingsScreenTest {
             R.string.settings_section_appearance,
             R.string.settings_section_rest_timer,
             R.string.settings_section_language,
+            R.string.settings_section_data,
         ).forEach { label ->
             compose.onNodeWithText(context.getString(label).uppercase()).assertExists()
         }
@@ -212,6 +226,88 @@ class SettingsScreenTest {
         compose.onNodeWithTag(RINGING_MANUAL_TAG).assertHasNoClickAction()
     }
 
+    /** The Data section offers both directions, and each is a live button. */
+    @Test
+    fun `the data section offers export and import`() {
+        show()
+        waitForTheScreen()
+
+        compose.onNodeWithTag(BACKUP_EXPORT_TAG).performScrollTo().assertHasClickAction()
+        compose.onNodeWithTag(BACKUP_IMPORT_TAG).performScrollTo().assertHasClickAction()
+    }
+
+    /**
+     * The whole reason import is two steps: a picked file is not a decision until the question has
+     * been answered.
+     */
+    @Test
+    fun `a picked file is confirmed before anything is restored`() {
+        show()
+        waitForTheScreen()
+
+        viewModel.requestImport(SAF_DOCUMENT)
+        waitForConfirmDialog()
+        assertEquals("nothing may have been read yet", 0, backups.imported.size)
+
+        compose.onNodeWithText(context.getString(R.string.settings_backup_import_confirm_action)).performClick()
+
+        compose.waitUntil(TIMEOUT_MILLIS) { backups.imported.isNotEmpty() }
+        assertEquals(SAF_DOCUMENT, backups.imported.single())
+    }
+
+    @Test
+    fun `cancelling the confirm dialog restores nothing`() {
+        show()
+        waitForTheScreen()
+
+        viewModel.requestImport(SAF_DOCUMENT)
+        waitForConfirmDialog()
+
+        compose.onNodeWithText(context.getString(R.string.action_cancel)).performClick()
+
+        compose.waitUntil(TIMEOUT_MILLIS) {
+            compose.onAllNodesWithText(context.getString(R.string.settings_backup_import_confirm_title))
+                .fetchSemanticsNodes().isEmpty()
+        }
+        assertEquals(0, backups.imported.size)
+    }
+
+    /** A finished restore says how much came back; the sentence is the acknowledgment. */
+    @Test
+    fun `a finished restore reports what came back`() {
+        backups.importResult = BackupImportResult.Restored(
+            BackupSummary(routines = 2, workouts = 7, exercises = 5, weighIns = 1),
+        )
+        show()
+        waitForTheScreen()
+
+        viewModel.requestImport(SAF_DOCUMENT)
+        waitForConfirmDialog()
+        compose.onNodeWithText(context.getString(R.string.settings_backup_import_confirm_action)).performClick()
+
+        compose.waitUntil(TIMEOUT_MILLIS) {
+            compose.onAllNodesWithTag(BACKUP_OUTCOME_TAG).fetchSemanticsNodes().isNotEmpty()
+        }
+        // A plural and a singular in one sentence, which is why the counts go through plurals and
+        // not a format string. The numbers prove the summary reached the screen intact.
+        compose.onNodeWithText(
+            context.getString(
+                R.string.settings_backup_imported,
+                "2 routines",
+                "7 workouts",
+                "5 exercises",
+                "1 weigh-in",
+            ),
+        ).assertExists()
+    }
+
+    private fun waitForConfirmDialog() {
+        compose.waitUntil(TIMEOUT_MILLIS) {
+            compose.onAllNodesWithText(context.getString(R.string.settings_backup_import_confirm_title))
+                .fetchSemanticsNodes().isNotEmpty()
+        }
+    }
+
     private fun waitForTheScreen() {
         compose.waitUntil(TIMEOUT_MILLIS) {
             compose.onAllNodesWithTag(SWITCH).fetchSemanticsNodes().isNotEmpty() &&
@@ -222,5 +318,8 @@ class SettingsScreenTest {
     private companion object {
         const val SWITCH = "rest_timer_switch"
         const val TIMEOUT_MILLIS = 10_000L
+
+        /** A document URI of the shape the system picker hands back. */
+        val SAF_DOCUMENT: Uri = Uri.parse("content://com.ggym.test/document/backup.json")
     }
 }

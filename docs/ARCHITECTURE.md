@@ -373,8 +373,20 @@ half-empty database. Restoring an empty file is how a user starts over, and it i
 path as any other restore.
 
 The file describes the *database*: routines, dictionary, history and body weight. Preferences
-(theme, language, the timer toggle) are not part of it yet, so a restore does not carry them to a
-new device.
+(theme, language, the timer toggle, the alert's sound and ring policy) are deliberately not part of
+it — two settings a user picks once do not justify a format bump and a "whose setting wins?" rule
+when the file meets a device that already has settings of its own.
+
+**The two halves are one section of Settings** (`ui/settings`), behind a
+`domain/repository/BackupRepository` interface that `data/backup/BackupManager` implements — the
+same shape as every other repository, so the screen never sees the file format. Export opens the
+system's create-document picker and writes; import opens the read picker, **asks first**, and only
+then parses, validates and replaces. The question is asked because a restore is the one action in
+the app that can destroy work the user did not mean to lose, and it is asked *before* the file is
+read, so declining costs nothing at all. A finished restore also stops a running rest: the draft a
+countdown belonged to may be exactly what the file replaced. The file's name is
+`ggym-backup-<date>.json` in ISO 8601, because a file name is read in a file manager weeks later and
+has to sort.
 
 ## 7. Brand system
 

@@ -143,6 +143,44 @@
     <string name="settings_notifications_supporting">The rest countdown still runs in the app, but the notification and the rest-over alert need notifications. Allow them in the system settings to get both.</string>
     <string name="settings_notifications_open">Open notification settings</string>
 
+    <!-- Settings: the data section — one JSON file out, one file back -->
+    <string name="settings_section_data">Data</string>
+    <string name="settings_backup_title">Backup</string>
+    <string name="settings_backup_supporting">Your routines, your whole history and your weigh-ins, in one file. Your settings are not in it.</string>
+    <string name="settings_backup_export">Export</string>
+    <string name="settings_backup_import">Import</string>
+    <string name="settings_backup_exported_title">Backup saved</string>
+    <string name="settings_backup_exported">The file is where you put it. Keep it somewhere the new phone can reach.</string>
+    <string name="settings_backup_export_failed_title">Backup not saved</string>
+    <string name="settings_backup_export_failed">GGym could not write that file. Nothing on this phone changed.</string>
+    <string name="settings_backup_imported_title">Data restored</string>
+    <string name="settings_backup_imported">Restored: %1$s, %2$s, %3$s and %4$s.</string>
+    <string name="settings_backup_import_confirm_title">Replace all data?</string>
+    <string name="settings_backup_import_confirm_message">This replaces everything on this phone with the file: routines, the whole history, your weigh-ins and any workout in progress. It cannot be undone.</string>
+    <string name="settings_backup_import_confirm_action">Replace</string>
+    <string name="settings_backup_import_failed_title">Data not restored</string>
+    <string name="settings_backup_error_malformed">That file is not a GGym backup. Nothing on this phone changed.</string>
+    <string name="settings_backup_error_version">That backup is in format %1$d; this version of GGym understands formats up to %2$d. Nothing on this phone changed.</string>
+    <string name="settings_backup_error_inconsistent">The file is readable but contradicts itself, so GGym refused it. Nothing on this phone changed.</string>
+    <string name="settings_backup_error_unreadable">GGym could not open that file. It may have been moved, deleted or made inaccessible. Nothing on this phone changed.</string>
+    <string name="settings_backup_error_restore">The file was valid, but the database refused it. GGym put everything back exactly as it was.</string>
+    <plurals name="settings_backup_routines">
+        <item quantity="one">%1$d routine</item>
+        <item quantity="other">%1$d routines</item>
+    </plurals>
+    <plurals name="settings_backup_workouts">
+        <item quantity="one">%1$d workout</item>
+        <item quantity="other">%1$d workouts</item>
+    </plurals>
+    <plurals name="settings_backup_exercises">
+        <item quantity="one">%1$d exercise</item>
+        <item quantity="other">%1$d exercises</item>
+    </plurals>
+    <plurals name="settings_backup_weigh_ins">
+        <item quantity="one">%1$d weigh-in</item>
+        <item quantity="other">%1$d weigh-ins</item>
+    </plurals>
+
     <!-- Shared actions -->
     <string name="action_more">More actions</string>
     <string name="action_back">Back</string>
