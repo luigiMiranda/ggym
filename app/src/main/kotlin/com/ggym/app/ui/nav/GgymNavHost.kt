@@ -3,6 +3,8 @@ package com.ggym.app.ui.nav
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Icon
@@ -103,14 +105,34 @@ fun GgymNavHost(
             }
         },
     ) { innerPadding ->
+        // Back motion is one surface sliding, not the page shrinking to its centre: the outgoing
+        // destination leaves towards the trailing edge and fades, the incoming one arrives from the
+        // leading edge and fades in. Both use the expressive scheme's own spatial spec, so "slide"
+        // means the same thing here as it does inside a workout.
+        //
+        // Android 16+ runs the *predictive* pair during a back gesture, which is why overriding only
+        // the non-predictive transitions left the default shrink in place. All four are set, and the
+        // gesture's edge is ignored: a back is a back, whichever edge it started from.
+        val motion = MaterialTheme.motionScheme
+        val backEnter = slideInHorizontally(animationSpec = motion.defaultSpatialSpec()) { width ->
+            -(width * BACK_SLIDE_FRACTION).toInt()
+        } + fadeIn(animationSpec = motion.fastEffectsSpec())
+        val backExit = slideOutHorizontally(animationSpec = motion.defaultSpatialSpec()) { width ->
+            (width * BACK_SLIDE_FRACTION).toInt()
+        } + fadeOut(animationSpec = motion.fastEffectsSpec())
+
         NavHost(
             navController = navController,
             startDestination = Destination.start.route,
             modifier = Modifier.padding(innerPadding),
-            // Cross-fade between destinations: spatial motion is reserved for within-workout
-            // navigation (pager swipes, set morphs) where it carries meaning.
+            // Forward is untouched: a cross-fade between destinations. Spatial motion is reserved for
+            // navigation that has a direction the user made — the back gesture and the back button.
             enterTransition = { fadeIn(tween(durationMillis = 180)) },
             exitTransition = { fadeOut(tween(durationMillis = 120)) },
+            popEnterTransition = { backEnter },
+            popExitTransition = { backExit },
+            predictivePopEnterTransition = { backEnter },
+            predictivePopExitTransition = { backExit },
         ) {
             composable(Destination.Workouts.route) {
                 WorkoutsScreen(
@@ -232,3 +254,10 @@ private fun NavHostController.navigateToTab(destination: Destination) {
         restoreState = true
     }
 }
+
+/**
+ * How far a page travels on the back motion, as a fraction of the width. Material's shared axis X
+ * uses a 30 % offset: enough to read as one surface moving, small enough that nothing appears to
+ * fly across the screen.
+ */
+private const val BACK_SLIDE_FRACTION = 0.3f

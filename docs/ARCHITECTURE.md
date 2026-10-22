@@ -395,8 +395,11 @@ The expressive checklist the UI is held to:
   scheme it is: **spatial** (a little overshoot, so the eye follows it) for things that have a
   place — pager swipes, a set row's corner and tint as it is performed, the rest banner entering
   and leaving, the page dots — and **effects** (fast, damped) for colours and value changes.
-  Destinations cross-fade on purpose: the tabs have no left-to-right order, so a direction would
-  be invented.
+  Destinations cross-fade on the way **forward** on purpose: the tabs have no left-to-right order,
+  so a direction would be invented. **Back** is different — it is a direction the user made — so the
+  `NavHost`'s four pop transitions (including the predictive pair an Android 16+ back gesture runs)
+  are Material's shared axis X: the page leaves towards the trailing edge and the one behind it
+  arrives from the leading edge, nothing changes size.
 - heavy display weights for hero data (working weight, rest countdown), with tabular figures so
   digits do not reflow while typing;
 - deliberately mixed shapes: soft containers, squarer controls, pill actions, and shape used as
