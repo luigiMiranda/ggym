@@ -34,6 +34,7 @@ import com.ggym.app.service.RestTimerDependencies
 import com.ggym.app.service.RestTimerNotifications
 import com.ggym.app.service.ServiceRestTimerCommands
 import com.ggym.app.ui.calendar.CalendarViewModel
+import com.ggym.app.ui.exercises.ExerciseLibraryViewModel
 import com.ggym.app.ui.exercises.ExercisePickerViewModel
 import com.ggym.app.ui.history.HistoryDetailViewModel
 import com.ggym.app.ui.settings.SettingsViewModel
@@ -168,7 +169,18 @@ class AppContainer(context: Context) {
     }
 
     val workoutsViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
-        initializer { WorkoutsViewModel(routineRepository, workoutHistoryRepository) }
+        initializer { WorkoutsViewModel(routineRepository, workoutHistoryRepository, exerciseRepository) }
+    }
+
+    /** The dictionary's own screen: its writes go through the shared exercise-form use cases. */
+    val exerciseLibraryViewModelFactory: ViewModelProvider.Factory = viewModelFactory {
+        initializer {
+            ExerciseLibraryViewModel(
+                exercises = exerciseRepository,
+                routines = routineRepository,
+                formUseCases = exerciseFormUseCases,
+            )
+        }
     }
 
     fun routineDetailViewModelFactory(routineId: Long): ViewModelProvider.Factory = viewModelFactory {

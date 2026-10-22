@@ -22,6 +22,12 @@ object Routes {
     const val EXERCISE_PICKER = "picker/{$DAY_ID}"
 
     /**
+     * The exercise library: the dictionary's own screen, a drill-down of the Workouts tab (no fifth
+     * tab, no Settings row). It carries no argument — it lists everything and searches.
+     */
+    const val LIBRARY = "library"
+
+    /**
      * The workout that is running. Its id is the *draft* session's id, which stops meaning
      * anything the moment the workout is finished or discarded — which is exactly why the screen
      * watches it by id and shows that the workout is over instead of adopting the next one.

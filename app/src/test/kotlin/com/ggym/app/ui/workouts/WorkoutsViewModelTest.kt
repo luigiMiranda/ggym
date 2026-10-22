@@ -29,7 +29,7 @@ class WorkoutsViewModelTest : ViewModelTest() {
     private val ticks = MutableSharedFlow<Unit>(replay = 1, extraBufferCapacity = 1).also { it.tryEmit(Unit) }
 
     private val viewModel by lazy {
-        WorkoutsViewModel(routineRepository, historyRepository, now = { clock }, ticks = ticks)
+        WorkoutsViewModel(routineRepository, historyRepository, exerciseRepository, now = { clock }, ticks = ticks)
     }
 
     private val active by lazy {
@@ -237,6 +237,32 @@ class WorkoutsViewModelTest : ViewModelTest() {
 
             assertEquals(started.sessionId, state.resume?.sessionId)
             assertEquals(emptyList<RoutineCard>(), state.routines)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `the library card counts the dictionary and the entries with no weight`() = runTest {
+        exerciseRepository.givenExerciseNamed("Bench Press", workingWeight = 82.5)
+        exerciseRepository.givenExerciseNamed("Cable Fly")
+
+        viewModel.uiState.test {
+            val state = awaitState { !it.isLoading && it.library.exerciseCount == 2 }
+
+            assertEquals("one has a base weight, one does not", 1, state.library.withoutWeightCount)
+            assertTrue("a dictionary with entries is a reason to show the card", !state.library.isEmpty)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `a fresh install has an empty library card`() = runTest {
+        viewModel.uiState.test {
+            val state = awaitState { !it.isLoading }
+
+            assertEquals(0, state.library.exerciseCount)
+            assertEquals(0, state.library.withoutWeightCount)
+            assertTrue(state.library.isEmpty)
             cancelAndIgnoreRemainingEvents()
         }
     }

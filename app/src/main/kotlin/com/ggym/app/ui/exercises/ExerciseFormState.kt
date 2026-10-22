@@ -17,11 +17,24 @@ import java.util.Locale
  */
 enum class ExerciseFormMode {
 
-    /** An exercise that does not exist yet, being given its first numbers. */
+    /** An exercise that does not exist yet, being given its first numbers **and planned in a day**. */
     Create,
+
+    /**
+     * An exercise that does not exist yet, with **no day behind it**: the library's "Add exercise".
+     * It makes a dictionary entry and nothing else, so it has no sets or reps to show — those are
+     * the day's plan (see [EditDictionary]).
+     */
+    CreateDictionary,
 
     /** One planned exercise, on one training day. */
     EditSlot,
+
+    /**
+     * One dictionary entry, on its own: name, base weight and default rest. The sheet lists the
+     * days that plan it read-only instead of offering sets and reps, because those belong to the day.
+     */
+    EditDictionary,
 }
 
 /**
@@ -39,10 +52,12 @@ enum class ExerciseFormMode {
 data class ExerciseFormState(
     val mode: ExerciseFormMode,
     /**
-     * The day's slot this form is about, in [ExerciseFormMode.EditSlot]. `null` in
-     * [ExerciseFormMode.Create], which has nothing planned yet.
+     * The day's slot this form is about, in [ExerciseFormMode.EditSlot]. `null` in the create
+     * modes, which have nothing planned yet.
      */
     val plannedExerciseId: Long? = null,
+    /** The dictionary entry this form is about, in [ExerciseFormMode.EditDictionary]. */
+    val exerciseId: Long? = null,
     val name: String = "",
     val sets: String = ExerciseFormDefaults.SETS.toString(),
     val reps: String = ExerciseFormDefaults.REPS,
@@ -68,6 +83,19 @@ object ExerciseFormDefaults {
     const val SETS = 3
     const val REPS = "10"
 }
+
+/**
+ * One row of the dictionary form's read-only "Planned in" list.
+ *
+ * Built by the screen that owns the form (it is the one with `stringResource`), so the sheet stays
+ * a dumb renderer: the day's name, the numbers as text, and where tapping it goes.
+ */
+data class PlannedInRow(
+    val routineId: Long,
+    val routineDayId: Long,
+    val dayName: String,
+    val detail: String,
+)
 
 /** Why the form cannot be saved yet. Mapped to copy by the sheet, so it stays testable. */
 enum class ExerciseFormError {

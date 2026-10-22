@@ -80,7 +80,7 @@ enum class Destination(
             Calendar.route -> Calendar
             Stats.route -> Stats
             Settings.route -> Settings
-            Routes.ROUTINE, Routes.DAY, Routes.EXERCISE_PICKER, Routes.WORKOUT -> Workouts
+            Routes.ROUTINE, Routes.DAY, Routes.EXERCISE_PICKER, Routes.LIBRARY, Routes.WORKOUT -> Workouts
             Routes.HISTORY -> Calendar
             else -> null
         }

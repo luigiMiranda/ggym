@@ -97,7 +97,8 @@ The Workouts section is the reference for how a feature is put together:
 ```
 ui/workouts/  WorkoutsScreen -> RoutineDetailScreen -> DayDetailScreen
               one Screen + ViewModel + UiState per level, plus a ModalBottomSheet editor
-ui/exercises/ ExercisePickerScreen (a destination) and the slot editor sheet
+ui/exercises/ ExercisePickerScreen and ExerciseLibraryScreen (destinations), and the shared
+              exercise form (ExerciseFormSheet) both of them host
 ui/common/    EmptyState, dialogs, the row overflow menu, weight formatting and parsing
 ```
 
@@ -106,9 +107,20 @@ state** (`routine/{routineId}`, `day/{routineId}/{dayId}`), so a back stack rest
 death re-reads the current data instead of showing a stale copy; and **the bottom bar belongs to the
 tabs**, so the routine tree is a drill-down with its own back path rather than a fifth tab. The bar
 is on screen **everywhere**: `Destination.owningTab(route)` lights the tab a drill-down lives under
-(routine / day / picker / workout → Workouts, history → Calendar), so Home and Settings stay one tap
+(routine / day / picker / library / workout → Workouts, history → Calendar), so Home and Settings stay one tap
 away from any depth, and a running workout survives the trip because it lives in the database and in
-the rest timer's service rather than on the screen.
+the rest timer's service rather than on the screen. A tab whose destination takes an optional
+argument (`stats?exerciseId={exerciseId}`) reports its route *pattern*, so `owningTab` matches the
+part before the `?` rather than the whole string.
+
+**The dictionary has its own screen.** `ui/exercises/ExerciseLibraryScreen` lists every exercise with
+what it loads (`currentWorkingWeight`), how long it rests and where it is used, and edits what is
+*global*: name, base weight, default rest. Sets and reps are the day's plan, so they are not fields
+there — the form's "Planned in" list is read-only and taps through to the day that plans the exercise.
+The "where is this used?" answer is one flattened query over the routine tree
+(`RoutineDao.observeExercisePlans`) grouped by exercise, not a tree load per row. Deleting reuses the
+dictionary's typed refusal, and the dialog names the routines and offers a way into the first one —
+which is why `DeleteExerciseResult.Blocked` carries ids as well as names.
 
 ## 4. State, threading and dependency injection
 

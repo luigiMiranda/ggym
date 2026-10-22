@@ -6,6 +6,7 @@ import com.ggym.app.data.room.entity.PlannedExerciseEntity
 import com.ggym.app.data.room.entity.RoutineDayEntity
 import com.ggym.app.data.room.entity.RoutineEntity
 import com.ggym.app.data.room.mappers.RoutineMapper
+import com.ggym.app.domain.model.ExercisePlan
 import com.ggym.app.domain.model.PlannedExercise
 import com.ggym.app.domain.model.Routine
 import com.ggym.app.domain.repository.RoutineRepository
@@ -34,6 +35,21 @@ internal class RoomRoutineRepository(
 
     override fun observeRoutine(routineId: Long): Flow<Routine?> =
         routineDao.observeRoutineWithDays(routineId).map { row -> row?.let(RoutineMapper::toDomain) }
+
+    override fun observeExercisePlans(): Flow<List<ExercisePlan>> =
+        routineDao.observeExercisePlans().map { rows ->
+            rows.map { row ->
+                ExercisePlan(
+                    exerciseId = row.exerciseId,
+                    routineId = row.routineId,
+                    routineName = row.routineName,
+                    routineDayId = row.routineDayId,
+                    dayName = row.dayName,
+                    targetSets = row.targetSets,
+                    targetReps = row.targetReps,
+                )
+            }
+        }
 
     override suspend fun createRoutine(name: String): Long =
         routineDao.insert(RoutineEntity(name = name.trim(), createdAt = now()))

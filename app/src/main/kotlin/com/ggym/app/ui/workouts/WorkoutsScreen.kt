@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.outlined.FitnessCenter
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
@@ -65,6 +66,7 @@ fun WorkoutsScreen(
     viewModelFactory: ViewModelProvider.Factory,
     onOpenRoutine: (Long) -> Unit,
     onOpenWorkout: (Long) -> Unit,
+    onOpenLibrary: () -> Unit,
     viewModel: WorkoutsViewModel = viewModel(factory = viewModelFactory),
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -85,8 +87,9 @@ fun WorkoutsScreen(
             state.isLoading -> Unit
 
             // A workout can outlive its routine (it keeps its own names), so the resume card is
-            // reason enough to show the list even when no routine is left.
-            state.routines.isEmpty() && state.resume == null -> EmptyState(
+            // reason enough to show the list even when no routine is left. The library card too: a
+            // user with exercises but no routines still needs the way into them.
+            state.routines.isEmpty() && state.resume == null && state.library.isEmpty -> EmptyState(
                 icon = Icons.Outlined.FitnessCenter,
                 title = stringResource(R.string.workouts_empty_title),
                 message = stringResource(R.string.workouts_empty_message),
@@ -102,6 +105,9 @@ fun WorkoutsScreen(
                     item(key = "resume") {
                         ResumeCard(card = resume, onOpen = { onOpenWorkout(resume.sessionId) })
                     }
+                }
+                item(key = "library") {
+                    LibraryRow(card = state.library, onOpen = onOpenLibrary)
                 }
                 items(state.routines, key = { it.id }) { routine ->
                     RoutineRow(
@@ -222,6 +228,58 @@ private fun RoutineRow(
                     RowMenuAction(stringResource(R.string.action_delete), Icons.Filled.Delete, onClick = onDelete),
                 ),
             )
+        }
+    }
+}
+
+/**
+ * The way into the exercise library, above the routine list.
+ *
+ * A card rather than a menu entry, because the library is a place the user goes rather than an
+ * action on a routine. Its second line is the count and — only when there is one — how many
+ * exercises still have no weight, which is a hint rather than a task list.
+ */
+@Composable
+private fun LibraryRow(card: LibraryCard, onOpen: () -> Unit) {
+    val count = pluralStringResource(R.plurals.routine_exercise_count, card.exerciseCount, card.exerciseCount)
+    val detail = if (card.withoutWeightCount > 0) {
+        val attention = pluralStringResource(
+            R.plurals.library_without_weight,
+            card.withoutWeightCount,
+            card.withoutWeightCount,
+        )
+        stringResource(R.string.library_card_summary, count, attention)
+    } else {
+        count
+    }
+
+    Surface(
+        onClick = onOpen,
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.MenuBook,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(end = 12.dp),
+            )
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(
+                    text = stringResource(R.string.library_card_title),
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = detail,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
         }
     }
 }

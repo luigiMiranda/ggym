@@ -1,5 +1,6 @@
 package com.ggym.app.domain.repository
 
+import com.ggym.app.domain.model.ExercisePlan
 import com.ggym.app.domain.model.PlannedExercise
 import com.ggym.app.domain.model.Routine
 import kotlinx.coroutines.flow.Flow
@@ -21,6 +22,15 @@ interface RoutineRepository {
 
     /** A single routine with its days and planned exercises, or `null` once it is deleted. */
     fun observeRoutine(routineId: Long): Flow<Routine?>
+
+    /**
+     * Every placement of every exercise in a routine day, across all routines, ordered by routine
+     * creation and then day order.
+     *
+     * The exercise library reads this once and groups it by `exerciseId` to answer "where is this
+     * used?" for a whole list, instead of one query per row.
+     */
+    fun observeExercisePlans(): Flow<List<ExercisePlan>>
 
     suspend fun createRoutine(name: String): Long
 

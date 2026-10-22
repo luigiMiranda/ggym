@@ -216,4 +216,78 @@ class ExerciseFormUseCasesTest : RepositoryTest() {
         assertEquals(UpdateSlotResult.NotFound, result)
         assertEquals("the day is untouched", emptyList<PlannedExercise>(), slots())
     }
+
+    @Test
+    fun `createDictionary makes an entry with a base weight and no plan`() = runTest {
+        givenDay()
+
+        val exercise = form.createDictionary(
+            name = "  Bench Press ",
+            restSeconds = 150,
+            startingWeightKg = 82.5,
+        )
+
+        assertEquals("the name is trimmed", "Bench Press", exercise.name)
+        assertEquals(82.5, exerciseRepository.findById(exercise.id)!!.currentWorkingWeight!!, 0.0)
+        assertEquals(150, exerciseRepository.findById(exercise.id)!!.defaultRestSeconds)
+        assertEquals("no day was touched: the library has none to write to", emptyList<PlannedExercise>(), slots())
+    }
+
+    @Test
+    fun `createDictionary with no weight leaves the entry without one, and reuses an existing name`() = runTest {
+        val bench = exerciseRepository.findOrCreate("Bench Press", currentWorkingWeight = 82.5, defaultRestSeconds = 90)
+
+        val created = form.createDictionary(name = "bench press", restSeconds = 150, startingWeightKg = 100.0)
+
+        assertEquals("the existing entry wins, id and all", bench.id, created.id)
+        assertEquals("and keeps the number it has been progressing", 82.5, created.currentWorkingWeight!!, 0.0)
+        assertEquals("as well as the rest it chose", 90, created.defaultRestSeconds)
+    }
+
+    @Test
+    fun `updateDictionary writes the name, the base weight and the default rest`() = runTest {
+        val bench = exerciseRepository.findOrCreate("Bench Press", currentWorkingWeight = 82.5, defaultRestSeconds = 90)
+
+        val result = form.updateDictionary(bench, name = "Bench Press Heavy", restSeconds = 150, weightKg = 85.0)
+
+        assertEquals(UpdateDictionaryResult.Saved, result)
+        val stored = exerciseRepository.findById(bench.id)!!
+        assertEquals("Bench Press Heavy", stored.name)
+        assertEquals(85.0, stored.currentWorkingWeight!!, 0.0)
+        assertEquals(150, stored.defaultRestSeconds)
+    }
+
+    @Test
+    fun `updateDictionary can clear the base weight`() = runTest {
+        val bench = exerciseRepository.findOrCreate("Bench Press", currentWorkingWeight = 82.5)
+
+        assertEquals(UpdateDictionaryResult.Saved, form.updateDictionary(bench, name = "Bench Press", restSeconds = 90, weightKg = null))
+
+        assertNull("a blank field means no weight of its own", exerciseRepository.findById(bench.id)!!.currentWorkingWeight)
+    }
+
+    @Test
+    fun `updateDictionary refuses a colliding name and writes nothing`() = runTest {
+        val bench = exerciseRepository.findOrCreate("Bench Press", currentWorkingWeight = 82.5, defaultRestSeconds = 90)
+        exerciseRepository.findOrCreate("Cable Fly")
+
+        val result = form.updateDictionary(bench, name = "Cable Fly", restSeconds = 200, weightKg = 100.0)
+
+        assertEquals(UpdateDictionaryResult.NameTaken, result)
+        val stored = exerciseRepository.findById(bench.id)!!
+        assertEquals("the name did not move", "Bench Press", stored.name)
+        assertEquals("nor did the weight in the same form", 82.5, stored.currentWorkingWeight!!, 0.0)
+        assertEquals("nor the rest time", 90, stored.defaultRestSeconds)
+    }
+
+    @Test
+    fun `updateDictionary on a deleted entry reports not found`() = runTest {
+        val bench = exerciseRepository.findOrCreate("Bench Press")
+        exerciseRepository.deleteExercise(bench.id)
+
+        assertEquals(
+            UpdateDictionaryResult.NotFound,
+            form.updateDictionary(bench, name = "Bench Press", restSeconds = 90, weightKg = null),
+        )
+    }
 }

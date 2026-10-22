@@ -2,6 +2,7 @@
 
 package com.ggym.app.ui.exercises
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -16,8 +17,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -58,14 +61,22 @@ fun ExerciseFormSheet(
     onSave: () -> Unit,
     onDismiss: () -> Unit,
     onRemove: (() -> Unit)? = null,
+    /** The dictionary form's read-only "Planned in" list; ignored by the other modes. */
+    plannedIn: List<PlannedInRow> = emptyList(),
+    onOpenPlan: ((PlannedInRow) -> Unit)? = null,
 ) {
+    // Which fields a mode has. The two create modes and the slot differ in whether a training day's
+    // plan is part of the form: sets and reps are the day's, so the dictionary form does not show
+    // them at all (a base sets/reps would be a second inheritance rule).
+    val hasSlotFields = form.mode == ExerciseFormMode.Create || form.mode == ExerciseFormMode.EditSlot
+
     // Each error belongs to the field that caused it: a taken name must not be explained under the
     // weight field, where it would read as a complaint about the number.
     val nameError = form.error?.takeIf {
         it == ExerciseFormError.NameBlank || it == ExerciseFormError.NameTaken
     }
-    val setsError = form.error?.takeIf { it == ExerciseFormError.SetsTooLow }
-    val repsError = form.error?.takeIf { it == ExerciseFormError.RepsBlank }
+    val setsError = form.error?.takeIf { it == ExerciseFormError.SetsTooLow }.takeIf { hasSlotFields }
+    val repsError = form.error?.takeIf { it == ExerciseFormError.RepsBlank }.takeIf { hasSlotFields }
     val restError = form.error?.takeIf { it == ExerciseFormError.RestInvalid }
     val weightError = form.error?.takeIf { it == ExerciseFormError.WeightInvalid }
 
@@ -85,8 +96,8 @@ fun ExerciseFormSheet(
         ) {
             Text(
                 text = when (form.mode) {
-                    ExerciseFormMode.Create -> stringResource(R.string.form_title_create)
-                    ExerciseFormMode.EditSlot -> stringResource(R.string.form_title_edit)
+                    ExerciseFormMode.Create, ExerciseFormMode.CreateDictionary -> stringResource(R.string.form_title_create)
+                    ExerciseFormMode.EditSlot, ExerciseFormMode.EditDictionary -> stringResource(R.string.form_title_edit)
                 },
                 style = MaterialTheme.typography.headlineSmall,
             )
@@ -101,29 +112,31 @@ fun ExerciseFormSheet(
                 modifier = Modifier.fillMaxWidth(),
             )
 
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GgymField(
-                    value = form.sets,
-                    onValueChange = onSetsChange,
-                    label = stringResource(R.string.slot_field_sets),
-                    isError = setsError != null,
-                    supportingText = setsError?.let { errorMessage(it) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
-                    onDecrease = { onStepSets(-1) },
-                    onIncrease = { onStepSets(1) },
-                    decreaseLabel = stringResource(R.string.form_sets_decrease),
-                    increaseLabel = stringResource(R.string.form_sets_increase),
-                    modifier = Modifier.weight(1f),
-                )
-                GgymField(
-                    value = form.reps,
-                    onValueChange = onRepsChange,
-                    label = stringResource(R.string.slot_field_reps),
-                    isError = repsError != null,
-                    supportingText = repsError?.let { errorMessage(it) },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-                    modifier = Modifier.weight(1f),
-                )
+            if (hasSlotFields) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    GgymField(
+                        value = form.sets,
+                        onValueChange = onSetsChange,
+                        label = stringResource(R.string.slot_field_sets),
+                        isError = setsError != null,
+                        supportingText = setsError?.let { errorMessage(it) },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
+                        onDecrease = { onStepSets(-1) },
+                        onIncrease = { onStepSets(1) },
+                        decreaseLabel = stringResource(R.string.form_sets_decrease),
+                        increaseLabel = stringResource(R.string.form_sets_increase),
+                        modifier = Modifier.weight(1f),
+                    )
+                    GgymField(
+                        value = form.reps,
+                        onValueChange = onRepsChange,
+                        label = stringResource(R.string.slot_field_reps),
+                        isError = repsError != null,
+                        supportingText = repsError?.let { errorMessage(it) },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
 
             GgymField(
@@ -150,6 +163,10 @@ fun ExerciseFormSheet(
                 supportingText = weightError?.let { errorMessage(it) } ?: weightHint(form),
             )
 
+            if (form.mode == ExerciseFormMode.EditDictionary) {
+                PlannedInList(plannedIn = plannedIn, onOpenPlan = onOpenPlan)
+            }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -157,7 +174,10 @@ fun ExerciseFormSheet(
                 if (onRemove != null) {
                     TextButton(onClick = onRemove) {
                         Text(
-                            text = stringResource(R.string.slot_remove),
+                            text = when (form.mode) {
+                                ExerciseFormMode.EditDictionary -> stringResource(R.string.library_delete_action)
+                                else -> stringResource(R.string.slot_remove)
+                            },
                             color = MaterialTheme.colorScheme.error,
                         )
                     }
@@ -169,7 +189,8 @@ fun ExerciseFormSheet(
                 GgymPrimaryButton(
                     text = when (form.mode) {
                         ExerciseFormMode.Create -> stringResource(R.string.form_add_to_day)
-                        ExerciseFormMode.EditSlot -> stringResource(R.string.action_save)
+                        ExerciseFormMode.CreateDictionary -> stringResource(R.string.library_add)
+                        ExerciseFormMode.EditSlot, ExerciseFormMode.EditDictionary -> stringResource(R.string.action_save)
                     },
                     onClick = onSave,
                 )
@@ -187,11 +208,62 @@ fun ExerciseFormSheet(
  */
 @Composable
 private fun weightHint(form: ExerciseFormState): String = when (form.mode) {
-    ExerciseFormMode.Create -> stringResource(R.string.form_weight_base_hint)
+    ExerciseFormMode.Create, ExerciseFormMode.CreateDictionary, ExerciseFormMode.EditDictionary ->
+        stringResource(R.string.form_weight_base_hint)
     ExerciseFormMode.EditSlot -> if (form.weight.isBlank()) {
         stringResource(R.string.slot_weight_hint)
     } else {
         stringResource(R.string.form_weight_slot_hint)
+    }
+}
+
+/**
+ * The dictionary form's read-only "Planned in" list: where the exercise is used, and a way into
+ * the day. Tapping a row opens that training day — the edit itself lives there, because sets and
+ * reps are the day's plan rather than the exercise's.
+ */
+@Composable
+private fun PlannedInList(plannedIn: List<PlannedInRow>, onOpenPlan: ((PlannedInRow) -> Unit)?) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(R.string.library_planned_in).uppercase(),
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (plannedIn.isEmpty()) {
+            Text(
+                text = stringResource(R.string.library_planned_in_none),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        } else {
+            plannedIn.forEach { plan ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .then(
+                            if (onOpenPlan != null) {
+                                Modifier.clickable(role = Role.Button) { onOpenPlan(plan) }
+                            } else {
+                                Modifier
+                            },
+                        )
+                        .padding(vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = plan.dayName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = plan.detail,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
     }
 }
 

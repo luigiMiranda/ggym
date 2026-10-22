@@ -270,6 +270,34 @@
     <string name="exercise_delete_message">“%1$s” will be removed from the dictionary. If a routine still plans it, GGym will tell you which one.</string>
     <string name="exercise_delete_blocked_title">Still planned</string>
     <string name="exercise_delete_blocked_message">This exercise is still planned in %1$s. Remove it there first.</string>
+    <string name="exercise_delete_blocked_open">Open “%1$s”</string>
+
+    <!--
+      The exercise library: the dictionary's own screen, reached from a card on the Workouts tab.
+      It edits what is global (name, base weight, default rest); sets and reps stay on the day, so
+      the "Planned in" list is read-only and taps through to that day.
+    -->
+    <string name="library_title">Exercise library</string>
+    <string name="library_card_title">Exercise library</string>
+    <string name="library_card_summary">%1$s · %2$s</string>
+    <plurals name="library_without_weight">
+        <item quantity="one">%1$d without a weight yet</item>
+        <item quantity="other">%1$d without a weight yet</item>
+    </plurals>
+    <string name="library_search_label">Search exercises</string>
+    <string name="library_section">All exercises</string>
+    <string name="library_empty">No exercise matches.</string>
+    <string name="library_add">Add exercise</string>
+    <string name="library_no_weight">— no weight yet</string>
+    <string name="library_rest">rest %1$d s</string>
+    <string name="library_used_in">in %1$s</string>
+    <string name="library_unused">not planned</string>
+    <string name="library_row_detail">%1$s · %2$s · %3$s</string>
+    <string name="library_progression">Progression</string>
+    <string name="library_delete_action">Delete exercise</string>
+    <string name="library_planned_in">Planned in</string>
+    <string name="library_planned_in_none">Not planned in any training day.</string>
+    <string name="library_plan_detail">%1$d × %2$s</string>
 
     <!--
       Rest timer: the notification the countdown lives in, and the two channels it can arrive on.

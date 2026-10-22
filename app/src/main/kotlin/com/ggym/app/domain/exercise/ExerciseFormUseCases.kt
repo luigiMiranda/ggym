@@ -1,5 +1,6 @@
 package com.ggym.app.domain.exercise
 
+import com.ggym.app.domain.model.Exercise
 import com.ggym.app.domain.model.PlannedExercise
 import com.ggym.app.domain.repository.ExerciseRepository
 import com.ggym.app.domain.repository.RenameExerciseResult
@@ -93,6 +94,66 @@ class ExerciseFormUseCases(
         )
         return UpdateSlotResult.Saved
     }
+
+    /**
+     * Makes a dictionary entry with no day behind it — the library's "Add exercise".
+     *
+     * [startingWeightKg] is the exercise's base weight and [restSeconds] its default rest; the
+     * entry has no sets or reps, because those belong to a training day. An existing name wins and
+     * keeps its numbers ([ExerciseRepository.findOrCreate]'s documented rule), so a typed-over
+     * collision reuses the entry rather than resetting what the user has been progressing.
+     */
+    suspend fun createDictionary(
+        name: String,
+        restSeconds: Int,
+        startingWeightKg: Double?,
+    ): Exercise = exercises.findOrCreate(
+        name = name,
+        defaultRestSeconds = restSeconds,
+        currentWorkingWeight = startingWeightKg,
+    )
+
+    /**
+     * Rewrites the dictionary side of one exercise: its name, its base weight and its default rest.
+     *
+     * The name goes first and a collision stops everything, so a `NameTaken` writes neither the
+     * weight nor the rest — the same ordering rule [updateSlot] follows. Sets and reps are absent on
+     * purpose: they are the day's plan, and changing them is the day screen's job.
+     */
+    suspend fun updateDictionary(
+        exercise: Exercise,
+        name: String,
+        restSeconds: Int,
+        weightKg: Double?,
+    ): UpdateDictionaryResult {
+        when (exercises.renameExercise(exercise.id, name)) {
+            RenameExerciseResult.NameTaken -> return UpdateDictionaryResult.NameTaken
+            RenameExerciseResult.NotFound -> return UpdateDictionaryResult.NotFound
+            is RenameExerciseResult.Renamed, RenameExerciseResult.Unchanged -> Unit
+        }
+
+        exercises.save(
+            exercise.copy(
+                name = name,
+                defaultRestSeconds = restSeconds,
+                currentWorkingWeight = weightKg,
+            ),
+        )
+        return UpdateDictionaryResult.Saved
+    }
+}
+
+/** Outcome of [ExerciseFormUseCases.updateDictionary]. */
+sealed interface UpdateDictionaryResult {
+
+    /** The name, the base weight and the default rest are written. */
+    data object Saved : UpdateDictionaryResult
+
+    /** Another entry already holds that name, case-insensitively: nothing was written at all. */
+    data object NameTaken : UpdateDictionaryResult
+
+    /** The entry is gone — it was deleted while the form was open. */
+    data object NotFound : UpdateDictionaryResult
 }
 
 /** Outcome of [ExerciseFormUseCases.updateSlot]. */

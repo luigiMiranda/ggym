@@ -8,6 +8,12 @@ import androidx.room.Upsert
 import com.ggym.app.data.room.entity.ExerciseEntity
 import kotlinx.coroutines.flow.Flow
 
+/** One routine that still plans an exercise: enough to name it and to open it. */
+internal data class RoutineRefRow(
+    val id: Long,
+    val name: String,
+)
+
 @Dao
 internal interface ExerciseDao {
 
@@ -64,10 +70,13 @@ internal interface ExerciseDao {
     @Query("DELETE FROM exercise WHERE id = :exerciseId")
     suspend fun deleteById(exerciseId: Long)
 
-    /** Every routine that still plans this exercise, so a refused delete can name them. */
+    /**
+     * Every routine that still plans this exercise, id and name, so a refused delete can name
+     * them *and* offer a way into the first one.
+     */
     @Query(
         """
-        SELECT DISTINCT routine.name
+        SELECT DISTINCT routine.id AS id, routine.name AS name
         FROM routine
         JOIN routine_day ON routine_day.routineId = routine.id
         JOIN planned_exercise ON planned_exercise.routineDayId = routine_day.id
@@ -75,7 +84,7 @@ internal interface ExerciseDao {
         ORDER BY routine.name COLLATE NOCASE ASC
         """,
     )
-    suspend fun routineNamesUsing(exerciseId: Long): List<String>
+    suspend fun routinesUsing(exerciseId: Long): List<RoutineRefRow>
 
     @Query("DELETE FROM exercise")
     suspend fun deleteAll()

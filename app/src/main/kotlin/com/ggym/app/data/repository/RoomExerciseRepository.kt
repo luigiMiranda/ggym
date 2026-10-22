@@ -6,6 +6,7 @@ import com.ggym.app.data.room.GgymDatabase
 import com.ggym.app.data.room.entity.ExerciseEntity
 import com.ggym.app.data.room.mappers.ExerciseMapper
 import com.ggym.app.domain.model.Exercise
+import com.ggym.app.domain.model.RoutineRef
 import com.ggym.app.domain.repository.DeleteExerciseResult
 import com.ggym.app.domain.repository.ExerciseRepository
 import com.ggym.app.domain.repository.RenameExerciseResult
@@ -101,8 +102,12 @@ internal class RoomExerciseRepository(
 
     override suspend fun deleteExercise(exerciseId: Long): DeleteExerciseResult =
         database.withTransaction {
-            val plannedIn = dao.routineNamesUsing(exerciseId)
-            if (plannedIn.isNotEmpty()) return@withTransaction DeleteExerciseResult.Blocked(plannedIn)
+            val plannedIn = dao.routinesUsing(exerciseId)
+            if (plannedIn.isNotEmpty()) {
+                return@withTransaction DeleteExerciseResult.Blocked(
+                    plannedIn.map { RoutineRef(id = it.id, name = it.name) },
+                )
+            }
 
             try {
                 dao.deleteById(exerciseId)
@@ -111,7 +116,9 @@ internal class RoomExerciseRepository(
                 // The check above normally catches this. If a routine started planning the
                 // exercise in between, report it instead of crashing: the database refused for a
                 // reason, and that reason is the answer.
-                DeleteExerciseResult.Blocked(dao.routineNamesUsing(exerciseId))
+                DeleteExerciseResult.Blocked(
+                    dao.routinesUsing(exerciseId).map { RoutineRef(id = it.id, name = it.name) },
+                )
             }
         }
 }

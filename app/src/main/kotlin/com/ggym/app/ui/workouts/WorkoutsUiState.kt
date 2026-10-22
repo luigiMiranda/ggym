@@ -21,7 +21,22 @@ data class WorkoutsUiState(
     val pendingDelete: RoutineCard? = null,
     /** The workout in progress, if one is: it can be resumed from here, whatever happened to its routine. */
     val resume: ResumeCard? = null,
+    /** The way into the exercise library, above the routine list. */
+    val library: LibraryCard = LibraryCard(),
 )
+
+/**
+ * The exercise library card: how many exercises there are, and how many still have no weight.
+ *
+ * The second number is a hint, never a task list — nothing is mandatory and the card never blocks
+ * the routine list.
+ */
+data class LibraryCard(
+    val exerciseCount: Int = 0,
+    val withoutWeightCount: Int = 0,
+) {
+    val isEmpty: Boolean get() = exerciseCount == 0
+}
 
 /**
  * The running workout as the resume card shows it. The routine may have been edited or deleted

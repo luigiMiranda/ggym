@@ -2,6 +2,7 @@ package com.ggym.app.ui.workouts
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.ggym.app.domain.repository.ExerciseRepository
 import com.ggym.app.domain.repository.RoutineRepository
 import com.ggym.app.domain.model.WorkoutSession
 import com.ggym.app.domain.repository.WorkoutHistoryRepository
@@ -28,6 +29,7 @@ import kotlinx.coroutines.launch
 class WorkoutsViewModel(
     private val routines: RoutineRepository,
     private val history: WorkoutHistoryRepository,
+    private val exercises: ExerciseRepository,
     private val now: () -> Long = System::currentTimeMillis,
     ticks: Flow<Unit> = minuteTicks(),
 ) : ViewModel() {
@@ -38,14 +40,19 @@ class WorkoutsViewModel(
         routines.observeRoutines(),
         dialogs,
         history.observeDraft(),
+        exercises.observeAll(),
         ticks,
-    ) { routines, dialogs, draft, _ ->
+    ) { routines, dialogs, draft, dictionary, _ ->
         WorkoutsUiState(
             isLoading = false,
             routines = routines.map { it.toCard() },
             nameDialog = dialogs.nameDialog,
             pendingDelete = dialogs.pendingDelete,
             resume = draft?.let { it.toResumeCard(now()) },
+            library = LibraryCard(
+                exerciseCount = dictionary.size,
+                withoutWeightCount = dictionary.count { it.currentWorkingWeight == null },
+            ),
         )
     }.stateIn(
         scope = viewModelScope,

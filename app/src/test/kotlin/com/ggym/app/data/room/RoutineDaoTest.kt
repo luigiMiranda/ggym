@@ -7,6 +7,7 @@ import com.ggym.app.testing.givenExercise
 import com.ggym.app.testing.givenPlannedExercise
 import com.ggym.app.testing.givenRoutine
 import com.ggym.app.testing.givenRoutineDay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -149,5 +150,34 @@ class RoutineDaoTest : RoomTest() {
     @Test
     fun `a routine that does not exist loads as null`() = runTest {
         assertNull(database.routineDao().getAllRoutinesWithDays().firstOrNull { it.routine.id == 42L })
+    }
+
+    @Test
+    fun `the exercise plans read names the exercise, the routine, the day and the numbers`() = runTest {
+        val bench = database.givenExercise(name = "Bench Press")
+        val fly = database.givenExercise(name = "Cable Fly")
+        val pushId = database.givenRoutine(name = "Push Day")
+        val pullId = database.givenRoutine(name = "Pull Day", createdAt = 1_750_000_000_001)
+        val pushA = database.givenRoutineDay(routineId = pushId, dayName = "Push A")
+        val pushB = database.givenRoutineDay(routineId = pushId, dayName = "Push B", orderIndex = 1)
+        // Written out of order on purpose: the read is ordered by routine creation and day order.
+        database.givenPlannedExercise(routineDayId = pushB, exerciseId = bench, targetSets = 5, targetReps = "5")
+        database.givenPlannedExercise(routineDayId = pushA, exerciseId = bench, targetSets = 4, targetReps = "8-10")
+        database.givenPlannedExercise(
+            routineDayId = database.givenRoutineDay(routineId = pullId, dayName = "Pull"),
+            exerciseId = fly,
+            targetSets = 4,
+            targetReps = "10",
+        )
+
+        val plans = database.routineDao().observeExercisePlans().first()
+
+        assertEquals(listOf("Push A", "Push B", "Pull"), plans.map { it.dayName })
+        assertEquals(listOf("Push Day", "Push Day", "Pull Day"), plans.map { it.routineName })
+        assertEquals(listOf(pushId, pushId, pullId), plans.map { it.routineId })
+        assertEquals(listOf(bench, bench, fly), plans.map { it.exerciseId })
+        assertEquals(listOf(4, 5, 4), plans.map { it.targetSets })
+        assertEquals(listOf("8-10", "5", "10"), plans.map { it.targetReps })
+        assertEquals(pushA, plans.first().routineDayId)
     }
 }

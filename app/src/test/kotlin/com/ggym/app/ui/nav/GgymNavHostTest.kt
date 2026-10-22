@@ -6,6 +6,7 @@ import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.test.core.app.ApplicationProvider
@@ -188,6 +189,36 @@ class GgymNavHostTest {
         waitForText(context.getString(R.string.stats_exercise_selector, "Cable Fly"))
         // The Stats *screen* also carries the header "Stats", so the assertion is that one of the
         // nodes with that label — the bar item — is selected.
+        compose.onAllNodesWithText(context.getString(R.string.nav_stats)).assertAny(isSelected())
+    }
+
+    @Test
+    fun `the library card opens the exercise library with Workouts still lit`() {
+        seed()
+        show()
+        waitForText(context.getString(R.string.library_card_title))
+
+        compose.onNodeWithText(context.getString(R.string.library_card_title)).performClick()
+
+        // A drill-down of the Workouts tab: the list of every dictionary entry, and the bar still
+        // has Workouts selected.
+        waitForText(context.getString(R.string.library_section).uppercase())
+        compose.onNodeWithText("Bench Press").assertExists()
+        compose.onNodeWithText(context.getString(R.string.nav_workouts)).assertIsSelected()
+    }
+
+    @Test
+    fun `Progression opens the stats chart on that exercise and lights the Stats tab`() {
+        seed()
+        show()
+        waitForText(context.getString(R.string.library_card_title))
+        compose.onNodeWithText(context.getString(R.string.library_card_title)).performClick()
+        waitForText(context.getString(R.string.library_section).uppercase())
+
+        compose.onNodeWithContentDescription(context.getString(R.string.action_more)).performClick()
+        compose.onNodeWithText(context.getString(R.string.library_progression)).performClick()
+
+        waitForText(context.getString(R.string.stats_exercise_selector, "Bench Press"))
         compose.onAllNodesWithText(context.getString(R.string.nav_stats)).assertAny(isSelected())
     }
 

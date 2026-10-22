@@ -1,6 +1,7 @@
 package com.ggym.app.data.room
 
 import android.database.sqlite.SQLiteConstraintException
+import com.ggym.app.data.room.dao.RoutineRefRow
 import com.ggym.app.data.room.entity.ExerciseEntity
 import com.ggym.app.testing.RoomTest
 import com.ggym.app.testing.TestData
@@ -156,6 +157,6 @@ class ExerciseDaoTest : RoomTest() {
         val otherExerciseId = database.givenExercise(name = "Barbell Row")
         database.givenPlannedExercise(routineDayId = pullDayId, exerciseId = otherExerciseId)
 
-        assertEquals(listOf("Push Day"), database.exerciseDao().routineNamesUsing(exerciseId))
+        assertEquals(listOf(RoutineRefRow(id = pushId, name = "Push Day")), database.exerciseDao().routinesUsing(exerciseId))
     }
 }

@@ -26,6 +26,21 @@ internal data class RoutineDayWithPlannedExercises(
     val plannedExercises: List<PlannedExerciseEntity>,
 )
 
+/**
+ * One placement of an exercise in a routine day, flattened for the exercise library: which
+ * exercise, which routine and day, and the planned numbers. A `@Relation` tree would load every
+ * routine's every slot to answer "where is this exercise used?".
+ */
+internal data class ExercisePlanRow(
+    val exerciseId: Long,
+    val routineId: Long,
+    val routineName: String,
+    val routineDayId: Long,
+    val dayName: String,
+    val targetSets: Int,
+    val targetReps: String,
+)
+
 @Dao
 internal interface RoutineDao {
 
@@ -43,6 +58,27 @@ internal interface RoutineDao {
     @Transaction
     @Query("SELECT * FROM routine WHERE id = :routineId")
     fun observeRoutineWithDays(routineId: Long): Flow<RoutineWithDays?>
+
+    /**
+     * Every exercise placement in every routine, ordered by routine creation and then day order,
+     * which is the order the user thinks in. One emission for the whole library.
+     */
+    @Query(
+        """
+        SELECT planned_exercise.exerciseId AS exerciseId,
+               routine.id AS routineId,
+               routine.name AS routineName,
+               routine_day.id AS routineDayId,
+               routine_day.dayName AS dayName,
+               planned_exercise.targetSets AS targetSets,
+               planned_exercise.targetReps AS targetReps
+        FROM planned_exercise
+        JOIN routine_day ON routine_day.id = planned_exercise.routineDayId
+        JOIN routine ON routine.id = routine_day.routineId
+        ORDER BY routine.createdAt ASC, routine.id ASC, routine_day.orderIndex ASC, routine_day.id ASC
+        """,
+    )
+    fun observeExercisePlans(): Flow<List<ExercisePlanRow>>
 
     /** One-shot read for the backup exporter. */
     @Transaction

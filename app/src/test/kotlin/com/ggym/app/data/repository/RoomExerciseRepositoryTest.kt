@@ -1,6 +1,7 @@
 package com.ggym.app.data.repository
 
 import com.ggym.app.domain.model.Exercise
+import com.ggym.app.domain.model.RoutineRef
 import com.ggym.app.domain.repository.DeleteExerciseResult
 import com.ggym.app.domain.repository.RenameExerciseResult
 import com.ggym.app.testing.RepositoryTest
@@ -140,7 +141,7 @@ class RoomExerciseRepositoryTest : RepositoryTest() {
 
         val result = exerciseRepository.deleteExercise(exerciseId)
 
-        assertEquals(DeleteExerciseResult.Blocked(listOf("Push Day")), result)
+        assertEquals(DeleteExerciseResult.Blocked(listOf(RoutineRef(routineId, "Push Day"))), result)
         assertEquals("nothing was deleted", 1, exerciseRepository.observeAll().first().size)
     }
 
@@ -154,7 +155,7 @@ class RoomExerciseRepositoryTest : RepositoryTest() {
         database.givenPlannedExercise(routineDayId = database.givenRoutineDay(routineId = pullId, dayName = "Pull"), exerciseId = exerciseId)
 
         assertEquals(
-            DeleteExerciseResult.Blocked(listOf("Pull Day", "Push Day")),
+            DeleteExerciseResult.Blocked(listOf(RoutineRef(pullId, "Pull Day"), RoutineRef(pushId, "Push Day"))),
             exerciseRepository.deleteExercise(exerciseId),
         )
     }

@@ -40,6 +40,7 @@ class DestinationTest {
         assertEquals(Destination.Workouts, Destination.owningTab(Routes.ROUTINE))
         assertEquals(Destination.Workouts, Destination.owningTab(Routes.DAY))
         assertEquals(Destination.Workouts, Destination.owningTab(Routes.EXERCISE_PICKER))
+        assertEquals(Destination.Workouts, Destination.owningTab(Routes.LIBRARY))
         assertEquals(Destination.Workouts, Destination.owningTab(Routes.WORKOUT))
         assertEquals(Destination.Calendar, Destination.owningTab(Routes.HISTORY))
     }

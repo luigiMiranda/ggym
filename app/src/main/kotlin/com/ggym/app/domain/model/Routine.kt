@@ -15,6 +15,32 @@ data class Routine(
     val days: List<RoutineDay> = emptyList(),
 )
 
+/**
+ * A routine's identity, for a list that only needs to name it and open it — the delete-refusal
+ * dialog offers the first routine that still plans an exercise, and needs its id to do it.
+ */
+data class RoutineRef(
+    val id: Long,
+    val name: String,
+)
+
+/**
+ * One placement of a dictionary exercise in a routine: the day that plans it, and the numbers.
+ *
+ * This is a *projection* of the routine tree, not the tree itself. The exercise library reads it for
+ * the one question the dictionary cannot answer about itself — "where is this exercise used?" — and
+ * names the days rather than loading every routine's exercises to find them.
+ */
+data class ExercisePlan(
+    val exerciseId: Long,
+    val routineId: Long,
+    val routineName: String,
+    val routineDayId: Long,
+    val dayName: String,
+    val targetSets: Int,
+    val targetReps: String,
+)
+
 /** One training day inside a [Routine]; [orderIndex] is the user-visible order. */
 data class RoutineDay(
     val id: Long = 0,

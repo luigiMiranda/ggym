@@ -50,6 +50,7 @@ class ExerciseFormSheetTest {
         onRemove: (() -> Unit)? = {},
         onSetsChange: (String) -> Unit = {},
         onRestChange: (String) -> Unit = {},
+        plannedIn: List<PlannedInRow> = emptyList(),
     ) {
         compose.setContent {
             GgymTheme {
@@ -66,6 +67,7 @@ class ExerciseFormSheetTest {
                     onSave = onSave,
                     onDismiss = onDismiss,
                     onRemove = onRemove,
+                    plannedIn = plannedIn,
                 )
             }
         }
@@ -143,6 +145,51 @@ class ExerciseFormSheetTest {
         compose.onNodeWithContentDescription(string(R.string.weight_decrease)).performClick()
 
         assertEquals(listOf("weight" to 2.5, "weight" to -2.5), steps)
+    }
+
+    @Test
+    fun `the dictionary mode hides sets and reps and lists where the exercise is used`() {
+        show(
+            state(mode = ExerciseFormMode.EditDictionary),
+            plannedIn = listOf(
+                PlannedInRow(routineId = 1, routineDayId = 2, dayName = "Push A", detail = "4 × 8-10"),
+                PlannedInRow(routineId = 1, routineDayId = 3, dayName = "Push B", detail = "5 × 5"),
+            ),
+        )
+
+        waitForText(string(R.string.form_title_edit))
+        // Sets and reps are the day's plan: the dictionary form does not offer them at all.
+        compose.onNodeWithText(string(R.string.slot_field_sets).uppercase()).assertDoesNotExist()
+        compose.onNodeWithText(string(R.string.slot_field_reps).uppercase()).assertDoesNotExist()
+        // But it does show the name, the rest, the base weight and where it is planned.
+        compose.onNodeWithText(string(R.string.exercise_rename_label).uppercase()).assertExists()
+        compose.onNodeWithText(string(R.string.slot_field_rest).uppercase()).assertExists()
+        compose.onNodeWithText(string(R.string.slot_field_weight).uppercase()).assertExists()
+        compose.onNodeWithText(string(R.string.library_planned_in).uppercase()).assertExists()
+        compose.onNodeWithText("Push A").assertExists()
+        compose.onNodeWithText("4 × 8-10").assertExists()
+        compose.onNodeWithText("Push B").assertExists()
+        // And the base-weight hint, because that is what the number here means.
+        compose.onNodeWithText(string(R.string.form_weight_base_hint)).assertExists()
+    }
+
+    @Test
+    fun `the dictionary create mode is a new exercise with no plan yet`() {
+        show(state(mode = ExerciseFormMode.CreateDictionary, name = ""), onRemove = null)
+
+        waitForText(string(R.string.form_title_create))
+        compose.onNodeWithText(string(R.string.library_add)).assertExists()
+        compose.onNodeWithText(string(R.string.slot_field_sets).uppercase()).assertDoesNotExist()
+        compose.onNodeWithText(string(R.string.form_add_to_day)).assertDoesNotExist()
+    }
+
+    @Test
+    fun `the dictionary mode's destructive action deletes the exercise`() {
+        show(state(mode = ExerciseFormMode.EditDictionary))
+
+        waitForText(string(R.string.form_title_edit))
+        compose.onNodeWithText(string(R.string.library_delete_action)).assertExists()
+        compose.onNodeWithText(string(R.string.slot_remove)).assertDoesNotExist()
     }
 
     /**

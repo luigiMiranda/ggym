@@ -1,6 +1,7 @@
 package com.ggym.app.domain.repository
 
 import com.ggym.app.domain.model.Exercise
+import com.ggym.app.domain.model.RoutineRef
 import kotlinx.coroutines.flow.Flow
 
 /** Reads and writes the global exercise dictionary. */
@@ -74,9 +75,13 @@ sealed interface DeleteExerciseResult {
 
     /**
      * The entry is still planned in at least one routine, so deleting it would leave a routine
-     * slot with nothing to perform. [routineNames] names them, so the UI can say which.
+     * slot with nothing to perform. [routines] names them (and carries their ids), so the UI can
+     * say which and then offer a way into the first one.
      */
-    data class Blocked(val routineNames: List<String>) : DeleteExerciseResult
+    data class Blocked(val routines: List<RoutineRef>) : DeleteExerciseResult {
+        /** The routines' names, for copy that only needs to list them. */
+        val routineNames: List<String> get() = routines.map { it.name }
+    }
 }
 
 /** Outcome of [ExerciseRepository.renameExercise]. */

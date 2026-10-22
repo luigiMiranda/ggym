@@ -31,6 +31,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.ggym.app.di.AppContainer
 import com.ggym.app.ui.calendar.CalendarScreen
+import com.ggym.app.ui.exercises.ExerciseLibraryScreen
 import com.ggym.app.ui.exercises.ExercisePickerScreen
 import com.ggym.app.ui.history.HistoryDetailScreen
 import com.ggym.app.ui.settings.SettingsScreen
@@ -139,6 +140,7 @@ fun GgymNavHost(
                     viewModelFactory = container.workoutsViewModelFactory,
                     onOpenRoutine = { routineId -> navController.navigate(Routes.routine(routineId)) },
                     onOpenWorkout = { sessionId -> navController.navigate(Routes.workout(sessionId)) },
+                    onOpenLibrary = { navController.navigate(Routes.LIBRARY) },
                 )
             }
             composable(Destination.Calendar.route) {
@@ -210,6 +212,16 @@ fun GgymNavHost(
                     routineDayId = dayId,
                     viewModelFactory = remember(dayId) { container.exercisePickerViewModelFactory(dayId) },
                     onBack = { navController.popBackStack() },
+                )
+            }
+
+            composable(Routes.LIBRARY) {
+                ExerciseLibraryScreen(
+                    viewModelFactory = container.exerciseLibraryViewModelFactory,
+                    onBack = { navController.popBackStack() },
+                    onOpenRoutine = { routineId -> navController.navigate(Routes.routine(routineId)) },
+                    onOpenDay = { routineId, dayId -> navController.navigate(Routes.day(routineId, dayId)) },
+                    onOpenProgression = { exerciseId -> navController.navigate(Routes.stats(exerciseId)) },
                 )
             }
 

@@ -277,6 +277,31 @@
     <string name="exercise_delete_message">“%1$s” sarà rimosso dal dizionario. Se una scheda lo prevede ancora, GGym ti dirà quale.</string>
     <string name="exercise_delete_blocked_title">Ancora in programma</string>
     <string name="exercise_delete_blocked_message">Questo esercizio è ancora previsto in %1$s. Rimuovilo prima da lì.</string>
+    <string name="exercise_delete_blocked_open">Apri “%1$s”</string>
+
+    <!-- Libreria esercizi: la schermata del dizionario, raggiunta da una scheda nella scheda Allenamenti. -->
+    <string name="library_title">Libreria esercizi</string>
+    <string name="library_card_title">Libreria esercizi</string>
+    <string name="library_card_summary">%1$s · %2$s</string>
+    <plurals name="library_without_weight">
+        <item quantity="one">%1$d senza peso</item>
+        <item quantity="other">%1$d senza peso</item>
+        <item quantity="many">%1$d senza peso</item>
+    </plurals>
+    <string name="library_search_label">Cerca esercizi</string>
+    <string name="library_section">Tutti gli esercizi</string>
+    <string name="library_empty">Nessun esercizio corrisponde.</string>
+    <string name="library_add">Aggiungi esercizio</string>
+    <string name="library_no_weight">— nessun peso</string>
+    <string name="library_rest">recupero %1$d s</string>
+    <string name="library_used_in">in %1$s</string>
+    <string name="library_unused">non pianificato</string>
+    <string name="library_row_detail">%1$s · %2$s · %3$s</string>
+    <string name="library_progression">Progressione</string>
+    <string name="library_delete_action">Elimina esercizio</string>
+    <string name="library_planned_in">Pianificato in</string>
+    <string name="library_planned_in_none">Non pianificato in nessun giorno.</string>
+    <string name="library_plan_detail">%1$d × %2$s</string>
 
     <!-- Rest timer notifications -->
     <string name="rest_notification_text">In recupero</string>
