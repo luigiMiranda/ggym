@@ -411,7 +411,14 @@ on screen in light mode too.
 Every input is the same `GgymField`: one tonal container, the label small and uppercase **above**
 the value, an optional unit suffix and an optional pair of ± step buttons on the same row. A number
 can therefore always be typed as well as stepped, and the exercise form, the body-weight sheet and
-the history editor cannot drift into three different field styles again.
+the history editor cannot drift into three different field styles again. The box itself is a fixed
+height — the value line is 36dp, the step buttons' size, whether or not the field carries them — and
+so is every other box: a field's hint or error is a **supporting line below the box**, the place
+Material puts it, so a hint can never grow one rectangle taller than its neighbours. The field owns
+its text and cursor (a local `TextFieldValue`), pushing edits to the screen and adopting a changed
+value only when it actually changes; handing the screen's value back on every composition replayed
+a value that arrived a frame late and made the cursor jump. A form's sheet takes `imePadding()` and
+scrolls, because a `ModalBottomSheet` does not resize for the keyboard on API 30+.
 
 The expressive checklist the UI is held to:
 
