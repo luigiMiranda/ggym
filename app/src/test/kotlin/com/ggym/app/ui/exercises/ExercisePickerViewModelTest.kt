@@ -107,7 +107,7 @@ class ExercisePickerViewModelTest : ViewModelTest() {
 
             val form = awaitState { it.form != null }.form!!
             assertEquals("the name carries into the form so a typo can be fixed", "Cable Fly", form.name)
-            assertEquals(ExerciseFormDefaults.SETS, form.sets)
+            assertEquals(ExerciseFormDefaults.SETS.toString(), form.sets)
             assertEquals(ExerciseFormDefaults.REPS, form.reps)
             assertEquals(ExerciseFormMode.Create, form.mode)
             assertEquals("a new exercise may have no weight at all", "", form.weight)

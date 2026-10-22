@@ -172,8 +172,10 @@ fun ExercisePickerScreen(
         ExerciseFormSheet(
             form = form,
             onNameChange = viewModel::setFormName,
+            onSetsChange = viewModel::setFormSets,
             onStepSets = viewModel::stepFormSets,
             onRepsChange = viewModel::setFormReps,
+            onRestChange = viewModel::setFormRest,
             onStepRest = viewModel::stepFormRest,
             onWeightChange = viewModel::setFormWeight,
             onStepWeight = viewModel::stepFormWeight,

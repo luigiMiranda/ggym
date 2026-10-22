@@ -28,7 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
@@ -59,6 +58,7 @@ import com.ggym.app.ui.common.ConfirmDeleteDialog
 import com.ggym.app.ui.common.DateLabels
 import com.ggym.app.ui.common.EmptyState
 import com.ggym.app.ui.common.GgymCardShape
+import com.ggym.app.ui.common.GgymField
 import com.ggym.app.ui.common.GgymPrimaryButton
 import com.ggym.app.ui.common.GgymScreenHeader
 import com.ggym.app.ui.common.KgFormat
@@ -313,15 +313,13 @@ private fun SetEditorSheet(
                     .takeIf { weightInvalid },
             )
 
-            OutlinedTextField(
+            GgymField(
                 value = reps,
                 onValueChange = { reps = it },
-                label = { Text(stringResource(R.string.history_field_reps)) },
-                singleLine = true,
+                label = stringResource(R.string.history_field_reps),
                 isError = repsInvalid,
-                supportingText = stringResource(R.string.history_error_reps).takeIf { repsInvalid }?.let { { Text(it) } },
+                supportingText = stringResource(R.string.history_error_reps).takeIf { repsInvalid },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                shape = RoundedCornerShape(18.dp),
                 modifier = Modifier.fillMaxWidth(),
             )
 

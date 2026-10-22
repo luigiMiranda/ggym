@@ -1,15 +1,8 @@
 package com.ggym.app.ui.common
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,12 +12,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.unit.dp
 import com.ggym.app.R
 
 /**
@@ -120,27 +111,18 @@ fun WeightField(
     isError: Boolean = false,
     supportingText: String? = null,
 ) {
-    Row(
+    GgymField(
+        value = value,
+        onValueChange = onValueChange,
+        label = label,
+        suffix = stringResource(R.string.unit_kg),
+        isError = isError,
+        supportingText = supportingText,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+        onDecrease = { onStep(-WeightInput.STEP_KG) },
+        onIncrease = { onStep(WeightInput.STEP_KG) },
+        decreaseLabel = stringResource(R.string.weight_decrease),
+        increaseLabel = stringResource(R.string.weight_increase),
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        FilledTonalIconButton(onClick = { onStep(-WeightInput.STEP_KG) }) {
-            Icon(Icons.Filled.Remove, contentDescription = stringResource(R.string.weight_decrease))
-        }
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            label = { Text(label) },
-            singleLine = true,
-            isError = isError,
-            suffix = { Text(stringResource(R.string.unit_kg)) },
-            supportingText = supportingText?.let { { Text(it) } },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-            modifier = Modifier.weight(1f),
-        )
-        FilledTonalIconButton(onClick = { onStep(WeightInput.STEP_KG) }) {
-            Icon(Icons.Filled.Add, contentDescription = stringResource(R.string.weight_increase))
-        }
-    }
+    )
 }

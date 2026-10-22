@@ -3,6 +3,8 @@ package com.ggym.app.ui.common
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +19,8 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -31,10 +35,13 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -229,6 +236,119 @@ fun GgymHeroCard(
             .padding(horizontal = 18.dp, vertical = 16.dp),
         content = content,
     )
+}
+
+/**
+ * The app's one data-entry field: a tonal container, the label above the value, and the step
+ * buttons when the number has a step.
+ *
+ * The approved previews draw every field this way — a small uppercase label above, the value at
+ * display weight below — whether it is typed (a name, a target) or stepped (sets, rest, weight).
+ * This is that one shape, so the exercise form cannot show three field styles in one column, and the
+ * working weight looks the same here as it does in the body-weight and history editors.
+ *
+ * Focus and error are a border on the same container rather than a different container, so nothing
+ * moves when the field changes state. The value is a plain [BasicTextField] under the container:
+ * Material's outlined field puts its label *inside* the border, which is exactly the mismatch this
+ * replaces.
+ */
+@Composable
+fun GgymField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+    suffix: String? = null,
+    isError: Boolean = false,
+    supportingText: String? = null,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    onDecrease: (() -> Unit)? = null,
+    onIncrease: (() -> Unit)? = null,
+    decreaseLabel: String = "",
+    increaseLabel: String = "",
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val focused by interactionSource.collectIsFocusedAsState()
+    val shape = MaterialTheme.shapes.medium
+    val borderColor = when {
+        isError -> MaterialTheme.colorScheme.error
+        focused -> MaterialTheme.colorScheme.primary
+        else -> Color.Transparent
+    }
+    val valueStyle = MaterialTheme.typography.titleLarge.copy(
+        fontSize = 19.sp,
+        fontWeight = FontWeight.Bold,
+        fontFeatureSettings = "tnum",
+    )
+
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+            .border(width = 2.dp, color = borderColor, shape = shape)
+            .padding(horizontal = 14.dp, vertical = 9.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Text(
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.5.sp,
+                letterSpacing = 1.2.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            BasicTextField(
+                value = value,
+                onValueChange = onValueChange,
+                singleLine = true,
+                textStyle = valueStyle.copy(color = MaterialTheme.colorScheme.onSurface),
+                keyboardOptions = keyboardOptions,
+                cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+                interactionSource = interactionSource,
+                modifier = Modifier.weight(1f),
+            )
+            if (suffix != null) {
+                Text(
+                    text = suffix,
+                    style = valueStyle,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(start = 4.dp),
+                )
+            }
+            if (onDecrease != null || onIncrease != null) {
+                Row(
+                    modifier = Modifier.padding(start = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    StepSquare(
+                        icon = Icons.Filled.Remove,
+                        contentDescription = decreaseLabel,
+                        enabled = onDecrease != null,
+                        onClick = { onDecrease?.invoke() },
+                    )
+                    StepSquare(
+                        icon = Icons.Filled.Add,
+                        contentDescription = increaseLabel,
+                        enabled = onIncrease != null,
+                        onClick = { onIncrease?.invoke() },
+                    )
+                }
+            }
+        }
+        if (supportingText != null) {
+            Text(
+                text = supportingText,
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isError) {
+                    MaterialTheme.colorScheme.error
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+            )
+        }
+    }
 }
 
 /**

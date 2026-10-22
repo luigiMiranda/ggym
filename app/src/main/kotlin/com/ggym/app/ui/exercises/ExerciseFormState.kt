@@ -28,8 +28,10 @@ enum class ExerciseFormMode {
  * The form's contents, held by the screen that owns it.
  *
  * The sheet itself is stateless like `BodyWeightSheet`, so the numbers live with the screen that
- * knows what Save means. Sets and rest are [Int]s rather than text because both are stepped and
- * neither has a text affordance left; the weight and the reps stay text because both are typed.
+ * knows what Save means. Every field is **text**: the user can type any of them, and the ± controls
+ * step what the field holds. Keeping the field's own characters is what makes clearing one to
+ * retype it an ordinary state rather than a special case, and it is how a blank becomes something
+ * the validation can name.
  *
  * [isOwnWeight] is display-only: it decides whether the weight field is described as the day's own
  * number or as one inherited from the exercise.
@@ -42,9 +44,9 @@ data class ExerciseFormState(
      */
     val plannedExerciseId: Long? = null,
     val name: String = "",
-    val sets: Int = ExerciseFormDefaults.SETS,
+    val sets: String = ExerciseFormDefaults.SETS.toString(),
     val reps: String = ExerciseFormDefaults.REPS,
-    val restSeconds: Int = Exercise.DEFAULT_REST_SECONDS,
+    val restSeconds: String = Exercise.DEFAULT_REST_SECONDS.toString(),
     /** The weight field's text, as shown: a local number, or blank for "no weight of my own". */
     val weight: String = "",
     val isOwnWeight: Boolean = false,
@@ -99,26 +101,30 @@ sealed interface ExerciseFormValidation {
  * error — it is how a slot goes back to following the exercise, and how a new exercise starts with
  * no number at all.
  *
- * The `SetsTooLow` and `RestInvalid` branches are guards, not UI states: the −/+ controls cannot
- * produce them. They are kept because the form is a value that anything can build, and "a form with
- * zero sets is not saved" is a rule about the form rather than about one control.
+ * The `SetsTooLow` and `RestInvalid` branches are the states a cleared field leaves behind: the
+ * fields accept anything, so "no sets" and "no rest time" are things the user can hand the form,
+ * and the save has to say what is wrong rather than guess a number. They also still hold for a form
+ * anything else builds, which is what makes the rule a property of the form rather than of a
+ * control.
  */
 fun ExerciseFormState.validate(): ExerciseFormValidation {
     val trimmedName = name.trim()
     val trimmedReps = reps.trim()
+    val parsedSets = sets.trim().toIntOrNull()
+    val parsedRest = restSeconds.trim().toIntOrNull()
     val parsedWeight = WeightInput.parse(weight)
 
     return when {
         trimmedName.isEmpty() -> ExerciseFormValidation.Invalid(ExerciseFormError.NameBlank)
-        sets < 1 -> ExerciseFormValidation.Invalid(ExerciseFormError.SetsTooLow)
+        parsedSets == null || parsedSets < 1 -> ExerciseFormValidation.Invalid(ExerciseFormError.SetsTooLow)
         trimmedReps.isEmpty() -> ExerciseFormValidation.Invalid(ExerciseFormError.RepsBlank)
-        restSeconds < 0 -> ExerciseFormValidation.Invalid(ExerciseFormError.RestInvalid)
+        parsedRest == null || parsedRest < 0 -> ExerciseFormValidation.Invalid(ExerciseFormError.RestInvalid)
         parsedWeight !is WeightParse.Weight -> ExerciseFormValidation.Invalid(ExerciseFormError.WeightInvalid)
         else -> ExerciseFormValidation.Valid(
             name = trimmedName,
-            sets = sets,
+            sets = parsedSets,
             reps = trimmedReps,
-            restSeconds = restSeconds,
+            restSeconds = parsedRest,
             weightKg = parsedWeight.weightKg,
         )
     }
@@ -138,13 +144,26 @@ fun ExerciseFormState.withName(text: String): ExerciseFormState = copy(name = te
 
 /** Sets never fall below one: a planned exercise with no sets is not a plan. */
 fun ExerciseFormState.withSetsStep(delta: Int): ExerciseFormState =
-    copy(sets = (sets + delta).coerceAtLeast(1)).withoutError()
+    copy(sets = ((sets.toIntOrNull() ?: 0) + delta).coerceAtLeast(1).toString()).withoutError()
+
+fun ExerciseFormState.withSets(text: String): ExerciseFormState =
+    copy(sets = text.digitsOnly()).withoutError()
 
 fun ExerciseFormState.withReps(text: String): ExerciseFormState = copy(reps = text).withoutError()
 
 /** Rest never falls below zero: there is no rest before the set. */
 fun ExerciseFormState.withRestStep(deltaSeconds: Int): ExerciseFormState =
-    copy(restSeconds = (restSeconds + deltaSeconds).coerceAtLeast(0)).withoutError()
+    copy(restSeconds = ((restSeconds.toIntOrNull() ?: 0) + deltaSeconds).coerceAtLeast(0).toString()).withoutError()
+
+fun ExerciseFormState.withRest(text: String): ExerciseFormState =
+    copy(restSeconds = text.digitsOnly()).withoutError()
+
+/**
+ * What a whole-number field accepts. The numeric keypad offers digits, so anything else came from
+ * a paste; dropping it keeps the field's text parseable without turning an accidental letter into
+ * an error the user has to find.
+ */
+private fun String.digitsOnly(): String = filter { it in '0'..'9' }
 
 fun ExerciseFormState.withWeight(text: String): ExerciseFormState =
     copy(weight = text, weightTouched = true).withoutError()

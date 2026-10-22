@@ -158,6 +158,7 @@
 
     <!-- Units and numbers -->
     <string name="unit_kg">kg</string>
+    <string name="unit_seconds">s</string>
     <string name="weight_kg">%1$s kg</string>
     <string name="weight_unknown">—</string>
     <string name="weight_decrease">Decrease the weight by 2.5 kg</string>
@@ -240,7 +241,7 @@
       problem beats suppressing the check.
     -->
     <string name="slot_error_reps">Enter the target reps, for example 8 to 10.</string>
-    <string name="slot_error_rest">Rest cannot be negative.</string>
+    <string name="slot_error_rest">Enter the rest time in seconds.</string>
     <string name="slot_error_weight">Enter a weight like 82.5, or leave it blank.</string>
 
     <!-- Exercise form (create a new exercise, or edit one day's slot) -->

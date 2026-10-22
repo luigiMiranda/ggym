@@ -165,6 +165,7 @@
 
     <!-- Units and numbers -->
     <string name="unit_kg">kg</string>
+    <string name="unit_seconds">s</string>
     <string name="weight_kg">%1$s kg</string>
     <string name="weight_unknown">—</string>
     <string name="weight_decrease">Diminuisci il peso di 2,5 kg</string>
@@ -247,7 +248,7 @@
     <string name="slot_field_weight">Carico di lavoro</string>
     <string name="slot_error_sets">Inserisci almeno una serie.</string>
     <string name="slot_error_reps">Inserisci le ripetizioni previste, per esempio da 8 a 10.</string>
-    <string name="slot_error_rest">Il recupero non può essere negativo.</string>
+    <string name="slot_error_rest">Inserisci il recupero in secondi.</string>
     <string name="slot_error_weight">Inserisci un peso come 82,5, oppure lascia vuoto.</string>
 
     <!-- Exercise form (create a new exercise, or edit one day's slot) -->

@@ -20,7 +20,9 @@ import com.ggym.app.ui.exercises.ExerciseFormValidation
 import com.ggym.app.ui.exercises.validate
 import com.ggym.app.ui.exercises.withName
 import com.ggym.app.ui.exercises.withReps
+import com.ggym.app.ui.exercises.withRest
 import com.ggym.app.ui.exercises.withRestStep
+import com.ggym.app.ui.exercises.withSets
 import com.ggym.app.ui.exercises.withSetsStep
 import com.ggym.app.ui.exercises.withWeight
 import com.ggym.app.ui.exercises.withWeightStep
@@ -176,9 +178,9 @@ class DayDetailViewModel(
             mode = ExerciseFormMode.EditSlot,
             plannedExerciseId = slot.id,
             name = slot.exerciseName,
-            sets = slot.targetSets,
+            sets = slot.targetSets.toString(),
             reps = slot.targetReps,
-            restSeconds = slot.restSeconds,
+            restSeconds = slot.restSeconds.toString(),
             weight = slot.weightKg?.let { KgFormat.formatNumber(it, locale) }.orEmpty(),
             isOwnWeight = slot.hasOwnWeight,
         )
@@ -190,9 +192,13 @@ class DayDetailViewModel(
 
     fun setFormName(text: String) = editForm { it.withName(text) }
 
+    fun setFormSets(text: String) = editForm { it.withSets(text) }
+
     fun stepFormSets(delta: Int) = editForm { it.withSetsStep(delta) }
 
     fun setFormReps(text: String) = editForm { it.withReps(text) }
+
+    fun setFormRest(text: String) = editForm { it.withRest(text) }
 
     fun stepFormRest(deltaSeconds: Int) = editForm { it.withRestStep(deltaSeconds) }
 

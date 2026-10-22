@@ -207,7 +207,7 @@ class DayDetailScreenTest : RepositoryTest() {
         waitForText(context.getString(R.string.form_title_edit))
 
         compose.onNodeWithText("8-10").assertExists()
-        compose.onNodeWithText("120s").assertExists()
+        compose.onNodeWithText("120").assertExists()
 
         // “Cable Fly” is already in the dictionary, so saving this form must write nothing at all.
         // The name is the one field whose *value* is also the row's, so the field is picked by its

@@ -19,9 +19,9 @@ class ExerciseFormStateTest {
 
     private fun form(
         name: String = "Bench Press",
-        sets: Int = 4,
+        sets: String = "4",
         reps: String = "8-10",
-        restSeconds: Int = 90,
+        restSeconds: String = "90",
         weight: String = "80",
         isOwnWeight: Boolean = true,
         error: ExerciseFormError? = null,
@@ -95,29 +95,56 @@ class ExerciseFormStateTest {
     }
 
     @Test
-    fun `zero sets and a negative rest are refused`() {
+    fun `zero sets, a blank count and a blank rest are all refused`() {
         assertEquals(
             ExerciseFormError.SetsTooLow,
-            (form(sets = 0).validate() as ExerciseFormValidation.Invalid).error,
+            (form(sets = "0").validate() as ExerciseFormValidation.Invalid).error,
+        )
+        assertEquals(
+            ExerciseFormError.SetsTooLow,
+            (form(sets = "").validate() as ExerciseFormValidation.Invalid).error,
         )
         assertEquals(
             ExerciseFormError.RestInvalid,
-            (form(restSeconds = -15).validate() as ExerciseFormValidation.Invalid).error,
+            (form(restSeconds = "").validate() as ExerciseFormValidation.Invalid).error,
         )
+        assertEquals(
+            ExerciseFormError.RestInvalid,
+            (form(restSeconds = "-15").validate() as ExerciseFormValidation.Invalid).error,
+        )
+    }
+
+    /**
+     * The user's request, as a rule: the ± buttons are a convenience, not the only way in. A rest of
+     * 75 s is typed exactly rather than stepped to from 60 or 90, and the same is true of sets.
+     */
+    @Test
+    fun `a typed count is exact, not the nearest step`() {
+        assertEquals(75, valid(form(restSeconds = "75")).restSeconds)
+        assertEquals(5, valid(form(sets = "5")).sets)
+        assertEquals("75", form(restSeconds = "90").withRest("75").restSeconds)
+        assertEquals("5", form(sets = "4").withSets("5").sets)
+    }
+
+    @Test
+    fun `a pasted letter is dropped rather than kept as an error`() {
+        assertEquals("12", form(restSeconds = "90").withRest("1a2").restSeconds)
+        assertEquals("3", form(sets = "3").withSets("3x").sets)
     }
 
     @Test
     fun `the set stepper never falls below one`() {
-        assertEquals(1, form(sets = 2).withSetsStep(-1).sets)
-        assertEquals(1, form(sets = 1).withSetsStep(-1).sets)
-        assertEquals(2, form(sets = 1).withSetsStep(1).sets)
+        assertEquals("1", form(sets = "2").withSetsStep(-1).sets)
+        assertEquals("1", form(sets = "1").withSetsStep(-1).sets)
+        assertEquals("2", form(sets = "1").withSetsStep(1).sets)
+        assertEquals("1", form(sets = "").withSetsStep(1).sets)
     }
 
     @Test
     fun `the rest stepper never falls below zero`() {
-        assertEquals(0, form(restSeconds = 15).withRestStep(-15).restSeconds)
-        assertEquals(0, form(restSeconds = 0).withRestStep(-15).restSeconds)
-        assertEquals(105, form(restSeconds = 90).withRestStep(15).restSeconds)
+        assertEquals("0", form(restSeconds = "15").withRestStep(-15).restSeconds)
+        assertEquals("0", form(restSeconds = "0").withRestStep(-15).restSeconds)
+        assertEquals("105", form(restSeconds = "90").withRestStep(15).restSeconds)
     }
 
     @Test
@@ -144,8 +171,10 @@ class ExerciseFormStateTest {
         assertEquals(null, form(error = ExerciseFormError.WeightInvalid).withWeight("81").error)
         assertEquals(null, form(error = ExerciseFormError.NameTaken).withName("Front Squat").error)
         assertEquals(null, form(error = ExerciseFormError.SetsTooLow).withSetsStep(1).error)
+        assertEquals(null, form(error = ExerciseFormError.SetsTooLow).withSets("3").error)
         assertEquals(null, form(error = ExerciseFormError.RepsBlank).withReps("10").error)
         assertEquals(null, form(error = ExerciseFormError.RestInvalid).withRestStep(15).error)
+        assertEquals(null, form(error = ExerciseFormError.RestInvalid).withRest("90").error)
     }
 
     /**
@@ -162,9 +191,9 @@ class ExerciseFormStateTest {
     fun `a create form starts from the app's defaults`() {
         val fresh = ExerciseFormState(mode = ExerciseFormMode.Create, name = "Cable Fly")
 
-        assertEquals(ExerciseFormDefaults.SETS, fresh.sets)
+        assertEquals(ExerciseFormDefaults.SETS.toString(), fresh.sets)
         assertEquals(ExerciseFormDefaults.REPS, fresh.reps)
-        assertEquals(Exercise.DEFAULT_REST_SECONDS, fresh.restSeconds)
+        assertEquals(Exercise.DEFAULT_REST_SECONDS.toString(), fresh.restSeconds)
         assertEquals("", fresh.weight)
         assertEquals(3, valid(fresh).sets)
     }

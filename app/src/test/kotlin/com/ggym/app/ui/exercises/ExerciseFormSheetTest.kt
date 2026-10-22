@@ -1,11 +1,14 @@
 package com.ggym.app.ui.exercises
 
 import android.content.Context
+import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextReplacement
 import androidx.test.core.app.ApplicationProvider
 import com.ggym.app.R
 import com.ggym.app.ui.theme.GgymTheme
@@ -45,14 +48,18 @@ class ExerciseFormSheetTest {
         onSave: () -> Unit = {},
         onDismiss: () -> Unit = {},
         onRemove: (() -> Unit)? = {},
+        onSetsChange: (String) -> Unit = {},
+        onRestChange: (String) -> Unit = {},
     ) {
         compose.setContent {
             GgymTheme {
                 ExerciseFormSheet(
                     form = state,
                     onNameChange = {},
+                    onSetsChange = onSetsChange,
                     onStepSets = { delta -> steps += "sets" to delta },
                     onRepsChange = {},
+                    onRestChange = onRestChange,
                     onStepRest = { delta -> steps += "rest" to delta },
                     onWeightChange = {},
                     onStepWeight = { delta -> steps += "weight" to delta },
@@ -72,9 +79,9 @@ class ExerciseFormSheetTest {
         mode = mode,
         plannedExerciseId = if (mode == ExerciseFormMode.EditSlot) 7 else null,
         name = name,
-        sets = 4,
+        sets = "4",
         reps = "8-10",
-        restSeconds = 90,
+        restSeconds = "90",
         weight = "82.5",
         isOwnWeight = true,
         error = error,
@@ -88,7 +95,7 @@ class ExerciseFormSheetTest {
         compose.onNodeWithText("Bench Press").assertExists()
         compose.onNodeWithText("4").assertExists()
         compose.onNodeWithText("8-10").assertExists()
-        compose.onNodeWithText("90s").assertExists()
+        compose.onNodeWithText("90").assertExists()
         compose.onNodeWithText("82.5").assertExists()
         compose.onNodeWithText(string(R.string.action_save)).assertExists()
         compose.onNodeWithText(string(R.string.slot_remove)).assertExists()
@@ -149,6 +156,53 @@ class ExerciseFormSheetTest {
         waitForText(string(R.string.form_title_edit))
         compose.onNodeWithContentDescription(string(R.string.workout_reps_increase)).assertDoesNotExist()
         compose.onNodeWithContentDescription(string(R.string.workout_reps_decrease)).assertDoesNotExist()
+    }
+
+    /**
+     * The user's request, pinned: the ± buttons are a convenience, not the only way in. Tapping the
+     * rest field and typing gives an exact number of seconds — 75 rather than the 60 or 90 the steps
+     * would reach.
+     */
+    @Test
+    fun `the rest field takes an exact number of seconds`() {
+        var rest = ""
+        show(state(), onRestChange = { rest = it })
+
+        waitForText(string(R.string.form_title_edit))
+        compose.onNode(hasSetTextAction() and hasText("90")).performTextReplacement("75")
+
+        assertEquals("75", rest)
+    }
+
+    @Test
+    fun `the sets field takes a typed count too`() {
+        var sets = ""
+        show(state(), onSetsChange = { sets = it })
+
+        waitForText(string(R.string.form_title_edit))
+        compose.onNode(hasSetTextAction() and hasText("4")).performTextReplacement("5")
+
+        assertEquals("5", sets)
+    }
+
+    /**
+     * One field style, not three: every field draws the same uppercase label above its value, which
+     * is what the approved mockup showed and what the built form had drifted away from.
+     */
+    @Test
+    fun `every field carries the same label treatment`() {
+        show(state())
+
+        waitForText(string(R.string.form_title_edit))
+        listOf(
+            R.string.exercise_rename_label,
+            R.string.slot_field_sets,
+            R.string.slot_field_reps,
+            R.string.slot_field_rest,
+            R.string.slot_field_weight,
+        ).forEach { label ->
+            compose.onNodeWithText(string(label).uppercase()).assertExists()
+        }
     }
 
     @Test

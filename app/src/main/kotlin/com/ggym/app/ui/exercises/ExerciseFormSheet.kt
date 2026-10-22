@@ -7,28 +7,24 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.ggym.app.R
 import com.ggym.app.domain.workout.RestTimerUseCases
+import com.ggym.app.ui.common.GgymField
 import com.ggym.app.ui.common.GgymPrimaryButton
-import com.ggym.app.ui.common.GgymStepper
 import com.ggym.app.ui.common.WeightField
 
 /**
@@ -43,17 +39,19 @@ import com.ggym.app.ui.common.WeightField
  * reports idle under Robolectric — this form's name-collision path is testable where the old rename
  * dialog's was not.
  *
- * The controls say what the numbers mean. Sets and rest are stepped, because both are counts of a
- * fixed unit; reps is typed, because a target can be “8-10” or “AMRAP”; the weight is typed *and*
- * stepped, because it is the one number that moves in 2.5 kg jumps and the one this whole form
- * exists for.
+ * The controls say what the numbers mean, and all five are the same [GgymField]: a tonal container
+ * with the label above the value. Sets, rest and weight also carry the ± buttons that step them,
+ * while the name and the target reps are typed only. Every number can be typed as well as stepped,
+ * so an exact rest of 75 s is one keystroke rather than five taps.
  */
 @Composable
 fun ExerciseFormSheet(
     form: ExerciseFormState,
     onNameChange: (String) -> Unit,
+    onSetsChange: (String) -> Unit,
     onStepSets: (Int) -> Unit,
     onRepsChange: (String) -> Unit,
+    onRestChange: (String) -> Unit,
     onStepRest: (Int) -> Unit,
     onWeightChange: (String) -> Unit,
     onStepWeight: (Double) -> Unit,
@@ -66,7 +64,9 @@ fun ExerciseFormSheet(
     val nameError = form.error?.takeIf {
         it == ExerciseFormError.NameBlank || it == ExerciseFormError.NameTaken
     }
+    val setsError = form.error?.takeIf { it == ExerciseFormError.SetsTooLow }
     val repsError = form.error?.takeIf { it == ExerciseFormError.RepsBlank }
+    val restError = form.error?.takeIf { it == ExerciseFormError.RestInvalid }
     val weightError = form.error?.takeIf { it == ExerciseFormError.WeightInvalid }
 
     ModalBottomSheet(
@@ -91,7 +91,7 @@ fun ExerciseFormSheet(
                 style = MaterialTheme.typography.headlineSmall,
             )
 
-            FormTextField(
+            GgymField(
                 value = form.name,
                 onValueChange = onNameChange,
                 label = stringResource(R.string.exercise_rename_label),
@@ -102,16 +102,20 @@ fun ExerciseFormSheet(
             )
 
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                GgymStepper(
+                GgymField(
+                    value = form.sets,
+                    onValueChange = onSetsChange,
                     label = stringResource(R.string.slot_field_sets),
-                    value = form.sets.toString(),
+                    isError = setsError != null,
+                    supportingText = setsError?.let { errorMessage(it) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                     onDecrease = { onStepSets(-1) },
                     onIncrease = { onStepSets(1) },
                     decreaseLabel = stringResource(R.string.form_sets_decrease),
                     increaseLabel = stringResource(R.string.form_sets_increase),
                     modifier = Modifier.weight(1f),
                 )
-                FormTextField(
+                GgymField(
                     value = form.reps,
                     onValueChange = onRepsChange,
                     label = stringResource(R.string.slot_field_reps),
@@ -122,9 +126,14 @@ fun ExerciseFormSheet(
                 )
             }
 
-            GgymStepper(
+            GgymField(
+                value = form.restSeconds,
+                onValueChange = onRestChange,
                 label = stringResource(R.string.slot_field_rest),
-                value = stringResource(R.string.rest_seconds_short, form.restSeconds),
+                suffix = stringResource(R.string.unit_seconds),
+                isError = restError != null,
+                supportingText = restError?.let { errorMessage(it) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Next),
                 onDecrease = { onStepRest(-RestTimerUseCases.STEP_SECONDS) },
                 onIncrease = { onStepRest(RestTimerUseCases.STEP_SECONDS) },
                 decreaseLabel = stringResource(R.string.form_rest_decrease),
@@ -184,36 +193,6 @@ private fun weightHint(form: ExerciseFormState): String = when (form.mode) {
     } else {
         stringResource(R.string.form_weight_slot_hint)
     }
-}
-
-/** The sheet's one text-field shape: a filled card with a label and room for the error. */
-@Composable
-private fun FormTextField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    label: String,
-    modifier: Modifier = Modifier,
-    isError: Boolean = false,
-    supportingText: String? = null,
-    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text(label, style = MaterialTheme.typography.labelSmall) },
-        singleLine = true,
-        isError = isError,
-        supportingText = supportingText?.let { { Text(it) } },
-        keyboardOptions = keyboardOptions,
-        shape = RoundedCornerShape(18.dp),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-            focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = Color.Transparent,
-        ),
-        modifier = modifier,
-    )
 }
 
 /** The form's one error line. Anything without a message (a save in flight) shows nothing. */

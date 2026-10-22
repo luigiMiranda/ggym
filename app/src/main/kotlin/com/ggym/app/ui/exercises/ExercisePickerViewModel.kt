@@ -111,9 +111,9 @@ class ExercisePickerViewModel(
         form.value = ExerciseFormState(
             mode = ExerciseFormMode.Create,
             name = name,
-            sets = ExerciseFormDefaults.SETS,
+            sets = ExerciseFormDefaults.SETS.toString(),
             reps = ExerciseFormDefaults.REPS,
-            restSeconds = Exercise.DEFAULT_REST_SECONDS,
+            restSeconds = Exercise.DEFAULT_REST_SECONDS.toString(),
             weight = "",
             isOwnWeight = false,
         )
@@ -125,9 +125,13 @@ class ExercisePickerViewModel(
 
     fun setFormName(text: String) = editForm { it.withName(text) }
 
+    fun setFormSets(text: String) = editForm { it.withSets(text) }
+
     fun stepFormSets(delta: Int) = editForm { it.withSetsStep(delta) }
 
     fun setFormReps(text: String) = editForm { it.withReps(text) }
+
+    fun setFormRest(text: String) = editForm { it.withRest(text) }
 
     fun stepFormRest(deltaSeconds: Int) = editForm { it.withRestStep(deltaSeconds) }
 

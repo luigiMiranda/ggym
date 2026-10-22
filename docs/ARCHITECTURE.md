@@ -384,6 +384,11 @@ custom pill bar). The hero plate
 the off-white page would be ~1.3:1 — which is what lets the working weight stay the loudest thing
 on screen in light mode too.
 
+Every input is the same `GgymField`: one tonal container, the label small and uppercase **above**
+the value, an optional unit suffix and an optional pair of ± step buttons on the same row. A number
+can therefore always be typed as well as stepped, and the exercise form, the body-weight sheet and
+the history editor cannot drift into three different field styles again.
+
 The expressive checklist the UI is held to:
 
 - `MaterialExpressiveTheme` with `MotionScheme.expressive()`, and every animation names which

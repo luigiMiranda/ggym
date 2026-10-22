@@ -231,9 +231,9 @@ class DayDetailViewModelTest : ViewModelTest() {
             assertEquals(ExerciseFormMode.EditSlot, form.mode)
             assertEquals("the form edits the row it was opened for", row.id, form.plannedExerciseId)
             assertEquals("and starts from the name on screen", "Bench Press", form.name)
-            assertEquals(4, form.sets)
+            assertEquals("4", form.sets)
             assertEquals("8-10", form.reps)
-            assertEquals(120, form.restSeconds)
+            assertEquals("120", form.restSeconds)
             assertEquals("no weight of its own, so the field is blank", "", form.weight)
             assertEquals(false, form.isOwnWeight)
             assertEquals("and the user has not been in the field", false, form.weightTouched)
@@ -363,18 +363,18 @@ class DayDetailViewModelTest : ViewModelTest() {
             awaitState { it.form?.error == ExerciseFormError.RepsBlank }
 
             vm.stepFormSets(1)
-            val stepped = awaitState { it.form?.sets == 5 }.form!!
+            val stepped = awaitState { it.form?.sets == "5" }.form!!
             assertEquals("an edit clears the message about the old value", null, stepped.error)
 
             vm.stepFormRest(15)
-            assertEquals(135, awaitState { it.form?.restSeconds == 135 }.form!!.restSeconds)
+            assertEquals("135", awaitState { it.form?.restSeconds == "135" }.form!!.restSeconds)
 
             // The two floors: one set, and no such thing as a negative rest.
             repeat(6) { vm.stepFormSets(-1) }
-            assertEquals(1, awaitState { it.form?.sets == 1 }.form!!.sets)
+            assertEquals("1", awaitState { it.form?.sets == "1" }.form!!.sets)
 
             repeat(20) { vm.stepFormRest(-15) }
-            assertEquals(0, awaitState { it.form?.restSeconds == 0 }.form!!.restSeconds)
+            assertEquals("0", awaitState { it.form?.restSeconds == "0" }.form!!.restSeconds)
 
             cancelAndIgnoreRemainingEvents()
         }
